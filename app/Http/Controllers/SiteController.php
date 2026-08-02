@@ -8,6 +8,7 @@ use App\Enums\DeploymentStatus;
 use App\Enums\ServerStatus;
 use App\Http\Requests\StoreSiteRequest;
 use App\Jobs\Sites\CheckSiteQueueHealthJob;
+use App\Jobs\Sites\CheckWordPressInstallJob;
 use App\Jobs\Sites\ConfigureSiteJob;
 use App\Jobs\Sites\DeleteSiteJob;
 use App\Models\Deployment;
@@ -66,6 +67,15 @@ class SiteController extends Controller
         $this->authorize('view', $site);
 
         return view('sites.show', ['site' => $site->load(['server', 'environmentVariables', 'queueWorkers', 'sslCertificates', 'cronJobs']), 'deployments' => $site->deployments()->with('user')->latest()->paginate(20), 'environment' => $environment->render($site->environmentVariables), 'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all()]);
+    }
+
+    public function wordpressStatus(Request $request, Site $site): RedirectResponse
+    {
+        $this->authorize('update', $site);
+        abort_unless($site->isWordPress(), 404);
+        CheckWordPressInstallJob::dispatch($site->id)->onQueue('operations');
+
+        return back()->with('status', 'Checking whether WordPress has been installed.');
     }
 
     public function update(Request $request, Site $site): RedirectResponse

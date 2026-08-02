@@ -174,6 +174,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/sites/{site}/rollbacks/{deployment}', [SiteController::class, 'rollback'])->name('sites.rollback');
     Route::delete('/sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
     Route::post('/sites/{site}/queue-health', [SiteController::class, 'queueHealth'])->name('sites.queue-health');
+    Route::post('/sites/{site}/wordpress-status', [SiteController::class, 'wordpressStatus'])->name('sites.wordpress-status');
     Route::get('/deployments/{deployment}', [DeploymentController::class, 'show'])->name('deployments.show');
 
     Route::prefix('admin')->middleware('admin')->name('admin.')->group(function () {

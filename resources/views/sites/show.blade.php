@@ -26,11 +26,21 @@
             // DB_CONNECTION, so asking for one would leave the button disabled forever.
             $databaseKey = $site->isWordPress() ? 'DB_DATABASE' : 'DB_CONNECTION';
             $hasDatabase = $site->environmentVariables->contains(fn ($variable) => $variable->key === $databaseKey);
-            $firstRun = $site->isWordPress() && ! $site->last_deployed_at;
+            // Files on disk and a finished install are different things: the install runs
+            // in the browser after the first deployment and writes the WordPress tables.
+            $wordpressInstalled = $site->wordpressIsInstalled();
+            $action = match (true) {
+                ! $site->isWordPress() => 'Deploy now',
+                $wordpressInstalled => 'Reinstall WordPress',
+                default => 'Install WordPress',
+            };
         @endphp
         <div class="flex gap-3">
             @unless($site->isWordPress())<button @click="tab='deploy'" class="button-secondary">Edit site</button>@endunless
-            <form method="POST" action="{{ route('sites.deploy',$site) }}">@csrf<button class="button-primary" @disabled($site->status !== 'active' || ! $hasDatabase)>{{ $firstRun ? 'Install WordPress' : 'Deploy now' }}</button></form>
+            <form method="POST" action="{{ route('sites.deploy',$site) }}"
+                  @if($wordpressInstalled) onsubmit="return confirm('Replace the WordPress core files with the latest release? Your database, uploads, plugins, and themes are kept.')" @endif>
+                @csrf<button class="button-primary" @disabled($site->status !== 'active' || ! $hasDatabase)>{{ $action }}</button>
+            </form>
         </div>
     </div>
     @unless($hasDatabase)
@@ -48,6 +58,20 @@
             </p>
         </div>
     @endunless
+    @if($site->isWordPress() && $hasDatabase && $site->last_deployed_at && ! $wordpressInstalled)
+        <div class="mt-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4 dark:border-cyan-400/20 dark:bg-cyan-400/10">
+            <p class="text-sm font-medium text-cyan-800 dark:text-cyan-200">Finish the WordPress install</p>
+            <p class="mt-1 text-sm text-cyan-700 dark:text-cyan-200/80">
+                The files are deployed and <code>wp-config.php</code> is written. Complete the setup at
+                <a class="font-medium underline" href="{{ ($secure ? 'https://' : 'http://').$site->domain }}/wp-admin/install.php" target="_blank" rel="noopener noreferrer">{{ $site->domain }}/wp-admin/install.php</a>
+                to create the database tables and your administrator account.
+            </p>
+            <form method="POST" action="{{ route('sites.wordpress-status',$site) }}" class="mt-3">@csrf
+                <button class="button-secondary !px-3 !py-1.5 text-xs">Check again</button>
+                @if($site->wordpress_checked_at)<span class="ml-2 text-xs muted">Last checked {{ $site->wordpress_checked_at->diffForHumans() }}</span>@endif
+            </form>
+        </div>
+    @endif
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     <div class="mt-5"><a href="{{ route('sites.remote',$site) }}" class="button-secondary inline-block">Open PHP, Nginx, files, and console</a></div>
     @can('delete', $site)
@@ -64,7 +88,7 @@
                 {{-- Repository and branch are empty for an install downloaded from
                      wordpress.org, so the cards say something true instead. --}}
                 <div class="panel"><p class="text-xs uppercase tracking-wide muted">Source</p><p class="mt-2 truncate text-sm heading">wordpress.org</p></div>
-                <div class="panel"><p class="text-xs uppercase tracking-wide muted">Installed version</p><p class="mt-2 text-sm heading">{{ $deployments->firstWhere('status', \App\Enums\DeploymentStatus::Successful)?->commit_message ?? 'Not installed yet' }}</p></div>
+                <div class="panel"><p class="text-xs uppercase tracking-wide muted">Installed version</p><p class="mt-2 text-sm heading">{{ $deployments->firstWhere('status', \App\Enums\DeploymentStatus::Successful)?->commit_message ?? 'Not deployed yet' }}</p><p class="mt-1 text-xs {{ $wordpressInstalled ? 'text-emerald-600 dark:text-emerald-300' : 'muted' }}">{{ $wordpressInstalled ? 'Setup complete' : 'Setup not finished' }}</p></div>
             @else
                 <div class="panel"><p class="text-xs uppercase tracking-wide muted">Repository</p><p class="mt-2 truncate text-sm heading">{{ $site->repository_url }}</p></div>
                 <div class="panel"><p class="text-xs uppercase tracking-wide muted">Branch</p><p class="mt-2 font-mono text-sm heading">{{ $site->branch }}</p></div>

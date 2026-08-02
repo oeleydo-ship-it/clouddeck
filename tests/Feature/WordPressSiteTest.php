@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ServerStatus;
 use App\Jobs\Deployments\DeployLaravelJob;
 use App\Jobs\Deployments\DeployWordPressJob;
-use App\Jobs\Sites\ConfigureSiteJob;
+use App\Jobs\Sites\CheckWordPressInstallJob;
 use App\Models\CloudAccount;
 use App\Models\Plan;
 use App\Models\Server;
@@ -178,7 +178,7 @@ class WordPressSiteTest extends TestCase
         $response->assertSee('WordPress')
             ->assertSee('Create a database before installing')
             ->assertSee('wordpress.org')
-            ->assertSee('Not installed yet')
+            ->assertSee('Not deployed yet')
             // Laravel-only surfaces would be dead ends on a WordPress install.
             ->assertDontSee('Queue &amp; Reverb', false)
             ->assertDontSee('Deployment settings');
@@ -195,37 +195,67 @@ class WordPressSiteTest extends TestCase
             ->assertDontSee('Create a database before installing');
     }
 
-    public function test_a_reinstall_reads_as_a_deployment_rather_than_an_install(): void
+    public function test_the_button_reflects_whether_the_install_was_actually_completed(): void
     {
         [$user, $server] = $this->infrastructure();
         $site = $this->wordpressSite($user, $server);
+
+        // Files not deployed yet.
+        $this->actingAs($user)->get("/sites/{$site->id}")->assertOk()->assertSee('Install WordPress');
+
+        // Deployed, but the browser install has not been completed: still an install, and
+        // the page says where to finish it.
         $site->update(['last_deployed_at' => now()]);
+        $this->actingAs($user)->get("/sites/{$site->id}")
+            ->assertOk()
+            ->assertSee('Install WordPress')
+            ->assertSee('Finish the WordPress install')
+            ->assertSee('wp-admin/install.php', false);
 
-        $this->actingAs($user)->get("/sites/{$site->id}")->assertOk()->assertSee('Deploy now')->assertDontSee('Install WordPress');
+        $site->update(['wordpress_installed_at' => now()]);
+        $this->actingAs($user)->get("/sites/{$site->id}")
+            ->assertOk()
+            ->assertSee('Reinstall WordPress')
+            ->assertDontSee('Finish the WordPress install')
+            ->assertSee('Setup complete');
     }
 
-    public function test_a_script_with_an_unsupplied_placeholder_is_refused_before_it_runs(): void
+    public function test_the_install_check_reads_the_database_rather_than_the_deployment(): void
     {
-        [$user, $server] = $this->infrastructure();
-
-        // Left unchecked this reached the server as literal text and was written into the
-        // Nginx config, which then failed with a complaint about a missing semicolon.
-        $this->expectExceptionMessage('DOCUMENT_ROOT');
-        app(SshClient::class)->runScript($server, resource_path('scripts/configure-site.sh'), [
-            'DOMAIN' => 'app.example.com',
-            'PHP_VERSION' => '8.4',
-        ]);
-    }
-
-    public function test_configuring_a_site_supplies_every_placeholder_its_script_needs(): void
-    {
-        Process::fake(['*' => Process::result(output: 'configured', exitCode: 0)]);
+        Process::fake(['*' => Process::result(output: '1
+', exitCode: 0)]);
         [$user, $server] = $this->infrastructure();
         $site = $this->wordpressSite($user, $server);
 
-        (new ConfigureSiteJob($site->id))->handle(app(SshClient::class));
+        (new CheckWordPressInstallJob($site->id))->handle(app(SshClient::class));
 
-        $this->assertSame('active', $site->fresh()->status);
+        $this->assertNotNull($site->fresh()->wordpress_installed_at);
+        Process::assertRan(fn ($process) => str_contains(implode(' ', $process->command), 'wp_options'));
+    }
+
+    public function test_a_site_whose_tables_are_missing_is_not_reported_as_installed(): void
+    {
+        Process::fake(['*' => Process::result(output: '0
+', exitCode: 0)]);
+        [$user, $server] = $this->infrastructure();
+        $site = $this->wordpressSite($user, $server);
+        $site->update(['wordpress_installed_at' => now()]);
+
+        (new CheckWordPressInstallJob($site->id))->handle(app(SshClient::class));
+
+        // Dropping the database has to move the site back to needing an install.
+        $this->assertNull($site->fresh()->wordpress_installed_at);
+        $this->assertNotNull($site->fresh()->wordpress_checked_at);
+    }
+
+    public function test_the_check_is_offered_only_for_wordpress_sites(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+        $laravel = Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'platform' => 'laravel', 'php_version' => '8.4', 'repository_url' => 'https://github.com/acme/app.git', 'branch' => 'main', 'status' => 'active', 'webhook_secret' => Str::random(64)]);
+
+        $this->actingAs($user)->post("/sites/{$laravel->id}/wordpress-status")->assertNotFound();
+        $this->actingAs($user)->post("/sites/{$this->wordpressSite($user, $server)->id}/wordpress-status")->assertRedirect();
     }
 
     public function test_a_wordpress_site_is_not_seeded_with_laravel_environment_keys(): void

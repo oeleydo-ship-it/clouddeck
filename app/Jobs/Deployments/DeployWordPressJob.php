@@ -6,6 +6,7 @@ use App\Enums\DeploymentStatus;
 use App\Events\DeploymentFinished;
 use App\Events\DeploymentLogAppended;
 use App\Jobs\Concerns\BroadcastsQuietly;
+use App\Jobs\Sites\CheckWordPressInstallJob;
 use App\Models\Deployment;
 use App\Services\WordPressConfig;
 use App\Ssh\SshClient;
@@ -76,6 +77,9 @@ class DeployWordPressJob implements ShouldQueue
         ]);
         $site->update(['status' => 'active', 'last_deployed_at' => $finished]);
         $this->log($deployment, 'Deployment completed successfully.');
+        // The files are in place; whether the install has been completed is a separate
+        // question, and only the database can answer it.
+        CheckWordPressInstallJob::dispatch($site->id)->onQueue('operations');
         $this->broadcastQuietly(fn () => DeploymentFinished::dispatch($deployment->fresh(['site.user'])));
     }
 
