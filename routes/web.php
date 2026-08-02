@@ -15,6 +15,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\CloudAccountController;
 use App\Http\Controllers\CloudServerImportController;
 use App\Http\Controllers\CronJobController;
+use App\Http\Controllers\CustomServerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\FileManagerController;
@@ -115,6 +116,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/servers', [ServerManagementController::class, 'index'])->name('servers.index');
     Route::get('/servers/create', ServerProvisionWizard::class)->name('servers.create');
+    Route::get('/servers/custom', [CustomServerController::class, 'create'])->name('servers.custom');
+    Route::post('/servers/custom', [CustomServerController::class, 'store'])->middleware('throttle:10,1')->name('servers.custom.store');
     Route::get('/servers/{server}/manage', [ServerManagementController::class, 'show'])->name('servers.manage');
     Route::delete('/servers/{server}', [ServerManagementController::class, 'destroy'])->name('servers.destroy');
     Route::post('/servers/{server}/retry-provisioning', RetryServerProvisioningController::class)->name('servers.retry-provisioning');

@@ -8,6 +8,7 @@ use App\Models\CloudAccount;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class CloudAccountController extends Controller
@@ -19,9 +20,24 @@ class CloudAccountController extends Controller
 
     public function store(Request $request, CloudProviderManager $providers): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'provider' => ['required', 'in:digitalocean'], 'token' => ['required', 'string', 'min:20', 'max:255']]);
+        $providerKeys = array_keys(config('clouddeck.providers'));
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'provider' => ['required', Rule::in($providerKeys)],
+            'token' => ['required', 'string', 'min:20', 'max:255'],
+        ]);
         $account = new CloudAccount(['name' => $data['name'], 'provider' => $data['provider'], 'credentials' => ['token' => $data['token']]]);
         $account->user()->associate($request->user());
+
+        // Only providers CloudDeck drives through an API can have their credentials proved
+        // here. For the rest the token is stored for the operator's own reference, and
+        // their servers are attached by IP with the custom-server flow — so validating
+        // against an API we do not call would be theatre.
+        if (! config('clouddeck.providers.'.$data['provider'].'.api')) {
+            $account->save();
+
+            return back()->with('status', config('clouddeck.providers.'.$data['provider'].'.label').' account saved. Attach its servers with "Add existing server".');
+        }
 
         try {
             $providers->for($account)->validateCredentials();

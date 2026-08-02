@@ -44,7 +44,7 @@ final class SshClient
         $this->guard($command);
         $key = $this->keyFile($server);
         try {
-            return Process::timeout(1800)->run(['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new', '-i', $key, "root@{$server->public_ip}", $command], $output);
+            return Process::timeout(1800)->run([...$this->sshCommand($server, $key), $command], $output);
         } finally {
             if (is_file($key)) {
                 unlink($key);
@@ -56,12 +56,30 @@ final class SshClient
     {
         $key = $this->keyFile($server);
         try {
-            return Process::timeout(1800)->input($script)->run(['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new', '-i', $key, "root@{$server->public_ip}", 'bash', '-s'], $output);
+            return Process::timeout(1800)->input($script)->run([...$this->sshCommand($server, $key), 'bash', '-s'], $output);
         } finally {
             if (is_file($key)) {
                 unlink($key);
             }
         }
+    }
+
+    /**
+     * A custom server is one the operator already runs, and may answer SSH somewhere other
+     * than 22, so the port travels with the server rather than being assumed.
+     *
+     * @return array<int, string>
+     */
+    private function sshCommand(Server $server, string $key): array
+    {
+        return [
+            'ssh',
+            '-o', 'BatchMode=yes',
+            '-o', 'StrictHostKeyChecking=accept-new',
+            '-p', (string) ($server->ssh_port ?: 22),
+            '-i', $key,
+            "root@{$server->public_ip}",
+        ];
     }
 
     private function script(string $path, array $env): string

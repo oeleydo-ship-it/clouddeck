@@ -7,11 +7,19 @@
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     <div class="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
         <form method="POST" action="/cloud-accounts" class="panel h-fit">@csrf
-            <h2 class="font-semibold heading">Connect DigitalOcean</h2><input type="hidden" name="provider" value="digitalocean">
-            <label class="mt-5 block text-sm heading">Connection name<input class="field" name="name" value="{{ old('name') }}" placeholder="Production"></label>
+            <h2 class="font-semibold heading">Connect a provider</h2>
+            @php $providers = config('clouddeck.providers'); @endphp
+            <label class="mt-5 block text-sm heading">Provider
+                <select class="field" name="provider" x-data x-ref="provider">
+                    @foreach($providers as $key => $provider)
+                        <option value="{{ $key }}" @selected(old('provider', 'digitalocean') === $key)>{{ $provider['label'] }}{{ $provider['api'] ? '' : ' — connect by IP' }}</option>
+                    @endforeach
+                </select>
+            </label>
+            <label class="mt-4 block text-sm heading">Connection name<input class="field" name="name" value="{{ old('name') }}" placeholder="Production"></label>
             <label class="mt-4 block text-sm heading">API token<input class="field" type="password" name="token" autocomplete="off"></label>
-            <p class="mt-2 text-xs muted">The token requires read and write access to droplets and SSH keys.</p>
-            <button class="button-primary mt-5 w-full">Validate and connect</button>
+            <p class="mt-2 text-xs muted">DigitalOcean tokens are validated and used to create and destroy servers; they need read and write access to droplets and SSH keys. Other providers are stored for your reference — attach their servers with <a class="text-cyan-600 dark:text-cyan-300" href="{{ route('servers.custom') }}">Add existing server</a>.</p>
+            <button class="button-primary mt-5 w-full">Connect</button>
         </form>
         <div class="space-y-3">
             @forelse($accounts as $account)
