@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','wordpress','environment','ssl','cron'] : ['overview','environment','deploy','ssl','cron','queue','webhook']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
+<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','themes','plugins','backups','environment','ssl','cron'] : ['overview','environment','deploy','ssl','cron','queue','webhook']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <a class="text-sm font-medium text-cyan-600 dark:text-cyan-300" href="{{ route('sites.index') }}">← Sites</a>
@@ -79,7 +79,7 @@
     @endcan
     <div class="mt-8 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-white/10">@php
         $tabs = $site->isWordPress()
-            ? ['overview'=>'Overview','wordpress'=>'Plugins & backups','environment'=>'Environment','ssl'=>'SSL','cron'=>'Cron']
+            ? ['overview'=>'Overview','themes'=>'Themes','plugins'=>'Plugins','backups'=>'Backups','environment'=>'Environment','ssl'=>'SSL','cron'=>'Cron']
             : ['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook'];
     @endphp
     @foreach($tabs as $key=>$label)<button @click="tab='{{ $key }}'" :class="tab==='{{ $key }}' ? 'border-cyan-500 text-slate-900 dark:border-cyan-400 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400'" class="border-b-2 px-4 py-3 text-sm font-medium">{{ $label }}</button>@endforeach</div>
@@ -98,7 +98,20 @@
         <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60 dark:border-white/10 dark:bg-white/[.03] dark:shadow-none"><div class="border-b border-slate-200 px-6 py-4 dark:border-white/10"><h2 class="font-semibold heading">Deployment history</h2></div>@forelse($deployments as $deployment)<div class="data-row grid items-center gap-4 sm:grid-cols-[1fr_150px_120px_auto]"><a href="{{ route('deployments.show',$deployment) }}"><p class="font-mono text-sm heading">{{ $deployment->release ?? Str::limit($deployment->id,14) }}</p><p class="mt-1 text-xs muted">{{ $deployment->trigger }} by {{ $deployment->user?->name ?? 'webhook' }} · {{ $deployment->created_at->diffForHumans() }}</p></a><span class="text-sm font-medium capitalize {{ $deployment->status->value === 'failed' ? 'text-rose-600 dark:text-rose-300' : ($deployment->status->value === 'successful' ? 'text-emerald-600 dark:text-emerald-300' : 'text-cyan-600 dark:text-cyan-300') }}">{{ str_replace('_',' ',$deployment->status->value) }}</span><span class="text-xs muted">{{ $deployment->duration_for_humans ?? '—' }}</span>@if($deployment->release && in_array($deployment->status,[\App\Enums\DeploymentStatus::Successful,\App\Enums\DeploymentStatus::RolledBack],true))<form method="POST" action="{{ route('sites.rollback',[$site,$deployment]) }}">@csrf<button class="button-secondary !px-3 !py-1.5 text-xs !text-amber-600 dark:!text-amber-300">Rollback</button></form>@else<span></span>@endif</div>@empty<div class="px-6 py-10 text-center muted">No deployments yet.</div>@endforelse</section><div class="mt-5">{{ $deployments->links() }}</div>
     </div>
     @if($site->isWordPress())
-        <div x-cloak x-show="tab==='wordpress'" class="mt-6">@include('sites.partials.wordpress')</div>
+        @php $wordpressReady = $site->wordpressIsInstalled(); @endphp
+        @foreach(['theme' => 'themes', 'plugin' => 'plugins'] as $target => $tabKey)
+            <div x-cloak x-show="tab==='{{ $tabKey }}'" class="mt-6 space-y-6">
+                @if($wordpressReady)
+                    @include('sites.partials.wp-installed', ['target' => $target, 'plural' => $tabKey])
+                    @include('sites.partials.wp-directory', ['target' => $target, 'plural' => $tabKey, 'results' => $target === 'theme' ? $directoryThemes : $directoryPlugins])
+                @else
+                    @include('sites.partials.wp-locked')
+                @endif
+            </div>
+        @endforeach
+        <div x-cloak x-show="tab==='backups'" class="mt-6">
+            @if($wordpressReady)@include('sites.partials.wp-backups')@else @include('sites.partials.wp-locked') @endif
+        </div>
     @endif
     <div x-cloak x-show="tab==='environment'" class="mt-6"><form method="POST" action="{{ route('sites.environment',$site) }}" class="panel">@csrf @method('PUT')<h2 class="font-semibold heading">Encrypted environment</h2><p class="mt-2 text-sm muted">Values are encrypted at rest and written only to the server's shared release directory.</p><textarea class="field mt-5 min-h-[28rem] font-mono text-xs leading-6" name="environment" spellcheck="false">{{ $environment }}</textarea><button class="button-primary mt-5">Save environment</button></form></div>
     <div x-cloak x-show="tab==='deploy'" class="mt-6"><form method="POST" action="{{ route('sites.update',$site) }}" class="panel">@csrf @method('PATCH')<div class="grid gap-5 sm:grid-cols-2"><label class="text-sm heading sm:col-span-2">Repository URL<input class="field font-mono text-xs" name="repository_url" value="{{ $site->repository_url }}" placeholder="https://github.com/acme/app.git"></label><label class="text-sm heading">Branch<input class="field" name="branch" value="{{ $site->branch }}"></label><label class="text-sm heading">PHP version<select class="field" name="php_version">@foreach(['8.4','8.3','8.2'] as $version)<option @selected($site->php_version===$version)>{{ $version }}</option>@endforeach</select></label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_deploy" value="1" @checked($site->auto_deploy)>Automatic deployments</label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="zero_downtime" value="1" @checked($site->zero_downtime)>Zero-downtime releases</label><label class="text-sm heading sm:col-span-2">Custom post-build script<textarea class="field min-h-44 font-mono text-xs" name="deployment_script">{{ $site->deployment_script }}</textarea></label></div><button class="button-primary mt-5">Save settings</button></form></div>

@@ -30,6 +30,12 @@ class WordPressManagementTest extends TestCase
     /** @return array{0: User, 1: Site} */
     private function installedSite(bool $installed = true): array
     {
+        // A page render reaches the wordpress.org directory and can queue an inventory read
+        // over SSH. Tests that set their own directory response stub it before calling this,
+        // and the first matching stub wins, so this only covers the ones that do not care.
+        Http::fake(['api.wordpress.org/*' => Http::response(['themes' => [], 'plugins' => []])]);
+        Queue::fake();
+
         $user = User::factory()->create(['email_verified_at' => now()]);
         $plan = Plan::firstOrCreate(['slug' => 'unlimited'], ['name' => 'Unlimited', 'monthly_price' => 0, 'yearly_price' => 0, 'currency' => 'USD', 'limits' => ['servers' => -1, 'sites' => -1, 'databases' => -1, 'api_tokens' => -1, 'teams' => -1, 'team_members' => -1], 'features' => [], 'active' => true, 'public' => true]);
         Subscription::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'provider' => 'system', 'status' => 'active']);
@@ -216,6 +222,35 @@ class WordPressManagementTest extends TestCase
             ->assertSee('1,000,000+ installs');
     }
 
+    public function test_the_first_visit_reads_the_list_instead_of_waiting_to_be_asked(): void
+    {
+        [$user, $site] = $this->installedSite();
+
+        $this->actingAs($user)->get("/sites/{$site->id}")->assertOk();
+        Queue::assertPushed(RefreshWordPressInventoryJob::class, 1);
+
+        // Once it has been read, every later page view must stay a page view.
+        $site->update(['wordpress_inventory' => ['plugin' => [], 'theme' => []], 'wordpress_inventory_at' => now()]);
+        $this->actingAs($user)->get("/sites/{$site->id}")->assertOk();
+        Queue::assertPushed(RefreshWordPressInventoryJob::class, 1);
+    }
+
+    public function test_plugins_can_be_searched_for_rather_than_installed_by_slug(): void
+    {
+        Http::fake(['api.wordpress.org/*' => Http::response(['plugins' => [
+            ['slug' => 'wordfence', 'name' => 'Wordfence Security', 'author' => 'Defiant', 'active_installs' => 4000000, 'short_description' => 'Firewall and malware scan.'],
+        ]])]);
+        [$user, $site] = $this->installedSite();
+
+        $this->actingAs($user)->get("/sites/{$site->id}?plugin_search=firewall")
+            ->assertOk()
+            ->assertSee('Browse plugins')
+            ->assertSee('Wordfence Security')
+            ->assertSee('Firewall and malware scan.');
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/plugins/info/1.2/') && str_contains(urldecode($request->url()), 'firewall'));
+    }
+
     public function test_the_page_still_renders_when_the_directory_cannot_be_reached(): void
     {
         Http::fake(['api.wordpress.org/*' => Http::response(status: 503)]);
@@ -227,14 +262,17 @@ class WordPressManagementTest extends TestCase
             ->assertSee('could not be reached');
     }
 
-    public function test_the_tab_offers_plugins_themes_and_backups_once_installed(): void
+    public function test_themes_plugins_and_backups_each_get_their_own_tab_once_installed(): void
     {
         [$user, $site] = $this->installedSite();
         $site->backups()->create(['user_id' => $user->id, 'label' => '20260802-120000', 'status' => 'completed', 'size' => 1048576, 'completed_at' => now()]);
 
         $this->actingAs($user)->get("/sites/{$site->id}")
             ->assertOk()
-            ->assertSee('Plugins &amp; backups', false)
+            ->assertSee('Installed themes')
+            ->assertSee('Installed plugins')
+            ->assertSee('Browse themes')
+            ->assertSee('Browse plugins')
             ->assertSee('Install and activate')
             ->assertSee('Back up now')
             ->assertSee('20260802-120000')

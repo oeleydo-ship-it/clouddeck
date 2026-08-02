@@ -11,6 +11,7 @@ use App\Jobs\Sites\CheckSiteQueueHealthJob;
 use App\Jobs\Sites\CheckWordPressInstallJob;
 use App\Jobs\Sites\ConfigureSiteJob;
 use App\Jobs\Sites\DeleteSiteJob;
+use App\Jobs\Sites\RefreshWordPressInventoryJob;
 use App\Models\Deployment;
 use App\Models\Site;
 use App\Services\AuditLogger;
@@ -67,10 +68,18 @@ class SiteController extends Controller
     {
         $this->authorize('view', $site);
 
+        // Read on first arrival rather than leaving the operator to press a button for
+        // something CloudDeck could simply have asked the server for.
+        if ($site->wordpressIsInstalled() && ! $site->wordpress_inventory_at) {
+            RefreshWordPressInventoryJob::dispatch($site->id)->onQueue('operations');
+        }
+
         return view('sites.show', ['site' => $site->load(['server', 'environmentVariables', 'queueWorkers', 'sslCertificates', 'cronJobs', 'backups.user']),
             // Only fetched for the platform that can use it, and cached, so the directory
             // being slow or down never holds up a Laravel site's page.
-            'directoryThemes' => $site->isWordPress() ? app(WordPressDirectory::class)->themes($request->query('theme_search')) : [], 'deployments' => $site->deployments()->with('user')->latest()->paginate(20), 'environment' => $environment->render($site->environmentVariables), 'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all()]);
+            'directoryThemes' => $site->isWordPress() ? app(WordPressDirectory::class)->themes($request->query('theme_search')) : [],
+            'directoryPlugins' => $site->isWordPress() ? app(WordPressDirectory::class)->plugins($request->query('plugin_search')) : [],
+            'deployments' => $site->deployments()->with('user')->latest()->paginate(20), 'environment' => $environment->render($site->environmentVariables), 'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all()]);
     }
 
     public function wordpressStatus(Request $request, Site $site): RedirectResponse

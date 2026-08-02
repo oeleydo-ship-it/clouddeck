@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\WordPressConfig;
 use App\Ssh\SshClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -40,6 +41,11 @@ class WordPressSiteTest extends TestCase
 
     private function wordpressSite(User $user, Server $server, bool $withDatabase = true): Site
     {
+        // Viewing the page reaches the wordpress.org directory and can queue an inventory
+        // read over SSH; neither belongs in a test that is only checking what is rendered.
+        Http::fake(['api.wordpress.org/*' => Http::response(['themes' => [], 'plugins' => []])]);
+        Queue::fake();
+
         $site = Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'blog.example.com', 'platform' => 'wordpress', 'php_version' => '8.4', 'status' => 'active', 'webhook_secret' => Str::random(64)]);
 
         if ($withDatabase) {
