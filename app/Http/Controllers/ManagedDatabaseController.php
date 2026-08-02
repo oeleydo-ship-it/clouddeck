@@ -23,7 +23,18 @@ class ManagedDatabaseController extends Controller
     {
         $this->authorize('update', $server);
         $quotas->assertCanCreate($request->user(), 'databases');
-        $data = $request->validate(['engine' => ['required', Rule::in(['mysql', 'postgresql'])], 'name' => ['required', 'regex:/^[a-z][a-z0-9_]{0,62}$/'], 'username' => ['required', 'regex:/^[a-z][a-z0-9_]{0,30}$/'], 'site_id' => ['nullable', 'uuid', Rule::exists('sites', 'id')->where('user_id', $request->user()->id)->where('server_id', $server->id)]]);
+        $data = $request->validate([
+            'engine' => ['required', Rule::in(['mysql', 'postgresql'])],
+            // Guarded here as well as by the index, so a name already on this server comes
+            // back on the field instead of as a 500 from the database. Trashed rows are
+            // ignored: deleting a database frees its name for the next one.
+            'name' => [
+                'required', 'regex:/^[a-z][a-z0-9_]{0,62}$/',
+                Rule::unique('managed_databases', 'name')->where(fn ($query) => $query->where('server_id', $server->id)->where('engine', $request->input('engine'))->whereNull('deleted_at')),
+            ],
+            'username' => ['required', 'regex:/^[a-z][a-z0-9_]{0,30}$/'],
+            'site_id' => ['nullable', 'uuid', Rule::exists('sites', 'id')->where('user_id', $request->user()->id)->where('server_id', $server->id)],
+        ]);
         $password = Str::random(32);
         $database = $server->databases()->create([...$data, 'user_id' => $request->user()->id, 'password' => $password, 'status' => 'pending']);
         CreateDatabaseJob::dispatch($database->id)->onQueue('operations');

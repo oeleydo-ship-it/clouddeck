@@ -45,7 +45,7 @@ class AdminUserController extends Controller
         $plan = Plan::findOrFail($data['plan_id']);
         DB::transaction(function () use ($user, $plan, $data): void {
             $user->subscriptions()->whereIn('status', ['active', 'trialing'])->update(['status' => 'ended', 'ended_at' => now()]);
-            $user->subscriptions()->create(['plan_id' => $plan->id, 'status' => 'active', 'provider' => 'manual', 'current_period_ends_at' => now()->addDays($data['period_days'])]);
+            $user->subscriptions()->create(['plan_id' => $plan->id, 'status' => 'active', 'provider' => 'manual', 'current_period_ends_at' => now()->addDays((int) $data['period_days'])]);
         });
         $audit->record($request, 'subscription.assigned', $user, [], ['plan' => $plan->slug, 'period_days' => $data['period_days']]);
 
