@@ -114,6 +114,25 @@ class LiveStatusTest extends TestCase
             ->assertViewHas('active', false);
     }
 
+    public function test_the_visit_link_follows_whether_the_site_actually_has_a_certificate(): void
+    {
+        $user = User::factory()->create();
+        $server = $this->server($user, ['status' => ServerStatus::Ready, 'progress' => 100]);
+        $site = Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'repository_url' => 'https://github.com/acme/app.git', 'branch' => 'main', 'status' => 'active', 'webhook_secret' => Str::random(64)]);
+
+        // Linking to https before a certificate exists lands on a browser warning.
+        $this->actingAs($user)->get("/sites/{$site->id}")
+            ->assertOk()
+            ->assertSee('Visit site')
+            ->assertSee('href="http://app.example.com"', false);
+
+        $site->sslCertificates()->create(['user_id' => $user->id, 'domains' => [$site->domain], 'status' => 'active']);
+
+        $this->actingAs($user)->get("/sites/{$site->id}")
+            ->assertOk()
+            ->assertSee('href="https://app.example.com"', false);
+    }
+
     public function test_a_site_without_a_database_is_warned_and_cannot_press_deploy(): void
     {
         $user = User::factory()->create();

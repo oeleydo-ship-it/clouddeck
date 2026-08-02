@@ -7,6 +7,17 @@
             <div class="mt-2 flex flex-wrap items-center gap-3"><h1 class="text-3xl font-semibold heading">{{ $site->domain }}</h1>
                 @php $tint = ['active' => 'emerald', 'failed' => 'rose'][$site->status] ?? 'amber'; @endphp
                 <span class="badge {{ $tint === 'emerald' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300' : ($tint === 'rose' ? 'bg-rose-50 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300') }} capitalize"><span class="badge-dot bg-{{ $tint }}-500"></span>{{ $site->status }}</span>
+                @php
+                    // http until a certificate is actually active: linking to https before then
+                    // lands on a browser warning rather than the site.
+                    $secure = $site->sslCertificates->contains(fn ($certificate) => $certificate->status === 'active');
+                @endphp
+                <a href="{{ ($secure ? 'https://' : 'http://').$site->domain }}" target="_blank" rel="noopener noreferrer"
+                   class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:border-cyan-300 hover:text-cyan-700 dark:border-white/10 dark:text-slate-300 dark:hover:border-cyan-400/30 dark:hover:text-cyan-300"
+                   title="Open {{ $site->domain }} in a new tab">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+                    Visit site
+                </a>
             </div>
             <p class="mt-2 text-sm muted">{{ $site->server->name }} · PHP {{ $site->php_version }}</p>
         </div>
