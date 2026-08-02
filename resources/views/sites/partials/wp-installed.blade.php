@@ -16,6 +16,13 @@
         <form method="POST" action="{{ route('wordpress.refresh',$site) }}">@csrf<button class="button-secondary !px-3 !py-1.5 text-xs">Refresh list</button></form>
     </div>
 
+    @if($site->wordpress_inventory_error)
+        {{-- The reason, rather than an empty list the operator has to guess about. --}}
+        <p class="mt-4 rounded-lg bg-rose-50 p-3 font-mono text-xs text-rose-700 dark:bg-rose-400/10 dark:text-rose-300">
+            The last read failed: {{ $site->wordpress_inventory_error }}
+        </p>
+    @endif
+
     <div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">
         @forelse($items as $item)
             @php $active = in_array($item['status'] ?? '', ['active', 'active-network'], true); @endphp
@@ -53,7 +60,7 @@
             </div>
         @empty
             <p class="py-6 text-center text-sm muted">
-                @if($site->wordpress_inventory_at) No {{ $plural }} installed. @else CloudDeck is reading the list from the server — refresh the page in a moment. @endif
+                @if($site->wordpress_inventory_error) Nothing could be read — see above. @elseif($site->wordpress_inventory_at) No {{ $plural }} installed. @else CloudDeck is reading the list from the server — refresh the page in a moment. @endif
             </p>
         @endforelse
     </div>

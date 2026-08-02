@@ -20,7 +20,10 @@ run_wp() { sudo -u www-data /usr/local/bin/wp --path="${ROOT}" --no-color "$@"; 
 
 case "${ACTION}" in
     list)
-        run_wp "${TARGET}" list --format=json --fields=name,title,status,version,update
+        # No --fields: the set differs between plugins and themes and between WP-CLI
+        # versions, and naming one it rejects fails the whole read rather than returning
+        # less. The default columns carry everything the page shows.
+        run_wp "${TARGET}" list --format=json
         ;;
     install)
         run_wp "${TARGET}" install "${SLUG}" --activate

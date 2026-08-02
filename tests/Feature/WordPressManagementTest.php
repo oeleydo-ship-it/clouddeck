@@ -193,6 +193,46 @@ class WordPressManagementTest extends TestCase
         $this->assertNotNull($site->wordpress_inventory_at);
     }
 
+    public function test_one_target_failing_does_not_throw_away_the_other(): void
+    {
+        // wp theme list rejecting a field it does not have used to abort the job before
+        // anything was saved, so a perfectly good plugin list was lost with it.
+        // The script goes over stdin rather than the command line, so the theme read is
+        // recognised by what it was handed.
+        Process::fake(['*' => fn ($process) => preg_match('/TARGET=\S*theme/', (string) $process->input) === 1
+            ? Process::result(output: '', errorOutput: 'Error: Invalid field', exitCode: 1)
+            : Process::result(output: json_encode([['name' => 'akismet', 'status' => 'inactive']]), exitCode: 0),
+        ]);
+        [$user, $site] = $this->installedSite();
+
+        (new RefreshWordPressInventoryJob($site->id))->handle(app(SshClient::class));
+
+        $site->refresh();
+        $this->assertSame('akismet', $site->wordpressInventory('plugin')[0]['name']);
+        $this->assertSame([], $site->wordpressInventory('theme'));
+        // And the page must be able to say why rather than reading forever.
+        $this->assertNotNull($site->wordpress_inventory_at);
+        $this->assertNotNull($site->wordpress_inventory_error);
+
+        $this->actingAs($user)->get("/sites/{$site->id}")->assertOk()->assertSee('The last read failed');
+    }
+
+    public function test_a_successful_read_clears_an_earlier_failure(): void
+    {
+        Process::fake(['*' => Process::result(output: json_encode([['name' => 'akismet', 'status' => 'inactive']]), exitCode: 0)]);
+        [$user, $site] = $this->installedSite();
+        $site->update(['wordpress_inventory_error' => 'Error: Invalid field']);
+
+        (new RefreshWordPressInventoryJob($site->id))->handle(app(SshClient::class));
+
+        $this->assertNull($site->fresh()->wordpress_inventory_error);
+    }
+
+    public function test_the_list_is_read_without_naming_fields_wp_cli_may_reject(): void
+    {
+        $this->assertStringNotContainsString('--fields=', file_get_contents(resource_path('scripts/wp-cli.sh')));
+    }
+
     public function test_warnings_printed_before_the_json_do_not_break_the_list(): void
     {
         // WP-CLI prints PHP notices ahead of its output often enough that assuming the
