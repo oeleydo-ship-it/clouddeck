@@ -3,7 +3,15 @@
 <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.08),transparent_35%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_35%)]"></div>
 <header class="relative border-b border-slate-200 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-slate-950/80">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-        <a href="/" class="flex items-center gap-3 font-semibold text-slate-900 dark:text-white"><span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 font-bold text-white shadow-md shadow-cyan-500/25">C</span>CloudDeck</a>
+        @php $branding = $branding ?? ['name' => config('app.name', 'CloudDeck'), 'logo_url' => null]; @endphp
+        <a href="/" class="flex items-center gap-3 font-semibold text-slate-900 dark:text-white">
+            @if($branding['logo_url'])
+                <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="size-9 rounded-xl object-contain">
+            @else
+                <span class="grid size-9 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 font-bold text-white shadow-md shadow-cyan-500/25">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
+            @endif
+            {{ $branding['name'] }}
+        </a>
         <nav class="flex items-center gap-2">
             @auth
                 <div class="hidden items-center gap-1 md:flex">

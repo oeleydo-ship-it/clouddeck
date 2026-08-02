@@ -184,5 +184,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/feature-flags/{featureFlag}', [AdminFeatureFlagController::class, 'update'])->name('flags.update');
         Route::patch('/billing-requests/{billingRequest}', [AdminBillingRequestController::class, 'update'])->name('billing-requests.update');
         Route::put('/settings', [AdminSettingController::class, 'update'])->name('settings.update');
+        Route::post('/settings/logo', [AdminSettingController::class, 'logo'])->name('settings.logo');
+        Route::delete('/settings/logo', [AdminSettingController::class, 'destroyLogo'])->name('settings.logo.destroy');
+        Route::put('/settings/mail', [AdminSettingController::class, 'mail'])->name('settings.mail');
+        Route::post('/settings/mail/test', [AdminSettingController::class, 'testMail'])->middleware('throttle:6,1')->name('settings.mail.test');
     });
 });
