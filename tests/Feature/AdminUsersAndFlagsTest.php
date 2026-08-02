@@ -70,6 +70,49 @@ class AdminUsersAndFlagsTest extends TestCase
         $this->actingAs($admin)->get('/admin/users')->assertOk()->assertSee('No active plans');
     }
 
+    public function test_the_account_menu_holds_teams_billing_and_signing_out(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $response = $this->actingAs($user)->get('/dashboard')->assertOk();
+
+        // They moved out of the top bar and into the menu, but must still be reachable.
+        $response->assertSee('/teams', false)->assertSee('/billing', false)->assertSee('/account', false);
+        $response->assertSee('Sign out');
+    }
+
+    public function test_billing_renders_the_plans_an_administrator_published(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        Plan::create(['name' => 'Pro', 'slug' => 'pro', 'monthly_price' => 2900, 'yearly_price' => 29000, 'currency' => 'USD', 'limits' => ['servers' => 10, 'sites' => -1], 'features' => ['monitoring' => true, 'remote_management' => false], 'active' => true, 'public' => true, 'sort_order' => 10]);
+        Plan::create(['name' => 'Hidden', 'slug' => 'hidden', 'monthly_price' => 100, 'yearly_price' => 1000, 'currency' => 'USD', 'limits' => [], 'features' => [], 'active' => true, 'public' => false]);
+
+        $response = $this->actingAs($user)->get('/billing')->assertOk();
+
+        $response->assertSee('Pro')->assertSee('USD 29')->assertSee('USD 290');
+        $response->assertSee('Unlimited');            // sites => -1
+        $response->assertSee('Monitoring and alerts');
+        $response->assertDontSee('Hidden');           // not public
+    }
+
+    public function test_billing_says_so_when_no_plan_has_been_published(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $this->actingAs($user)->get('/billing')->assertOk()->assertSee('No plans are available yet');
+    }
+
+    public function test_the_teams_page_explains_the_roles_it_offers(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $this->actingAs($user)->get('/teams')
+            ->assertOk()
+            ->assertSee('You do not own a team yet')
+            ->assertSee('Operator')
+            ->assertSee('Read-only access to shared infrastructure.');
+    }
+
     public function test_a_flag_reads_as_a_rollout_when_on_and_as_off_when_disabled(): void
     {
         $admin = $this->admin();

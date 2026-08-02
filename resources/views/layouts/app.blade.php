@@ -20,16 +20,39 @@
                     <a href="/sites" class="nav-link {{ request()->is('sites*') ? '!bg-slate-100 !text-slate-900 dark:!bg-white/10 dark:!text-white' : '' }}">Sites</a>
                     <a href="/cloud-accounts" class="nav-link {{ request()->is('cloud-accounts*') ? '!bg-slate-100 !text-slate-900 dark:!bg-white/10 dark:!text-white' : '' }}">Providers</a>
                     <a href="/ssh-keys" class="nav-link {{ request()->is('ssh-keys*') ? '!bg-slate-100 !text-slate-900 dark:!bg-white/10 dark:!text-white' : '' }}">SSH keys</a>
-                    <a href="/teams" class="nav-link {{ request()->is('teams*') ? '!bg-slate-100 !text-slate-900 dark:!bg-white/10 dark:!text-white' : '' }}">Teams</a>
-                    <a href="/billing" class="nav-link {{ request()->is('billing*') ? '!bg-slate-100 !text-slate-900 dark:!bg-white/10 dark:!text-white' : '' }}">Billing</a>
                     @if(auth()->user()->isSuperAdmin())<a href="/admin" class="nav-link !text-amber-600 dark:!text-amber-300 {{ request()->is('admin*') ? '!bg-amber-50 dark:!bg-amber-400/10' : '' }}">Admin</a>@endif
-                    <a href="/account" class="nav-link {{ request()->is('account*') ? '!bg-slate-100 !text-slate-900 dark:!bg-white/10 dark:!text-white' : '' }}">Account</a>
                 </div>
                 <button type="button" @click="dark = !dark" class="icon-button" title="Toggle dark mode" aria-label="Toggle dark mode">
                     <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
                     <svg x-cloak x-show="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
                 </button>
-                <form method="POST" action="/logout">@csrf<button class="button-secondary">Sign out</button></form>
+                @php $inAccountArea = request()->is('account*') || request()->is('teams*') || request()->is('billing*'); @endphp
+                <div class="relative" x-data="{ open: false }" @keydown.escape.window="open = false">
+                    <button type="button" @click="open = ! open" @click.outside="open = false"
+                            class="nav-link flex items-center gap-2 {{ $inAccountArea ? '!bg-slate-100 !text-slate-900 dark:!bg-white/10 dark:!text-white' : '' }}"
+                            :aria-expanded="open" aria-haspopup="true">
+                        <span class="grid size-6 place-items-center rounded-full bg-slate-200 text-[11px] font-semibold uppercase text-slate-600 dark:bg-white/10 dark:text-slate-300">{{ Str::substr(auth()->user()->name, 0, 1) }}</span>
+                        <span class="hidden sm:inline">Account</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5 transition" :class="open && 'rotate-180'"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div x-cloak x-show="open" x-transition.origin.top.right
+                         class="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg dark:border-white/10 dark:bg-slate-900">
+                        <div class="border-b border-slate-100 px-4 py-3 dark:border-white/5">
+                            <p class="truncate text-sm font-medium heading">{{ auth()->user()->name }}</p>
+                            <p class="truncate text-xs muted">{{ auth()->user()->email }}</p>
+                        </div>
+                        @foreach(['/account' => 'Account settings', '/teams' => 'Teams', '/billing' => 'Billing'] as $href => $label)
+                            <a href="{{ $href }}" @class([
+                                'block px-4 py-2.5 text-sm transition',
+                                'bg-slate-50 font-medium text-slate-900 dark:bg-white/5 dark:text-white' => request()->is(ltrim($href, '/').'*'),
+                                'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5' => ! request()->is(ltrim($href, '/').'*'),
+                            ])>{{ $label }}</a>
+                        @endforeach
+                        <form method="POST" action="/logout" class="border-t border-slate-100 dark:border-white/5">@csrf
+                            <button class="block w-full px-4 py-2.5 text-left text-sm text-rose-600 transition hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-400/10">Sign out</button>
+                        </form>
+                    </div>
+                </div>
             @else
                 <button type="button" @click="dark = !dark" class="icon-button" title="Toggle dark mode" aria-label="Toggle dark mode">
                     <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
