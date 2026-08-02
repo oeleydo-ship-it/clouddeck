@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DeploymentStatus;
 use App\Enums\ServerStatus;
+use App\Jobs\Deployments\DeployLaravelJob;
 use App\Jobs\Operations\ExportDatabaseJob;
 use App\Jobs\RemoteManagement\ApplySiteConfigurationJob;
 use App\Jobs\RemoteManagement\ExecuteFileOperationJob;
@@ -243,10 +245,10 @@ class RemoteManagementTest extends TestCase
     {
         [$user, $server, $site] = $this->infrastructure();
         $site->update(['managed_packages' => ['laravel/horizon']]);
-        Process::fake(['*' => Process::result(output: "CLOUDDECK_COMMIT=".str_repeat('a', 40), exitCode: 0)]);
-        $deployment = $site->deployments()->create(['user_id' => $user->id, 'status' => \App\Enums\DeploymentStatus::Pending, 'trigger' => 'manual']);
+        Process::fake(['*' => Process::result(output: 'CLOUDDECK_COMMIT='.str_repeat('a', 40), exitCode: 0)]);
+        $deployment = $site->deployments()->create(['user_id' => $user->id, 'status' => DeploymentStatus::Pending, 'trigger' => 'manual']);
 
-        (new \App\Jobs\Deployments\DeployLaravelJob($deployment->id))->handle(app(SshClient::class));
+        (new DeployLaravelJob($deployment->id))->handle(app(SshClient::class));
 
         Process::assertRan(fn ($process) => (bool) preg_match('/MANAGED_PACKAGES=[\'"]laravel\/horizon[\'"]/', (string) ($process->input ?? '')));
     }

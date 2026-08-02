@@ -7,12 +7,12 @@ use App\Jobs\Billing\ProcessStripeWebhookJob;
 use App\Models\BillingWebhookEvent;
 use App\Models\Plan;
 use App\Models\User;
+use App\Notifications\BillingPaymentFailedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Notification;
-use App\Notifications\BillingPaymentFailedNotification;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class BillingLifecycleTest extends TestCase

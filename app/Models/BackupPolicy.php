@@ -17,9 +17,28 @@ class BackupPolicy extends Model
         return ['enabled' => 'boolean', 'next_run_at' => 'datetime', 'last_run_at' => 'datetime'];
     }
 
-    public function user() { return $this->belongsTo(User::class); }
-    public function server() { return $this->belongsTo(Server::class); }
-    public function database() { return $this->belongsTo(ManagedDatabase::class, 'managed_database_id'); }
-    public function databaseBackups() { return $this->hasMany(DatabaseBackup::class); }
-    public function snapshots() { return $this->hasMany(ServerSnapshot::class); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function server()
+    {
+        return $this->belongsTo(Server::class);
+    }
+
+    public function database()
+    {
+        return $this->belongsTo(ManagedDatabase::class, 'managed_database_id');
+    }
+
+    public function databaseBackups()
+    {
+        return $this->hasMany(DatabaseBackup::class);
+    }
+
+    public function snapshots()
+    {
+        return $this->hasMany(ServerSnapshot::class);
+    }
 }

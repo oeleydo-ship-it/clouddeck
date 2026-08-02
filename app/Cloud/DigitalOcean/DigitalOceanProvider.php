@@ -5,8 +5,8 @@ namespace App\Cloud\DigitalOcean;
 use App\Cloud\Contracts\CloudProvider;
 use App\Cloud\Data\CreateServerData;
 use App\Cloud\Exceptions\CloudCredentialException;
-use Illuminate\Http\Client\Response;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
 final class DigitalOceanProvider implements CloudProvider

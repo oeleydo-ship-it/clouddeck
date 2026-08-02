@@ -9,7 +9,9 @@ use App\Http\Resources\ServerSnapshotResource;
 use App\Jobs\Backups\CreateServerSnapshotJob;
 use App\Jobs\Operations\ExportDatabaseJob;
 use App\Models\BackupPolicy;
+use App\Models\DatabaseBackup;
 use App\Models\Server;
+use App\Models\ServerSnapshot;
 use App\Services\BackupSchedule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,8 +25,8 @@ class BackupController extends Controller
 
         return response()->json([
             'policies' => BackupPolicyResource::collection(BackupPolicy::where('user_id', $request->user()->id)->whereIn('server_id', $serverIds)->latest()->get()),
-            'database_backups' => DatabaseBackupResource::collection(\App\Models\DatabaseBackup::where('user_id', $request->user()->id)->where('type', 'export')->latest()->limit(100)->get()),
-            'snapshots' => ServerSnapshotResource::collection(\App\Models\ServerSnapshot::where('user_id', $request->user()->id)->whereIn('server_id', $serverIds)->latest()->limit(100)->get()),
+            'database_backups' => DatabaseBackupResource::collection(DatabaseBackup::where('user_id', $request->user()->id)->where('type', 'export')->latest()->limit(100)->get()),
+            'snapshots' => ServerSnapshotResource::collection(ServerSnapshot::where('user_id', $request->user()->id)->whereIn('server_id', $serverIds)->latest()->limit(100)->get()),
         ]);
     }
 

@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\BackupController;
 use App\Http\Controllers\Api\CloudAccountValidationController;
+use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\ManagedDatabaseController;
 use App\Http\Controllers\Api\MetricController;
 use App\Http\Controllers\Api\MetricIngestionController;

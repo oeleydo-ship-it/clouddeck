@@ -47,6 +47,6 @@ class CronJobController extends Controller
         $cronJob->delete();
         SyncCronJob::dispatch($cronJob->id)->onQueue('operations');
 
-        return back()->with('status','Cron job removal queued.');
+        return back()->with('status', 'Cron job removal queued.');
     }
 }

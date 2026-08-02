@@ -2,12 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Cloud\CloudProviderManager;
 use App\Enums\ServerStatus;
 use App\Jobs\Backups\CreateServerSnapshotJob;
 use App\Jobs\Backups\DispatchDueBackupsJob;
 use App\Jobs\Backups\PruneBackupRetentionJob;
-use App\Jobs\Backups\RefreshServerSnapshotJob;
 use App\Jobs\Backups\RefreshServerRestoreJob;
+use App\Jobs\Backups\RefreshServerSnapshotJob;
 use App\Jobs\Backups\RestoreDatabaseBackupJob;
 use App\Jobs\Backups\RestoreServerSnapshotJob;
 use App\Jobs\Operations\ExportDatabaseJob;
@@ -85,9 +86,9 @@ class BackupAutomationTest extends TestCase
         ]);
         $snapshot = $server->snapshots()->create(['user_id' => $user->id, 'name' => 'app-snapshot']);
 
-        (new CreateServerSnapshotJob($snapshot->id))->handle(app(\App\Cloud\CloudProviderManager::class));
+        (new CreateServerSnapshotJob($snapshot->id))->handle(app(CloudProviderManager::class));
         $this->assertSame('91', $snapshot->fresh()->provider_action_id);
-        (new RefreshServerSnapshotJob($snapshot->id))->handle(app(\App\Cloud\CloudProviderManager::class));
+        (new RefreshServerSnapshotJob($snapshot->id))->handle(app(CloudProviderManager::class));
 
         $snapshot->refresh();
         $this->assertSame('ready', $snapshot->status);
@@ -129,9 +130,9 @@ class BackupAutomationTest extends TestCase
             'https://api.digitalocean.com/v2/droplets/123/actions' => Http::response(['action' => ['id' => 100, 'status' => 'in-progress']]),
             'https://api.digitalocean.com/v2/droplets/123/actions/100' => Http::response(['action' => ['id' => 100, 'status' => 'completed']]),
         ]);
-        (new RestoreServerSnapshotJob($snapshot->id))->handle(app(\App\Cloud\CloudProviderManager::class));
+        (new RestoreServerSnapshotJob($snapshot->id))->handle(app(CloudProviderManager::class));
         $this->assertSame('provisioning', $server->fresh()->status->value);
-        (new RefreshServerRestoreJob($server->id, '100'))->handle(app(\App\Cloud\CloudProviderManager::class));
+        (new RefreshServerRestoreJob($server->id, '100'))->handle(app(CloudProviderManager::class));
 
         $server->refresh();
         $this->assertSame('ready', $server->status->value);

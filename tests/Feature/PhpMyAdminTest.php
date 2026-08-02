@@ -6,6 +6,7 @@ use App\Enums\ServerStatus;
 use App\Jobs\Servers\ManagePhpMyAdminJob;
 use App\Models\CloudAccount;
 use App\Models\Server;
+use App\Models\Site;
 use App\Models\SshKey;
 use App\Models\User;
 use App\Ssh\SshClient;
@@ -61,7 +62,7 @@ class PhpMyAdminTest extends TestCase
     {
         Queue::fake();
         [$user, $server] = $this->infrastructure(ServerStatus::Ready);
-        $site = \App\Models\Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'branch' => 'main', 'status' => 'active']);
+        $site = Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'branch' => 'main', 'status' => 'active']);
         $site->queueWorkers()->create(['user_id' => $user->id, 'name' => 'reverb', 'type' => 'reverb', 'port' => 9001, 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256]);
 
         $this->actingAs($user)->post("/servers/{$server->id}/phpmyadmin", ['port' => 9001])->assertSessionHasErrors('port');
@@ -72,7 +73,7 @@ class PhpMyAdminTest extends TestCase
     {
         Queue::fake();
         [$user, $server] = $this->infrastructure(ServerStatus::Ready);
-        $site = \App\Models\Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'branch' => 'main', 'status' => 'active']);
+        $site = Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'branch' => 'main', 'status' => 'active']);
         $site->queueWorkers()->create(['user_id' => $user->id, 'name' => 'reverb', 'type' => 'reverb', 'port' => 8081, 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256]);
 
         $this->actingAs($user)->post("/servers/{$server->id}/phpmyadmin")->assertSessionHas('status');

@@ -16,6 +16,13 @@ class BillingInvoice extends Model
         return ['provider_metadata' => 'encrypted:array', 'period_starts_at' => 'datetime', 'period_ends_at' => 'datetime', 'paid_at' => 'datetime'];
     }
 
-    public function user() { return $this->belongsTo(User::class); }
-    public function subscription() { return $this->belongsTo(Subscription::class); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function subscription()
+    {
+        return $this->belongsTo(Subscription::class);
+    }
 }
