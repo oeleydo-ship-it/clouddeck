@@ -17,6 +17,7 @@ use App\Services\AuditLogger;
 use App\Services\EnvironmentFile;
 use App\Services\QuotaManager;
 use App\Services\WordPressConfig;
+use App\Services\WordPressDirectory;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -66,7 +67,10 @@ class SiteController extends Controller
     {
         $this->authorize('view', $site);
 
-        return view('sites.show', ['site' => $site->load(['server', 'environmentVariables', 'queueWorkers', 'sslCertificates', 'cronJobs']), 'deployments' => $site->deployments()->with('user')->latest()->paginate(20), 'environment' => $environment->render($site->environmentVariables), 'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all()]);
+        return view('sites.show', ['site' => $site->load(['server', 'environmentVariables', 'queueWorkers', 'sslCertificates', 'cronJobs', 'backups.user']),
+            // Only fetched for the platform that can use it, and cached, so the directory
+            // being slow or down never holds up a Laravel site's page.
+            'directoryThemes' => $site->isWordPress() ? app(WordPressDirectory::class)->themes($request->query('theme_search')) : [], 'deployments' => $site->deployments()->with('user')->latest()->paginate(20), 'environment' => $environment->render($site->environmentVariables), 'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all()]);
     }
 
     public function wordpressStatus(Request $request, Site $site): RedirectResponse

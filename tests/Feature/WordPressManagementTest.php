@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ServerStatus;
 use App\Jobs\Sites\BackupWordPressSiteJob;
+use App\Jobs\Sites\RefreshWordPressInventoryJob;
 use App\Jobs\Sites\RestoreWordPressSiteJob;
 use App\Jobs\Sites\RunWordPressCommandJob;
 use App\Models\CloudAccount;
@@ -16,6 +17,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use App\Ssh\SshClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -151,6 +153,78 @@ class WordPressManagementTest extends TestCase
         $this->actingAs($stranger)->post(route('wordpress.manage', $site), ['target' => 'plugin', 'action' => 'install', 'slug' => 'wordfence'])->assertForbidden();
         $this->actingAs($stranger)->post(route('wordpress.backup', $site))->assertForbidden();
         $this->actingAs($stranger)->post(route('wordpress.restore', $backup))->assertForbidden();
+    }
+
+    public function test_installed_plugins_and_themes_are_rendered_with_their_state(): void
+    {
+        [$user, $site] = $this->installedSite();
+        Http::fake(['api.wordpress.org/*' => Http::response(['themes' => []])]);
+        $site->update(['wordpress_inventory' => [
+            'plugin' => [
+                ['name' => 'wordfence', 'title' => 'Wordfence Security', 'status' => 'active', 'version' => '7.11.0', 'update' => 'available'],
+                ['name' => 'akismet', 'title' => 'Akismet', 'status' => 'inactive', 'version' => '5.3', 'update' => 'none'],
+            ],
+            'theme' => [['name' => 'twentytwentyfour', 'title' => 'Twenty Twenty-Four', 'status' => 'active', 'version' => '1.0', 'update' => 'none']],
+        ], 'wordpress_inventory_at' => now()]);
+
+        $response = $this->actingAs($user)->get("/sites/{$site->id}")->assertOk();
+
+        $response->assertSee('Wordfence Security')->assertSee('Akismet')->assertSee('Twenty Twenty-Four');
+        $response->assertSee('Update available')->assertSee('Active')->assertSee('7.11.0');
+    }
+
+    public function test_the_list_is_read_from_the_site_and_stored(): void
+    {
+        $payload = json_encode([['name' => 'akismet', 'title' => 'Akismet', 'status' => 'inactive', 'version' => '5.3', 'update' => 'none']]);
+        Process::fake(['*' => Process::result(output: $payload, exitCode: 0)]);
+        [$user, $site] = $this->installedSite();
+
+        (new RefreshWordPressInventoryJob($site->id))->handle(app(SshClient::class));
+
+        $site->refresh();
+        $this->assertSame('akismet', $site->wordpressInventory('plugin')[0]['name']);
+        $this->assertSame('akismet', $site->wordpressInventory('theme')[0]['name']);
+        $this->assertNotNull($site->wordpress_inventory_at);
+    }
+
+    public function test_warnings_printed_before_the_json_do_not_break_the_list(): void
+    {
+        // WP-CLI prints PHP notices ahead of its output often enough that assuming the
+        // whole response parses would leave the list permanently empty.
+        $payload = 'PHP Warning: something noisy
+'.json_encode([['name' => 'akismet', 'title' => 'Akismet', 'status' => 'inactive']]);
+        Process::fake(['*' => Process::result(output: $payload, exitCode: 0)]);
+        [$user, $site] = $this->installedSite();
+
+        (new RefreshWordPressInventoryJob($site->id))->handle(app(SshClient::class));
+
+        $this->assertSame('akismet', $site->fresh()->wordpressInventory('plugin')[0]['name']);
+    }
+
+    public function test_available_themes_are_offered_for_installing_without_knowing_a_slug(): void
+    {
+        Http::fake(['api.wordpress.org/*' => Http::response(['themes' => [
+            ['slug' => 'astra', 'name' => 'Astra', 'author' => ['display_name' => 'Brainstorm Force'], 'rating' => 98, 'active_installs' => 1000000, 'screenshot_url' => '//ts.w.org/astra.png'],
+        ]])]);
+        [$user, $site] = $this->installedSite();
+
+        $this->actingAs($user)->get("/sites/{$site->id}")
+            ->assertOk()
+            ->assertSee('Browse themes')
+            ->assertSee('Astra')
+            ->assertSee('Brainstorm Force')
+            ->assertSee('1,000,000+ installs');
+    }
+
+    public function test_the_page_still_renders_when_the_directory_cannot_be_reached(): void
+    {
+        Http::fake(['api.wordpress.org/*' => Http::response(status: 503)]);
+        [$user, $site] = $this->installedSite();
+
+        // An outage at wordpress.org must not take the tab down with it.
+        $this->actingAs($user)->get("/sites/{$site->id}")
+            ->assertOk()
+            ->assertSee('could not be reached');
     }
 
     public function test_the_tab_offers_plugins_themes_and_backups_once_installed(): void

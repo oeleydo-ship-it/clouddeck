@@ -37,7 +37,13 @@ class Site extends Model
 
     protected function casts(): array
     {
-        return ['auto_deploy' => 'boolean', 'zero_downtime' => 'boolean', 'webhook_secret' => 'encrypted', 'last_deployed_at' => 'datetime', 'queue_checked_at' => 'datetime', 'wordpress_installed_at' => 'datetime', 'wordpress_checked_at' => 'datetime', 'managed_packages' => 'array', 'installed_packages' => 'array', 'horizon_admin_emails' => 'array'];
+        return ['auto_deploy' => 'boolean', 'zero_downtime' => 'boolean', 'webhook_secret' => 'encrypted', 'last_deployed_at' => 'datetime', 'queue_checked_at' => 'datetime', 'wordpress_installed_at' => 'datetime', 'wordpress_checked_at' => 'datetime', 'wordpress_inventory' => 'array', 'wordpress_inventory_at' => 'datetime', 'managed_packages' => 'array', 'installed_packages' => 'array', 'horizon_admin_emails' => 'array'];
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function wordpressInventory(string $target): array
+    {
+        return $this->wordpress_inventory[$target] ?? [];
     }
 
     public function wordpressIsInstalled(): bool

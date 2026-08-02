@@ -8,6 +8,9 @@ BACKUPS="${SHARED}/backups"
 ARCHIVE="${BACKUPS}/${LABEL}"
 
 mkdir -p "${ARCHIVE}"
+# wp runs as www-data, so it has to be able to write here. Created by root, the export
+# fails with a permission error that names mysqldump rather than the directory.
+chown -R www-data:www-data "${BACKUPS}"
 
 # The database and wp-content together are the whole site: core files come back from
 # wordpress.org on any deployment, but these two cannot be recreated.

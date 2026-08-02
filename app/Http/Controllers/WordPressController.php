@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\Sites\BackupWordPressSiteJob;
+use App\Jobs\Sites\RefreshWordPressInventoryJob;
 use App\Jobs\Sites\RestoreWordPressSiteJob;
 use App\Jobs\Sites\RunWordPressCommandJob;
 use App\Models\Site;
@@ -35,6 +36,15 @@ class WordPressController extends Controller
         RunWordPressCommandJob::dispatch($command->id, $data['action'], $data['target'], $data['slug'] ?? '')->onQueue('operations');
 
         return back()->with('status', 'Queued: '.$command->command.'. Output appears in the console.');
+    }
+
+    public function refresh(Request $request, Site $site): RedirectResponse
+    {
+        $this->authorize('update', $site);
+        $this->assertInstalled($site);
+        RefreshWordPressInventoryJob::dispatch($site->id)->onQueue('operations');
+
+        return back()->with('status', 'Reading the installed plugins and themes.');
     }
 
     public function backup(Request $request, Site $site, AuditLogger $audit): RedirectResponse

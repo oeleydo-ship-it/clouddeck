@@ -13,6 +13,7 @@ ARCHIVE="${SHARED}/backups/${LABEL}"
 # otherwise be unrecoverable.
 SAFETY="${SHARED}/backups/pre-restore-$(date +%Y%m%d%H%M%S)"
 mkdir -p "${SAFETY}"
+chown -R www-data:www-data "${SHARED}/backups"
 sudo -u www-data /usr/local/bin/wp --path="${ROOT}/current" --no-color db export "${SAFETY}/database.sql" --add-drop-table
 gzip -f "${SAFETY}/database.sql"
 tar czf "${SAFETY}/wp-content.tar.gz" -C "${SHARED}" wp-content

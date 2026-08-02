@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Sites;
 
+use App\Models\Site;
 use App\Models\TerminalCommand;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
@@ -44,6 +45,34 @@ class RunWordPressCommandJob implements ShouldQueue
         ]);
 
         $command->update(['status' => 'successful', 'output' => $output, 'exit_code' => 0, 'finished_at' => now()]);
+        $this->recordInventory($command->site, $output);
+
+        // Anything that installs, removes, or toggles has changed the list, so the stored
+        // inventory is refreshed rather than left describing the site as it used to be.
+        if ($this->action !== 'list') {
+            RefreshWordPressInventoryJob::dispatch($command->site_id)->onQueue('operations');
+        }
+    }
+
+    private function recordInventory(Site $site, string $output): void
+    {
+        if ($this->action !== 'list') {
+            return;
+        }
+
+        // WP-CLI prints warnings before its JSON, so the payload is taken from the first
+        // bracket rather than assuming the whole output parses.
+        $json = strstr($output, '[');
+        $decoded = $json === false ? null : json_decode($json, true);
+
+        if (! is_array($decoded)) {
+            return;
+        }
+
+        $site->update([
+            'wordpress_inventory' => [...($site->wordpress_inventory ?? []), $this->target => $decoded],
+            'wordpress_inventory_at' => now(),
+        ]);
     }
 
     public function failed(Throwable $exception): void
