@@ -166,6 +166,41 @@ class WordPressSiteTest extends TestCase
         );
     }
 
+    public function test_the_site_page_speaks_wordpress_and_unlocks_once_a_database_exists(): void
+    {
+        [$user, $server] = $this->infrastructure();
+        $site = $this->wordpressSite($user, $server, withDatabase: false);
+
+        $response = $this->actingAs($user)->get("/sites/{$site->id}")->assertOk();
+        $response->assertSee('WordPress')
+            ->assertSee('Create a database before installing')
+            ->assertSee('wordpress.org')
+            ->assertSee('Not installed yet')
+            // Laravel-only surfaces would be dead ends on a WordPress install.
+            ->assertDontSee('Queue &amp; Reverb', false)
+            ->assertDontSee('Deployment settings');
+
+        foreach (['DB_DATABASE' => 'blog', 'DB_USERNAME' => 'blog_user', 'DB_PASSWORD' => 'secret'] as $key => $value) {
+            $site->environmentVariables()->create(['key' => $key, 'value' => $value, 'is_secret' => false]);
+        }
+
+        // The first run reads as an install, and only becomes possible once a database
+        // exists — WordPress never has a DB_CONNECTION to look for.
+        $this->actingAs($user)->get("/sites/{$site->id}")
+            ->assertOk()
+            ->assertSee('Install WordPress')
+            ->assertDontSee('Create a database before installing');
+    }
+
+    public function test_a_reinstall_reads_as_a_deployment_rather_than_an_install(): void
+    {
+        [$user, $server] = $this->infrastructure();
+        $site = $this->wordpressSite($user, $server);
+        $site->update(['last_deployed_at' => now()]);
+
+        $this->actingAs($user)->get("/sites/{$site->id}")->assertOk()->assertSee('Deploy now')->assertDontSee('Install WordPress');
+    }
+
     public function test_a_wordpress_site_is_not_seeded_with_laravel_environment_keys(): void
     {
         Queue::fake();

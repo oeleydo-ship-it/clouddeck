@@ -1,11 +1,12 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'overview', keys: ['overview','environment','deploy','ssl','cron','queue','webhook'], init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
+<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','environment','ssl','cron'] : ['overview','environment','deploy','ssl','cron','queue','webhook']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <a class="text-sm font-medium text-cyan-600 dark:text-cyan-300" href="{{ route('sites.index') }}">← Sites</a>
             <div class="mt-2 flex flex-wrap items-center gap-3"><h1 class="text-3xl font-semibold heading">{{ $site->domain }}</h1>
                 @livewire('site-status-badge', ['site' => $site])
+                <span class="badge bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300">{{ $site->isWordPress() ? 'WordPress' : 'Laravel' }}</span>
                 @php
                     // http until a certificate is actually active: linking to https before then
                     // lands on a browser warning rather than the site.
@@ -20,16 +21,30 @@
             </div>
             <p class="mt-2 text-sm muted">{{ $site->server->name }} · PHP {{ $site->php_version }}</p>
         </div>
-        @php $hasDatabase = $site->environmentVariables->contains(fn ($variable) => $variable->key === 'DB_CONNECTION'); @endphp
-        <div class="flex gap-3"><button @click="tab='deploy'" class="button-secondary">Edit site</button><form method="POST" action="{{ route('sites.deploy',$site) }}">@csrf<button class="button-primary" @disabled($site->status !== 'active' || ! $hasDatabase)>Deploy now</button></form></div>
+        @php
+            // WordPress reads its credentials from a generated wp-config.php and never has a
+            // DB_CONNECTION, so asking for one would leave the button disabled forever.
+            $databaseKey = $site->isWordPress() ? 'DB_DATABASE' : 'DB_CONNECTION';
+            $hasDatabase = $site->environmentVariables->contains(fn ($variable) => $variable->key === $databaseKey);
+            $firstRun = $site->isWordPress() && ! $site->last_deployed_at;
+        @endphp
+        <div class="flex gap-3">
+            @unless($site->isWordPress())<button @click="tab='deploy'" class="button-secondary">Edit site</button>@endunless
+            <form method="POST" action="{{ route('sites.deploy',$site) }}">@csrf<button class="button-primary" @disabled($site->status !== 'active' || ! $hasDatabase)>{{ $firstRun ? 'Install WordPress' : 'Deploy now' }}</button></form>
+        </div>
     </div>
     @unless($hasDatabase)
         <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
-            <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Create a database before deploying</p>
+            <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Create a database before {{ $site->isWordPress() ? 'installing' : 'deploying' }}</p>
             <p class="mt-1 text-sm text-amber-700 dark:text-amber-200/80">
-                This site has no <code>DB_CONNECTION</code> in its environment, so Laravel would fall back to SQLite and the deployment would fail during migrations — the provisioned PHP only carries the MySQL and PostgreSQL drivers.
-                Create one on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}">{{ $site->server->name }}</a> and attach it to this site; CloudDeck writes the <code>DB_*</code> connection details into the environment for you.
-                If this application genuinely has no database, set <code>DB_CONNECTION</code> yourself on the Environment tab.
+                @if($site->isWordPress())
+                    WordPress cannot run without one, and CloudDeck writes its credentials into <code>wp-config.php</code> when it installs.
+                    Create a database on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}#databases">{{ $site->server->name }}</a> and attach it to this site, then come back and install.
+                @else
+                    This site has no <code>DB_CONNECTION</code> in its environment, so Laravel would fall back to SQLite and the deployment would fail during migrations — the provisioned PHP only carries the MySQL and PostgreSQL drivers.
+                    Create one on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}#databases">{{ $site->server->name }}</a> and attach it to this site; CloudDeck writes the <code>DB_*</code> connection details into the environment for you.
+                    If this application genuinely has no database, set <code>DB_CONNECTION</code> yourself on the Environment tab.
+                @endif
             </p>
         </div>
     @endunless
@@ -38,8 +53,24 @@
     @can('delete', $site)
         <details id="danger-zone" class="panel mt-5 !border-rose-200 dark:!border-rose-400/20"><summary class="cursor-pointer font-medium text-rose-600 dark:text-rose-300">Danger zone</summary><p class="mt-3 text-sm muted">Permanently removes this site from CloudDeck and deletes its Nginx configuration, PHP-FPM pool, SSL certificate, and files from the server. This cannot be undone.</p><form method="POST" action="{{ route('sites.destroy',$site) }}" class="mt-4 flex flex-wrap gap-3" onsubmit="return confirm('Permanently delete {{ $site->domain }} and all its files on the server?')">@csrf @method('DELETE')<input class="field mt-0" name="confirmation" placeholder="Type {{ $site->domain }} to confirm"><button class="button-secondary !text-rose-600 dark:!text-rose-300">Delete site</button></form></details>
     @endcan
-    <div class="mt-8 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-white/10">@foreach(['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook'] as $key=>$label)<button @click="tab='{{ $key }}'" :class="tab==='{{ $key }}' ? 'border-cyan-500 text-slate-900 dark:border-cyan-400 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400'" class="border-b-2 px-4 py-3 text-sm font-medium">{{ $label }}</button>@endforeach</div>
-    <div x-show="tab==='overview'" class="mt-6"><div class="grid gap-4 sm:grid-cols-3"><div class="panel"><p class="text-xs uppercase tracking-wide muted">Repository</p><p class="mt-2 truncate text-sm heading">{{ $site->repository_url }}</p></div><div class="panel"><p class="text-xs uppercase tracking-wide muted">Branch</p><p class="mt-2 font-mono text-sm heading">{{ $site->branch }}</p></div><div class="panel"><p class="text-xs uppercase tracking-wide muted">Last deployed</p><p class="mt-2 text-sm heading">{{ $site->last_deployed_at?->diffForHumans() ?? 'Never' }}</p></div></div>
+    <div class="mt-8 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-white/10">@php
+        $tabs = $site->isWordPress()
+            ? ['overview'=>'Overview','environment'=>'Environment','ssl'=>'SSL','cron'=>'Cron']
+            : ['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook'];
+    @endphp
+    @foreach($tabs as $key=>$label)<button @click="tab='{{ $key }}'" :class="tab==='{{ $key }}' ? 'border-cyan-500 text-slate-900 dark:border-cyan-400 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400'" class="border-b-2 px-4 py-3 text-sm font-medium">{{ $label }}</button>@endforeach</div>
+    <div x-show="tab==='overview'" class="mt-6"><div class="grid gap-4 sm:grid-cols-3">
+            @if($site->isWordPress())
+                {{-- Repository and branch are empty for an install downloaded from
+                     wordpress.org, so the cards say something true instead. --}}
+                <div class="panel"><p class="text-xs uppercase tracking-wide muted">Source</p><p class="mt-2 truncate text-sm heading">wordpress.org</p></div>
+                <div class="panel"><p class="text-xs uppercase tracking-wide muted">Installed version</p><p class="mt-2 text-sm heading">{{ $deployments->firstWhere('status', \App\Enums\DeploymentStatus::Successful)?->commit_message ?? 'Not installed yet' }}</p></div>
+            @else
+                <div class="panel"><p class="text-xs uppercase tracking-wide muted">Repository</p><p class="mt-2 truncate text-sm heading">{{ $site->repository_url }}</p></div>
+                <div class="panel"><p class="text-xs uppercase tracking-wide muted">Branch</p><p class="mt-2 font-mono text-sm heading">{{ $site->branch }}</p></div>
+            @endif
+            <div class="panel"><p class="text-xs uppercase tracking-wide muted">Last deployed</p><p class="mt-2 text-sm heading">{{ $site->last_deployed_at?->diffForHumans() ?? 'Never' }}</p></div>
+        </div>
         <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60 dark:border-white/10 dark:bg-white/[.03] dark:shadow-none"><div class="border-b border-slate-200 px-6 py-4 dark:border-white/10"><h2 class="font-semibold heading">Deployment history</h2></div>@forelse($deployments as $deployment)<div class="data-row grid items-center gap-4 sm:grid-cols-[1fr_150px_120px_auto]"><a href="{{ route('deployments.show',$deployment) }}"><p class="font-mono text-sm heading">{{ $deployment->release ?? Str::limit($deployment->id,14) }}</p><p class="mt-1 text-xs muted">{{ $deployment->trigger }} by {{ $deployment->user?->name ?? 'webhook' }} · {{ $deployment->created_at->diffForHumans() }}</p></a><span class="text-sm font-medium capitalize {{ $deployment->status->value === 'failed' ? 'text-rose-600 dark:text-rose-300' : ($deployment->status->value === 'successful' ? 'text-emerald-600 dark:text-emerald-300' : 'text-cyan-600 dark:text-cyan-300') }}">{{ str_replace('_',' ',$deployment->status->value) }}</span><span class="text-xs muted">{{ $deployment->duration_for_humans ?? '—' }}</span>@if($deployment->release && in_array($deployment->status,[\App\Enums\DeploymentStatus::Successful,\App\Enums\DeploymentStatus::RolledBack],true))<form method="POST" action="{{ route('sites.rollback',[$site,$deployment]) }}">@csrf<button class="button-secondary !px-3 !py-1.5 text-xs !text-amber-600 dark:!text-amber-300">Rollback</button></form>@else<span></span>@endif</div>@empty<div class="px-6 py-10 text-center muted">No deployments yet.</div>@endforelse</section><div class="mt-5">{{ $deployments->links() }}</div>
     </div>
     <div x-cloak x-show="tab==='environment'" class="mt-6"><form method="POST" action="{{ route('sites.environment',$site) }}" class="panel">@csrf @method('PUT')<h2 class="font-semibold heading">Encrypted environment</h2><p class="mt-2 text-sm muted">Values are encrypted at rest and written only to the server's shared release directory.</p><textarea class="field mt-5 min-h-[28rem] font-mono text-xs leading-6" name="environment" spellcheck="false">{{ $environment }}</textarea><button class="button-primary mt-5">Save environment</button></form></div>
