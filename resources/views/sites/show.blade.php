@@ -92,15 +92,7 @@
         </div>
     @endif
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
-    <div class="mt-5 flex flex-wrap gap-3">
-        <a href="{{ route('sites.remote',$site) }}" class="button-secondary inline-block">Open PHP, Nginx, files, and console</a>
-        {{-- The server block is written once, at creation. A site whose document root was
-             wrong then answers "File not found" and nothing here could put it right. --}}
-        <form method="POST" action="{{ route('sites.reconfigure',$site) }}"
-              onsubmit="return confirm('Rewrite the Nginx server block for {{ $site->domain }}? Changes made to it directly on the server are replaced.')">@csrf
-            <button class="button-secondary">Rebuild Nginx config</button>
-        </form>
-    </div>
+    <div class="mt-5"><a href="{{ route('sites.remote',$site) }}" class="button-secondary inline-block">Open PHP, Nginx, files, and console</a></div>
     @can('delete', $site)
         <details id="danger-zone" class="panel mt-5 !border-rose-200 dark:!border-rose-400/20"><summary class="cursor-pointer font-medium text-rose-600 dark:text-rose-300">Danger zone</summary><p class="mt-3 text-sm muted">Permanently removes this site from CloudDeck and deletes its Nginx configuration, PHP-FPM pool, SSL certificate, and files from the server. This cannot be undone.</p><form method="POST" action="{{ route('sites.destroy',$site) }}" class="mt-4 flex flex-wrap gap-3" onsubmit="return confirm('Permanently delete {{ $site->domain }} and all its files on the server?')">@csrf @method('DELETE')<input class="field mt-0" name="confirmation" placeholder="Type {{ $site->domain }} to confirm"><button class="button-secondary !text-rose-600 dark:!text-rose-300">Delete site</button></form></details>
     @endcan

@@ -182,7 +182,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/sites/{site}/queue-health', [SiteController::class, 'queueHealth'])->name('sites.queue-health');
     Route::post('/sites/{site}/wordpress-status', [SiteController::class, 'wordpressStatus'])->name('sites.wordpress-status');
     Route::post('/sites/{site}/wordpress/manage', [WordPressController::class, 'manage'])->name('wordpress.manage');
-    Route::post('/sites/{site}/reconfigure', [SiteController::class, 'reconfigure'])->name('sites.reconfigure');
     Route::post('/sites/{site}/wordpress/install', [WordPressController::class, 'install'])->name('wordpress.install');
     Route::post('/sites/{site}/wordpress/refresh', [WordPressController::class, 'refresh'])->name('wordpress.refresh');
     Route::post('/sites/{site}/wordpress/backups', [WordPressController::class, 'backup'])->name('wordpress.backup');

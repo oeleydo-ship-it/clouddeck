@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\ServerStatus;
 use App\Jobs\Sites\BackupWordPressSiteJob;
-use App\Jobs\Sites\ConfigureSiteJob;
 use App\Jobs\Sites\InstallWordPressCoreJob;
 use App\Jobs\Sites\RefreshWordPressInventoryJob;
 use App\Jobs\Sites\RestoreWordPressSiteJob;
@@ -348,27 +347,28 @@ class WordPressManagementTest extends TestCase
             ->assertDontSee('&#8211;', false);
     }
 
-    public function test_the_nginx_configuration_can_be_rewritten_after_the_fact(): void
+    public function test_deploying_corrects_a_document_root_that_does_not_match_the_platform(): void
     {
-        Queue::fake();
-        [$user, $site] = $this->installedSite();
+        // The server block is written once, at creation, so a site configured from the wrong
+        // root served "File not found" indefinitely with nothing able to put it right.
+        $wordpress = file_get_contents(resource_path('scripts/deploy-wordpress.sh'));
+        $laravel = file_get_contents(resource_path('scripts/deploy-laravel.sh'));
 
-        // Written once at creation, so a site whose document root was wrong then served
-        // "File not found" with no way to correct it.
-        $this->actingAs($user)->post(route('sites.reconfigure', $site))->assertSessionHas('status');
+        $this->assertStringContainsString('expected="${ROOT}/current"', $wordpress);
+        $this->assertStringContainsString('expected="${ROOT}/current/public"', $laravel);
 
-        Queue::assertPushedOn('provisioning', ConfigureSiteJob::class);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'site.reconfigured']);
-    }
-
-    public function test_a_stranger_cannot_rewrite_someone_elses_nginx_configuration(): void
-    {
-        Queue::fake();
-        [, $site] = $this->installedSite();
-        $stranger = User::factory()->create(['email_verified_at' => now()]);
-
-        $this->actingAs($stranger)->post(route('sites.reconfigure', $site))->assertForbidden();
-        Queue::assertNothingPushed();
+        foreach (['deploy-wordpress.sh' => $wordpress, 'deploy-laravel.sh' => $laravel] as $name => $script) {
+            $this->assertStringContainsString('ensure_document_root', $script, $name);
+            // Rewriting the whole block would discard the lines Certbot adds for TLS, and a
+            // block that no longer validates must be put back rather than left serving.
+            $this->assertStringContainsString('nginx -t', $script, $name);
+            $this->assertStringContainsString('.clouddeck-bak', $script, $name);
+            $this->assertGreaterThan(
+                strpos($script, 'Switching the current release atomically'),
+                strrpos($script, 'ensure_document_root'),
+                $name.' must correct the root once the release it describes is actually live.'
+            );
+        }
     }
 
     public function test_the_first_visit_reads_the_list_instead_of_waiting_to_be_asked(): void

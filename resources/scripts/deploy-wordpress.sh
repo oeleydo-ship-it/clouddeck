@@ -11,6 +11,27 @@ SHARED="${ROOT}/shared"
 cleanup_failed_release() { if [ ! -L "${ROOT}/current" ] || [ "$(readlink -f "${ROOT}/current")" != "${RELEASE_PATH}" ]; then rm -rf "${RELEASE_PATH}"; fi; }
 trap cleanup_failed_release ERR
 
+# The server block is written once, when the site is created, from whatever document root was
+# right at that moment. A site whose root does not match the layout this platform actually
+# serves answers "File not found" indefinitely, so it is corrected here — where what the site
+# serves is known for certain — rather than waiting for someone to notice.
+ensure_document_root() {
+    local vhost="/etc/nginx/sites-available/${DOMAIN}" expected="${ROOT}/current"
+    [ -f "${vhost}" ] || return 0
+    # Nothing to do unless some root directive disagrees. Rewriting the whole block would
+    # discard the lines Certbot adds for TLS.
+    grep -E "^[[:space:]]*root[[:space:]]+" "${vhost}" | grep -qv "root ${expected};" || return 0
+    cp -a "${vhost}" "${vhost}.clouddeck-bak"
+    sed -i -E "s|^([[:space:]]*)root[[:space:]]+[^;]+;|\1root ${expected};|" "${vhost}"
+    if nginx -t; then
+        echo "Corrected the Nginx document root to ${expected}"
+    else
+        cp -a "${vhost}.clouddeck-bak" "${vhost}"
+        echo "Left the Nginx document root alone: the rewritten server block did not validate" >&2
+    fi
+}
+
+
 echo "[1/6] Downloading WordPress"
 mkdir -p "${RELEASE_PATH}"
 curl -fsSL https://wordpress.org/latest.tar.gz | tar xz --strip-components=1 -C "${RELEASE_PATH}"
@@ -43,6 +64,7 @@ ln -sfn "${RELEASE_PATH}" "${ROOT}/current.next"
 mv -Tf "${ROOT}/current.next" "${ROOT}/current"
 
 echo "[6/6] Reloading services and pruning old releases"
+ensure_document_root
 systemctl reload "php${PHP_VERSION}-fpm"
 systemctl reload nginx
 cd "${ROOT}/releases"

@@ -15,6 +15,27 @@ SHARED="${ROOT}/shared"
 cleanup_failed_release() { if [ ! -L "${ROOT}/current" ] || [ "$(readlink -f "${ROOT}/current")" != "${RELEASE_PATH}" ]; then rm -rf "${RELEASE_PATH}"; fi; }
 trap cleanup_failed_release ERR
 
+# The server block is written once, when the site is created, from whatever document root was
+# right at that moment. A site whose root does not match the layout this platform actually
+# serves answers "File not found" indefinitely, so it is corrected here — where what the site
+# serves is known for certain — rather than waiting for someone to notice.
+ensure_document_root() {
+    local vhost="/etc/nginx/sites-available/${DOMAIN}" expected="${ROOT}/current/public"
+    [ -f "${vhost}" ] || return 0
+    # Nothing to do unless some root directive disagrees. Rewriting the whole block would
+    # discard the lines Certbot adds for TLS.
+    grep -E "^[[:space:]]*root[[:space:]]+" "${vhost}" | grep -qv "root ${expected};" || return 0
+    cp -a "${vhost}" "${vhost}.clouddeck-bak"
+    sed -i -E "s|^([[:space:]]*)root[[:space:]]+[^;]+;|\1root ${expected};|" "${vhost}"
+    if nginx -t; then
+        echo "Corrected the Nginx document root to ${expected}"
+    else
+        cp -a "${vhost}.clouddeck-bak" "${vhost}"
+        echo "Left the Nginx document root alone: the rewritten server block did not validate" >&2
+    fi
+}
+
+
 echo "[1/9] Cloning ${BRANCH} into ${RELEASE}"
 git clone --depth 1 --branch "${BRANCH}" --single-branch "${REPOSITORY}" "${RELEASE_PATH}"
 cd "${RELEASE_PATH}"
@@ -115,6 +136,7 @@ ln -sfn "${RELEASE_PATH}" "${ROOT}/current.next"
 mv -Tf "${ROOT}/current.next" "${ROOT}/current"
 
 echo "[9/9] Reloading services and pruning old releases"
+ensure_document_root
 # A long-running process keeps the code it started with, so switching the current symlink
 # leaves every worker serving the release before this one until it is recycled. Left alone
 # they drift indefinitely: a job class added in this release does not exist as far as the
