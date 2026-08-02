@@ -143,6 +143,32 @@ class CustomServerTest extends TestCase
         $this->assertSame([], $account->credentials);
     }
 
+    public function test_the_account_list_renders_for_a_provider_that_was_never_validated(): void
+    {
+        $user = $this->user();
+        $this->actingAs($user)->post('/cloud-accounts', ['name' => 'Hetzner main', 'provider' => 'hetzner', 'public_ip' => '203.0.113.20', 'ssh_port' => 22]);
+
+        // Nothing was validated, so there is no timestamp to render, and discovery would
+        // call an API this provider does not have.
+        $this->actingAs($user)->get('/cloud-accounts')
+            ->assertOk()
+            ->assertSee('Hetzner')
+            ->assertSee('Servers attached by IP over SSH')
+            ->assertSee('Add a server by IP')
+            ->assertDontSee('Discover and connect');
+    }
+
+    public function test_an_api_account_still_offers_discovery_and_shows_when_it_was_validated(): void
+    {
+        $user = $this->user();
+        $account = $user->cloudAccounts()->create(['name' => 'Production', 'provider' => 'digitalocean', 'credentials' => ['token' => 'secret'], 'validated_at' => now()]);
+
+        $this->actingAs($user)->get('/cloud-accounts')
+            ->assertOk()
+            ->assertSee('Validated')
+            ->assertSee(route('cloud-accounts.servers', $account), false);
+    }
+
     public function test_an_ip_provider_will_not_accept_a_missing_or_malformed_address(): void
     {
         $this->actingAs($this->user())->post('/cloud-accounts', ['name' => 'Hetzner', 'provider' => 'hetzner'])
