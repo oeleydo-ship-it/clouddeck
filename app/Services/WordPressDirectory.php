@@ -28,6 +28,16 @@ final class WordPressDirectory
         return $this->query('plugins', $search);
     }
 
+    /**
+     * The directory returns names already HTML-encoded ("Elementor &#8211; more than..."), and
+     * Blade encodes again on the way out, so the entity itself ends up on the page. Decoding
+     * to plain text here leaves exactly one round of escaping, done by the template.
+     */
+    private function text(mixed $value): string
+    {
+        return html_entity_decode(strip_tags((string) $value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+
     private function query(string $type, ?string $search): array
     {
         // Cached because the directory is the same for every customer and this sits in a
@@ -53,11 +63,11 @@ final class WordPressDirectory
                 return collect($response->json($type === 'themes' ? 'themes' : 'plugins') ?? [])
                     ->map(fn (array $item) => [
                         'slug' => (string) ($item['slug'] ?? ''),
-                        'name' => strip_tags((string) ($item['name'] ?? '')),
-                        'author' => strip_tags(is_array($item['author'] ?? null) ? ($item['author']['display_name'] ?? '') : (string) ($item['author'] ?? '')),
+                        'name' => $this->text($item['name'] ?? ''),
+                        'author' => $this->text(is_array($item['author'] ?? null) ? ($item['author']['display_name'] ?? '') : ($item['author'] ?? '')),
                         'rating' => (int) round(((float) ($item['rating'] ?? 0)) / 20),
                         'installs' => (int) ($item['active_installs'] ?? 0),
-                        'description' => strip_tags((string) ($item['short_description'] ?? '')),
+                        'description' => $this->text($item['short_description'] ?? ''),
                         'screenshot' => $item['screenshot_url'] ?? null,
                     ])
                     ->filter(fn (array $item) => $item['slug'] !== '')

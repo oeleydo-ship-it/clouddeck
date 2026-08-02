@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ServerStatus;
 use App\Jobs\Sites\BackupWordPressSiteJob;
+use App\Jobs\Sites\ConfigureSiteJob;
 use App\Jobs\Sites\InstallWordPressCoreJob;
 use App\Jobs\Sites\RefreshWordPressInventoryJob;
 use App\Jobs\Sites\RestoreWordPressSiteJob;
@@ -330,6 +331,44 @@ class WordPressManagementTest extends TestCase
         $this->assertStringContainsString('core is-installed', $script);
         $this->assertMatchesRegularExpression('/is-installed.*
 .*exit 0/s', $script);
+    }
+
+    public function test_a_directory_name_is_escaped_once_rather_than_twice(): void
+    {
+        // wordpress.org returns names already HTML-encoded, and Blade encodes again, so the
+        // entity itself was reaching the page: "Elementor &#8211; more than just a...".
+        Http::fake(['api.wordpress.org/*' => Http::response(['plugins' => [
+            ['slug' => 'elementor', 'name' => 'Elementor Website Builder &#8211; more than just a builder', 'author' => 'Elementor.com'],
+        ]])]);
+        [$user, $site] = $this->installedSite();
+
+        $this->actingAs($user)->get("/sites/{$site->id}")
+            ->assertOk()
+            ->assertSee('Elementor Website Builder – more than just a builder')
+            ->assertDontSee('&#8211;', false);
+    }
+
+    public function test_the_nginx_configuration_can_be_rewritten_after_the_fact(): void
+    {
+        Queue::fake();
+        [$user, $site] = $this->installedSite();
+
+        // Written once at creation, so a site whose document root was wrong then served
+        // "File not found" with no way to correct it.
+        $this->actingAs($user)->post(route('sites.reconfigure', $site))->assertSessionHas('status');
+
+        Queue::assertPushedOn('provisioning', ConfigureSiteJob::class);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'site.reconfigured']);
+    }
+
+    public function test_a_stranger_cannot_rewrite_someone_elses_nginx_configuration(): void
+    {
+        Queue::fake();
+        [, $site] = $this->installedSite();
+        $stranger = User::factory()->create(['email_verified_at' => now()]);
+
+        $this->actingAs($stranger)->post(route('sites.reconfigure', $site))->assertForbidden();
+        Queue::assertNothingPushed();
     }
 
     public function test_the_first_visit_reads_the_list_instead_of_waiting_to_be_asked(): void

@@ -82,6 +82,23 @@ class SiteController extends Controller
             'deployments' => $site->deployments()->with('user')->latest()->paginate(20), 'environment' => $environment->render($site->environmentVariables), 'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all()]);
     }
 
+    /**
+     * Rewrites the site's Nginx server block from what the site is now. It is written once at
+     * creation, so a site whose document root was wrong then — a WordPress site configured by
+     * a worker that predated platform-aware roots, say — served "File not found" with no way
+     * to correct it from here.
+     */
+    public function reconfigure(Request $request, Site $site, AuditLogger $audit): RedirectResponse
+    {
+        $this->authorize('update', $site);
+        abort_unless($site->server->status === ServerStatus::Ready, 422, 'The server is not ready.');
+
+        ConfigureSiteJob::dispatch($site->id)->onQueue('provisioning');
+        $audit->record($request, 'site.reconfigured', $site, [], ['document_root' => $site->documentRoot()]);
+
+        return back()->with('status', 'Rewriting the Nginx configuration for '.$site->domain.'.');
+    }
+
     public function wordpressStatus(Request $request, Site $site): RedirectResponse
     {
         $this->authorize('update', $site);
