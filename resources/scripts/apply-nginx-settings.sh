@@ -6,6 +6,7 @@ CLIENT_MAX_BODY_MB={{CLIENT_MAX_BODY_MB}}
 STATIC_CACHE={{STATIC_CACHE}}
 INCLUDE_WWW={{INCLUDE_WWW}}
 SSL_ENABLED={{SSL_ENABLED}}
+DOCUMENT_ROOT={{DOCUMENT_ROOT}}
 ROOT="/var/www/${DOMAIN}"
 TARGET="/etc/nginx/sites-available/${DOMAIN}"
 BACKUP="/etc/clouddeck/backups/nginx/${DOMAIN}-$(date +%s)"
@@ -39,7 +40,7 @@ server {
     $([[ "$SSL_ENABLED" == "1" ]] || echo 'listen [::]:80;')
     ${TLS_LINES}
     server_name ${SERVER_NAMES};
-    root ${ROOT}/current/public;
+    root ${ROOT}/${DOCUMENT_ROOT};
     index index.php;
     charset utf-8;
     client_max_body_size ${CLIENT_MAX_BODY_MB}M;

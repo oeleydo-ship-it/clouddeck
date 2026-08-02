@@ -40,6 +40,20 @@ class Site extends Model
         return ['auto_deploy' => 'boolean', 'zero_downtime' => 'boolean', 'webhook_secret' => 'encrypted', 'last_deployed_at' => 'datetime', 'queue_checked_at' => 'datetime', 'managed_packages' => 'array', 'installed_packages' => 'array', 'horizon_admin_emails' => 'array'];
     }
 
+    public function isWordPress(): bool
+    {
+        return $this->platform === 'wordpress';
+    }
+
+    /**
+     * Laravel serves from public/; WordPress serves from the install root. Nginx and the
+     * deployment both need this, so it lives with the site rather than in each of them.
+     */
+    public function documentRoot(): string
+    {
+        return $this->isWordPress() ? 'current' : 'current/public';
+    }
+
     public function server()
     {
         return $this->belongsTo(Server::class);

@@ -15,6 +15,7 @@ use App\Models\Site;
 use App\Services\AuditLogger;
 use App\Services\EnvironmentFile;
 use App\Services\QuotaManager;
+use App\Services\WordPressConfig;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,16 @@ class SiteController extends Controller
         $quotas->assertCanCreate($request->user(), 'sites');
         $site = DB::transaction(function () use ($request) {
             $site = $request->user()->sites()->create([...$request->validated(), 'auto_deploy' => $request->boolean('auto_deploy'), 'zero_downtime' => $request->boolean('zero_downtime', true), 'webhook_secret' => Str::random(64), 'status' => 'configuring']);
+
+            // A WordPress install is configured by a generated wp-config.php, not by a
+            // Laravel environment file, so seeding APP_KEY and a queue connection into it
+            // would leave keys nothing ever reads.
+            if ($site->isWordPress()) {
+                app(WordPressConfig::class)->ensureSalts($site);
+
+                return $site;
+            }
+
             foreach (['APP_NAME' => $site->domain, 'APP_ENV' => 'production', 'APP_DEBUG' => 'false', 'APP_URL' => 'https://'.$site->domain, 'APP_KEY' => '', 'LOG_CHANNEL' => 'stack', 'CACHE_STORE' => 'redis', 'QUEUE_CONNECTION' => 'redis', 'SESSION_DRIVER' => 'redis', 'REDIS_HOST' => '127.0.0.1'] as $key => $value) {
                 $site->environmentVariables()->create(['key' => $key, 'value' => $value, 'is_secret' => in_array($key, ['APP_KEY'], true)]);
             }

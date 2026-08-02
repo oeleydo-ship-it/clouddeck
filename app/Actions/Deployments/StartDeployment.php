@@ -4,6 +4,7 @@ namespace App\Actions\Deployments;
 
 use App\Enums\DeploymentStatus;
 use App\Jobs\Deployments\DeployLaravelJob;
+use App\Jobs\Deployments\DeployWordPressJob;
 use App\Models\Deployment;
 use App\Models\Site;
 use App\Models\User;
@@ -23,7 +24,12 @@ final class StartDeployment
         // two minutes in with "could not find driver" because the provisioned PHP carries
         // only the mysql and pgsql drivers. Say so up front instead. Setting DB_CONNECTION
         // by hand is the escape hatch for an application that genuinely has no database.
-        if (! $site->environmentVariables()->where('key', 'DB_CONNECTION')->exists()) {
+        // WordPress reads its credentials from wp-config.php, which CloudDeck generates from
+        // DB_DATABASE and friends, so it needs a database just as much — it simply never has
+        // a DB_CONNECTION to check for.
+        $databaseKey = $site->isWordPress() ? 'DB_DATABASE' : 'DB_CONNECTION';
+
+        if (! $site->environmentVariables()->where('key', $databaseKey)->exists()) {
             throw ValidationException::withMessages(['deployment' => 'This site has no database configured. Create one for it from the server\'s Databases tab, or set DB_CONNECTION yourself on the Environment tab if this application does not use a database.']);
         }
         $deployment = $site->deployments()->create([
@@ -33,7 +39,8 @@ final class StartDeployment
             'commit_hash' => $commit['hash'] ?? null,
             'commit_message' => $commit['message'] ?? null,
         ]);
-        DeployLaravelJob::dispatch($deployment->id)->onQueue('deployments');
+        $job = $site->isWordPress() ? DeployWordPressJob::class : DeployLaravelJob::class;
+        $job::dispatch($deployment->id)->onQueue('deployments');
 
         return $deployment;
     }

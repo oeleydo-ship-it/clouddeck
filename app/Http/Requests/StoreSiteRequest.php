@@ -13,6 +13,16 @@ class StoreSiteRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    /**
+     * Platform arrived after the API did. Defaulting it keeps every existing caller working
+     * and, because required_if reads the resolved value, still demands a repository for the
+     * Laravel sites those callers are creating.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['platform' => $this->input('platform', 'laravel')]);
+    }
+
     public function rules(): array
     {
         return [
@@ -26,8 +36,11 @@ class StoreSiteRequest extends FormRequest
                 Rule::unique('sites', 'domain')->where(fn ($query) => $query->where('server_id', $this->input('server_id'))->whereNull('deleted_at')),
             ],
             'php_version' => ['required', Rule::in(['8.2', '8.3', '8.4'])],
-            'repository_url' => ['required', 'string', 'max:2048', 'regex:/^(https:\/\/[^\s]+|git@[^\s:]+:[^\s]+)$/'],
-            'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
+            'platform' => ['required', Rule::in(['laravel', 'wordpress'])],
+            // WordPress is downloaded from wordpress.org rather than cloned, so a repository
+            // is required for Laravel and meaningless for WordPress.
+            'repository_url' => ['required_if:platform,laravel', 'nullable', 'string', 'max:2048', 'regex:/^(https:\/\/[^\s]+|git@[^\s:]+:[^\s]+)$/'],
+            'branch' => ['required_if:platform,laravel', 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
             'auto_deploy' => ['sometimes', 'boolean'],
             'zero_downtime' => ['sometimes', 'boolean'],
         ];

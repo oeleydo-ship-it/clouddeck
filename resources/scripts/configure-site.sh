@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 DOMAIN={{DOMAIN}}
 PHP_VERSION={{PHP_VERSION}}
+DOCUMENT_ROOT={{DOCUMENT_ROOT}}
 ROOT="/var/www/${DOMAIN}"
 
 mkdir -p "${ROOT}/releases" "${ROOT}/shared/storage/app/public" "${ROOT}/shared/storage/framework/cache" "${ROOT}/shared/storage/framework/sessions" "${ROOT}/shared/storage/framework/views" "${ROOT}/shared/storage/logs"
@@ -28,7 +29,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN};
-    root ${ROOT}/current/public;
+    root ${ROOT}/${DOCUMENT_ROOT};
     index index.php;
     charset utf-8;
     client_max_body_size 100M;

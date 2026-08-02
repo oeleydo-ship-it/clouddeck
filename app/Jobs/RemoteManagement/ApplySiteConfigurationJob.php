@@ -41,6 +41,7 @@ class ApplySiteConfigurationJob implements ShouldQueue
                 'STATIC_CACHE' => $settings['static_cache'] ? '1' : '0',
                 'INCLUDE_WWW' => $settings['include_www'] ? '1' : '0',
                 'SSL_ENABLED' => $activeCertificate ? '1' : '0',
+                'DOCUMENT_ROOT' => $site->documentRoot(),
             ]);
         } else {
             $ssh->runScript($site->server, resource_path('scripts/apply-php-settings.sh'), [
