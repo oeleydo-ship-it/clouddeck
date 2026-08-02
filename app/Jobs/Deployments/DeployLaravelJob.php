@@ -30,6 +30,13 @@ class DeployLaravelJob implements ShouldQueue
     public function handle(SshClient $ssh): void
     {
         $deployment = Deployment::with(['site.server.sshKey', 'site.environmentVariables'])->findOrFail($this->deploymentId);
+
+        // The job can still be waiting in the queue when the operator cancels; running it
+        // then would undo the cancellation and deploy something nobody is expecting.
+        if ($deployment->status === DeploymentStatus::Cancelled) {
+            return;
+        }
+
         $release = now()->format('YmdHis').'-'.Str::lower(Str::random(8));
         $started = now();
         $previous = $deployment->site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->value('release');
@@ -73,7 +80,7 @@ class DeployLaravelJob implements ShouldQueue
     public function failed(Throwable $exception): void
     {
         $deployment = Deployment::find($this->deploymentId);
-        if ($deployment && $deployment->status !== DeploymentStatus::Failed) {
+        if ($deployment && ! in_array($deployment->status, [DeploymentStatus::Failed, DeploymentStatus::Cancelled], true)) {
             $this->finishFailed($deployment, $deployment->started_at ?? now(), 1, $exception->getMessage());
         }
         if ($deployment) {

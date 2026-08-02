@@ -186,6 +186,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/sites/{site}/wordpress/backups', [WordPressController::class, 'backup'])->name('wordpress.backup');
     Route::post('/site-backups/{siteBackup}/restore', [WordPressController::class, 'restore'])->name('wordpress.restore');
     Route::get('/deployments/{deployment}', [DeploymentController::class, 'show'])->name('deployments.show');
+    Route::post('/deployments/{deployment}/cancel', [DeploymentController::class, 'cancel'])->name('deployments.cancel');
+    Route::post('/deployments/{deployment}/retry', [DeploymentController::class, 'retry'])->name('deployments.retry');
 
     Route::prefix('admin')->middleware('admin')->name('admin.')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'overview'])->name('dashboard');
