@@ -5,6 +5,7 @@ namespace App\Jobs\Deployments;
 use App\Enums\DeploymentStatus;
 use App\Events\DeploymentFinished;
 use App\Events\DeploymentLogAppended;
+use App\Jobs\Concerns\BroadcastsQuietly;
 use App\Models\Deployment;
 use App\Models\Site;
 use App\Ssh\SshClient;
@@ -18,7 +19,7 @@ use Throwable;
 
 class DeployLaravelJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use BroadcastsQuietly, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 1800;
 
@@ -66,7 +67,7 @@ class DeployLaravelJob implements ShouldQueue
         $deployment->update(['status' => DeploymentStatus::Successful, 'finished_at' => $finished, 'duration_ms' => $started->diffInMilliseconds($finished), 'exit_code' => 0, 'progress' => 100, 'commit_hash' => $deployment->commit_hash ?: ($commit[1] ?? null), 'commit_message' => $deployment->commit_message ?: (isset($message[1]) ? base64_decode($message[1], true) : null)]);
         $deployment->site->update(['status' => 'active', 'last_deployed_at' => $finished]);
         $this->log($deployment, 'Deployment completed successfully.');
-        DeploymentFinished::dispatch($deployment->fresh(['site.user']));
+        $this->broadcastQuietly(fn () => DeploymentFinished::dispatch($deployment->fresh(['site.user'])));
     }
 
     public function failed(Throwable $exception): void
@@ -76,7 +77,7 @@ class DeployLaravelJob implements ShouldQueue
             $this->finishFailed($deployment, $deployment->started_at ?? now(), 1, $exception->getMessage());
         }
         if ($deployment) {
-            DeploymentFinished::dispatch($deployment->fresh(['site.user']));
+            $this->broadcastQuietly(fn () => DeploymentFinished::dispatch($deployment->fresh(['site.user'])));
         }
     }
 
@@ -90,7 +91,7 @@ class DeployLaravelJob implements ShouldQueue
     private function log(Deployment $deployment, string $output, string $level = 'info'): void
     {
         $log = $deployment->logs()->create(['level' => $level, 'output' => Str::limit($output, 65535, ''), 'created_at' => now()]);
-        DeploymentLogAppended::dispatch($deployment, $log);
+        $this->broadcastQuietly(fn () => DeploymentLogAppended::dispatch($deployment, $log));
     }
 
     /**

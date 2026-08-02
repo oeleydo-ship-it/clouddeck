@@ -5,6 +5,7 @@ namespace App\Jobs\Deployments;
 use App\Enums\DeploymentStatus;
 use App\Events\DeploymentFinished;
 use App\Events\DeploymentLogAppended;
+use App\Jobs\Concerns\BroadcastsQuietly;
 use App\Models\Deployment;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
@@ -16,7 +17,7 @@ use Throwable;
 
 class RollbackDeploymentJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use BroadcastsQuietly, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(public readonly string $deploymentId) {}
 
@@ -30,7 +31,7 @@ class RollbackDeploymentJob implements ShouldQueue
                 return;
             }
             $log = $deployment->logs()->create(['level' => $type === 'err' ? 'error' : 'info', 'output' => $output, 'created_at' => now()]);
-            DeploymentLogAppended::dispatch($deployment, $log);
+            $this->broadcastQuietly(fn () => DeploymentLogAppended::dispatch($deployment, $log));
         });
         $finished = now();
         if ($result->failed()) {
@@ -39,7 +40,7 @@ class RollbackDeploymentJob implements ShouldQueue
         }
         $deployment->update(['status' => DeploymentStatus::RolledBack, 'finished_at' => $finished, 'duration_ms' => $started->diffInMilliseconds($finished), 'exit_code' => 0, 'progress' => 100]);
         $deployment->site->update(['last_deployed_at' => $finished]);
-        DeploymentFinished::dispatch($deployment->fresh(['site.user']));
+        $this->broadcastQuietly(fn () => DeploymentFinished::dispatch($deployment->fresh(['site.user'])));
     }
 
     public function failed(Throwable $exception): void
@@ -47,7 +48,7 @@ class RollbackDeploymentJob implements ShouldQueue
         $deployment = Deployment::find($this->deploymentId);
         $deployment?->update(['status' => DeploymentStatus::Failed, 'finished_at' => now(), 'exit_code' => 1]);
         if ($deployment) {
-            DeploymentFinished::dispatch($deployment->fresh(['site.user']));
+            $this->broadcastQuietly(fn () => DeploymentFinished::dispatch($deployment->fresh(['site.user'])));
         }
     }
 }

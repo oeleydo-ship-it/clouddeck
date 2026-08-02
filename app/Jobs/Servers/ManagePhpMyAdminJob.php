@@ -3,6 +3,7 @@
 namespace App\Jobs\Servers;
 
 use App\Models\ServerOperation;
+use App\Services\ServerPortRegistry;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,7 +28,7 @@ class ManagePhpMyAdminJob implements ShouldQueue
         $operation = ServerOperation::with('server.sshKey')->findOrFail($this->operationId);
         $operation->update(['status' => 'running', 'started_at' => now()]);
         $server = $operation->server;
-        $port = $server->phpmyadmin_port ?: \App\Services\ServerPortRegistry::PHPMYADMIN_DEFAULT;
+        $port = $server->phpmyadmin_port ?: ServerPortRegistry::PHPMYADMIN_DEFAULT;
 
         if ($operation->type === 'phpmyadmin:remove') {
             $output = $ssh->runScript($server, resource_path('scripts/remove-phpmyadmin.sh'), ['PORT' => (string) $port]);
