@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ServerStatus;
 use App\Jobs\Deployments\DeployLaravelJob;
 use App\Jobs\Deployments\DeployWordPressJob;
+use App\Jobs\Sites\ConfigureSiteJob;
 use App\Models\CloudAccount;
 use App\Models\Plan;
 use App\Models\Server;
@@ -13,7 +14,9 @@ use App\Models\SshKey;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\WordPressConfig;
+use App\Ssh\SshClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -199,6 +202,30 @@ class WordPressSiteTest extends TestCase
         $site->update(['last_deployed_at' => now()]);
 
         $this->actingAs($user)->get("/sites/{$site->id}")->assertOk()->assertSee('Deploy now')->assertDontSee('Install WordPress');
+    }
+
+    public function test_a_script_with_an_unsupplied_placeholder_is_refused_before_it_runs(): void
+    {
+        [$user, $server] = $this->infrastructure();
+
+        // Left unchecked this reached the server as literal text and was written into the
+        // Nginx config, which then failed with a complaint about a missing semicolon.
+        $this->expectExceptionMessage('DOCUMENT_ROOT');
+        app(SshClient::class)->runScript($server, resource_path('scripts/configure-site.sh'), [
+            'DOMAIN' => 'app.example.com',
+            'PHP_VERSION' => '8.4',
+        ]);
+    }
+
+    public function test_configuring_a_site_supplies_every_placeholder_its_script_needs(): void
+    {
+        Process::fake(['*' => Process::result(output: 'configured', exitCode: 0)]);
+        [$user, $server] = $this->infrastructure();
+        $site = $this->wordpressSite($user, $server);
+
+        (new ConfigureSiteJob($site->id))->handle(app(SshClient::class));
+
+        $this->assertSame('active', $site->fresh()->status);
     }
 
     public function test_a_wordpress_site_is_not_seeded_with_laravel_environment_keys(): void

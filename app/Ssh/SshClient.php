@@ -89,6 +89,16 @@ final class SshClient
             $script = str_replace("{{{$key}}}", escapeshellarg((string) $value), $script);
         }
 
+        // A placeholder nobody supplied used to travel to the server as literal text and
+        // be written into whatever it was building. That produced an Nginx config reading
+        // "root /var/www/site/{{DOCUMENT_ROOT}};" and an error about a missing semicolon,
+        // which says nothing about the actual mistake. Name it here instead.
+        if (preg_match_all('/\{\{([A-Z_]+)\}\}/', $script, $matches)) {
+            throw new RuntimeException(
+                'Refusing to run '.basename($path).': no value was given for '.implode(', ', array_unique($matches[1])).'.'
+            );
+        }
+
         return $script;
     }
 
