@@ -141,7 +141,7 @@ class SaasAdministrationTest extends TestCase
 
         $this->actingAs($admin)->patch("/admin/plans/{$plan->id}", [
             'name' => 'Starter Plus', 'slug' => 'starter-plus', 'currency' => 'usd',
-            'monthly_price' => 1900, 'yearly_price' => 19000, 'sort_order' => 15,
+            'monthly_price' => 19, 'yearly_price' => 190, 'sort_order' => 15,
             'servers' => 3, 'sites' => 12, 'databases' => 5, 'api_tokens' => 4,
             'teams' => 1, 'team_members' => 8, 'active' => '1', 'public' => '1',
             'feature_monitoring' => '1', 'feature_teams' => '1',
@@ -149,6 +149,9 @@ class SaasAdministrationTest extends TestCase
 
         $plan->refresh();
         $this->assertSame('Starter Plus', $plan->name);
+        // Prices are entered as customers see them and stored in minor units.
+        $this->assertSame(1900, $plan->monthly_price);
+        $this->assertSame(19000, $plan->yearly_price);
         $this->assertSame(3, $plan->limits['servers']);
         $this->assertTrue($plan->features['monitoring']);
         $this->assertFalse($plan->features['remote_management']);

@@ -41,10 +41,58 @@ class AdminPlanController extends Controller
         return back()->with('status', 'Stripe price mapping updated.');
     }
 
+    public function destroy(Request $request, Plan $plan, AuditLogger $audit): RedirectResponse
+    {
+        // Removing a plan people are paying on would leave those subscriptions pointing at
+        // nothing, and every quota check reads the plan. Move them first.
+        if ($plan->subscriptions()->whereIn('status', ['active', 'trialing', 'past_due'])->exists()) {
+            return back()->withErrors(['plan' => 'This plan still has subscribers. Move them to another plan before deleting it.']);
+        }
+
+        $audit->record($request, 'plan.deleted', $plan, $plan->only(['name', 'slug', 'monthly_price', 'yearly_price']), []);
+        $plan->delete();
+
+        return back()->with('status', 'Plan deleted.');
+    }
+
+    /**
+     * Prices are entered the way a person writes them — 29 or 29.99 — and stored in the
+     * minor units Stripe and the rest of the billing code expect. The old form asked for
+     * raw cents, which is a quiet way to charge someone a hundred times too much.
+     */
     private function validated(Request $request, ?Plan $plan = null): array
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'slug' => ['nullable', 'alpha_dash', 'max:100', Rule::unique('plans')->ignore($plan)], 'monthly_price' => ['required', 'integer', 'min:0'], 'yearly_price' => ['required', 'integer', 'min:0'], 'currency' => ['required', 'size:3'], 'servers' => ['required', 'integer', 'min:-1'], 'sites' => ['required', 'integer', 'min:-1'], 'databases' => ['required', 'integer', 'min:-1'], 'api_tokens' => ['required', 'integer', 'min:-1'], 'teams' => ['required', 'integer', 'min:-1'], 'team_members' => ['required', 'integer', 'min:-1'], 'active' => ['sometimes', 'boolean'], 'public' => ['sometimes', 'boolean'], 'feature_monitoring' => ['sometimes', 'boolean'], 'feature_remote_management' => ['sometimes', 'boolean'], 'feature_teams' => ['sometimes', 'boolean'], 'sort_order' => ['nullable', 'integer', 'between:0,1000']]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'slug' => ['nullable', 'alpha_dash', 'max:100', Rule::unique('plans')->ignore($plan)],
+            'monthly_price' => ['required', 'numeric', 'min:0', 'max:1000000'],
+            'yearly_price' => ['required', 'numeric', 'min:0', 'max:1000000'],
+            'currency' => ['required', 'size:3'],
+            'servers' => ['required', 'integer', 'min:-1'],
+            'sites' => ['required', 'integer', 'min:-1'],
+            'databases' => ['required', 'integer', 'min:-1'],
+            'api_tokens' => ['required', 'integer', 'min:-1'],
+            'teams' => ['required', 'integer', 'min:-1'],
+            'team_members' => ['required', 'integer', 'min:-1'],
+            'active' => ['sometimes', 'boolean'],
+            'public' => ['sometimes', 'boolean'],
+            'feature_monitoring' => ['sometimes', 'boolean'],
+            'feature_remote_management' => ['sometimes', 'boolean'],
+            'feature_teams' => ['sometimes', 'boolean'],
+            'sort_order' => ['nullable', 'integer', 'between:0,1000'],
+        ]);
 
-        return ['name' => $data['name'], 'slug' => $data['slug'] ?? Str::slug($data['name']), 'monthly_price' => $data['monthly_price'], 'yearly_price' => $data['yearly_price'], 'currency' => strtoupper($data['currency']), 'limits' => collect(['servers', 'sites', 'databases', 'api_tokens', 'teams', 'team_members'])->mapWithKeys(fn ($key) => [$key => (int) $data[$key]])->all(), 'features' => ['monitoring' => $request->boolean('feature_monitoring'), 'remote_management' => $request->boolean('feature_remote_management'), 'teams' => $request->boolean('feature_teams')], 'active' => $request->boolean('active'), 'public' => $request->boolean('public'), 'sort_order' => $data['sort_order'] ?? 0];
+        return [
+            'name' => $data['name'],
+            'slug' => $data['slug'] ?? Str::slug($data['name']),
+            'monthly_price' => (int) round($data['monthly_price'] * 100),
+            'yearly_price' => (int) round($data['yearly_price'] * 100),
+            'currency' => strtoupper($data['currency']),
+            'limits' => collect(['servers', 'sites', 'databases', 'api_tokens', 'teams', 'team_members'])->mapWithKeys(fn ($key) => [$key => (int) $data[$key]])->all(),
+            'features' => ['monitoring' => $request->boolean('feature_monitoring'), 'remote_management' => $request->boolean('feature_remote_management'), 'teams' => $request->boolean('feature_teams')],
+            'active' => $request->boolean('active'),
+            'public' => $request->boolean('public'),
+            'sort_order' => $data['sort_order'] ?? 0,
+        ];
     }
 }

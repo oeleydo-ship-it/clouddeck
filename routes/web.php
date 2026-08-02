@@ -180,6 +180,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/plans', [AdminPlanController::class, 'store'])->name('plans.store');
         Route::patch('/plans/{plan}', [AdminPlanController::class, 'update'])->name('plans.update');
         Route::patch('/plans/{plan}/stripe', [AdminPlanController::class, 'stripe'])->name('plans.stripe');
+        Route::delete('/plans/{plan}', [AdminPlanController::class, 'destroy'])->name('plans.destroy');
         Route::post('/feature-flags', [AdminFeatureFlagController::class, 'store'])->name('flags.store');
         Route::patch('/feature-flags/{featureFlag}', [AdminFeatureFlagController::class, 'update'])->name('flags.update');
         Route::patch('/billing-requests/{billingRequest}', [AdminBillingRequestController::class, 'update'])->name('billing-requests.update');
