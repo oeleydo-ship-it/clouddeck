@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Notifications\TeamInvitationNotification;
 use App\Services\EntitlementService;
 use App\Services\FeatureManager;
+use App\Services\TwoFactorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -122,6 +123,7 @@ class SaasAdministrationTest extends TestCase
 
     public function test_registration_can_be_disabled_and_new_users_receive_free_plan(): void
     {
+        $this->markInstalled();
         $free = $this->plan([], 'free');
         $this->post('/register', ['name' => 'New User', 'email' => 'new@example.com', 'password' => 'very-secure-password', 'password_confirmation' => 'very-secure-password'])->assertRedirect('/dashboard');
         $user = User::where('email', 'new@example.com')->firstOrFail();
@@ -155,7 +157,7 @@ class SaasAdministrationTest extends TestCase
 
     public function test_suspended_user_cannot_complete_pending_two_factor_login(): void
     {
-        $secret = app(\App\Services\TwoFactorService::class)->generateSecret();
+        $secret = app(TwoFactorService::class)->generateSecret();
         $user = User::factory()->create(['suspended_at' => now(), 'two_factor_secret' => $secret, 'two_factor_confirmed_at' => now()]);
 
         $this->withSession(['login.id' => $user->id, 'login.remember' => true])

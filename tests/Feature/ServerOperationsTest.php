@@ -3,20 +3,21 @@
 namespace Tests\Feature;
 
 use App\Enums\ServerStatus;
+use App\Jobs\Operations\CheckQueueWorkerStatusJob;
 use App\Jobs\Operations\CreateDatabaseJob;
 use App\Jobs\Operations\ExportDatabaseJob;
 use App\Jobs\Operations\ImportDatabaseJob;
 use App\Jobs\Operations\InstallSslCertificateJob;
 use App\Jobs\Operations\RunServerOperationJob;
-use App\Jobs\Operations\CheckQueueWorkerStatusJob;
-use App\Jobs\Servers\InstallPhpExtensionJob;
 use App\Jobs\Operations\SyncCronJob;
 use App\Jobs\Operations\SyncQueueWorkerJob;
+use App\Jobs\Servers\InstallPhpExtensionJob;
 use App\Models\CloudAccount;
 use App\Models\Server;
 use App\Models\Site;
 use App\Models\SshKey;
 use App\Models\User;
+use App\Services\ReverbEnvironment;
 use App\Ssh\SshClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -78,7 +79,7 @@ class ServerOperationsTest extends TestCase
     {
         [$user, $server, $site] = $this->infrastructure();
 
-        app(\App\Services\ReverbEnvironment::class)->apply($site, 8080);
+        app(ReverbEnvironment::class)->apply($site, 8080);
         $env = fn () => $site->environmentVariables()->pluck('value', 'key');
 
         $this->assertSame('127.0.0.1', $env()['REVERB_SERVER_HOST']);
@@ -87,7 +88,7 @@ class ServerOperationsTest extends TestCase
         $this->assertSame('80', $env()['REVERB_PORT']);
 
         $site->sslCertificates()->create(['user_id' => $user->id, 'domains' => [$site->domain], 'status' => 'active']);
-        app(\App\Services\ReverbEnvironment::class)->apply($site, 8080);
+        app(ReverbEnvironment::class)->apply($site, 8080);
 
         $this->assertSame('https', $env()['REVERB_SCHEME']);
         $this->assertSame('443', $env()['REVERB_PORT']);
@@ -138,7 +139,7 @@ class ServerOperationsTest extends TestCase
     public function test_site_cron_jobs_cannot_be_created_by_another_user(): void
     {
         [$user, $server, $site] = $this->infrastructure();
-        $this->actingAs(\App\Models\User::factory()->create())->post("/sites/{$site->id}/cron-jobs", ['name' => 'Scheduler', 'expression' => '* * * * *', 'command' => 'php artisan schedule:run'])->assertForbidden();
+        $this->actingAs(User::factory()->create())->post("/sites/{$site->id}/cron-jobs", ['name' => 'Scheduler', 'expression' => '* * * * *', 'command' => 'php artisan schedule:run'])->assertForbidden();
         $this->assertSame(0, $site->cronJobs()->count());
     }
 
@@ -190,6 +191,8 @@ class ServerOperationsTest extends TestCase
 
     public function test_servers_page_requires_authentication(): void
     {
+        $this->markInstalled();
+
         $this->get('/servers')->assertRedirect('/login');
     }
 

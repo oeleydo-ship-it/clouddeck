@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DeploymentStatus;
 use App\Enums\ServerStatus;
 use App\Models\CloudAccount;
-use App\Models\Deployment;
 use App\Models\Server;
 use App\Models\Site;
 use App\Models\SshKey;
@@ -56,6 +56,8 @@ class PageRenderSmokeTest extends TestCase
 
     public function test_guest_pages_render(): void
     {
+        $this->markInstalled();
+
         foreach (['/', '/login', '/register', '/forgot-password'] as $url) {
             $this->get($url)->assertOk();
         }
@@ -68,7 +70,7 @@ class PageRenderSmokeTest extends TestCase
         $key = SshKey::create(['user_id' => $user->id, 'name' => 'Managed', 'public_key' => 'ssh-ed25519 AAAA test', 'private_key' => 'private-key']);
         $server = Server::create(['user_id' => $user->id, 'cloud_account_id' => $account->id, 'ssh_key_id' => $key->id, 'name' => 'App', 'hostname' => 'app-01', 'region' => 'nyc3', 'size' => 's-1vcpu-1gb', 'image' => 'ubuntu-24-04-x64', 'public_ip' => '192.0.2.10', 'status' => ServerStatus::Ready]);
         $site = Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'repository_url' => 'https://github.com/acme/app.git', 'branch' => 'main', 'status' => 'active']);
-        $deployment = $site->deployments()->create(['user_id' => $user->id, 'status' => \App\Enums\DeploymentStatus::Successful, 'trigger' => 'manual', 'release' => '20260101000000-abc']);
+        $deployment = $site->deployments()->create(['user_id' => $user->id, 'status' => DeploymentStatus::Successful, 'trigger' => 'manual', 'release' => '20260101000000-abc']);
 
         return [$user, $server, $site, $account, $deployment];
     }

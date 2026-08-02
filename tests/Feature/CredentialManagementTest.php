@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Cloud\DigitalOcean\DigitalOceanProvider;
 use App\Models\SshKey;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -80,6 +81,8 @@ class CredentialManagementTest extends TestCase
 
     public function test_provision_wizard_requires_verified_authentication(): void
     {
+        $this->markInstalled();
+
         $this->get('/servers/create')->assertRedirect('/login');
         $user = User::factory()->create(['email_verified_at' => now()]);
         $this->actingAs($user)->get('/servers/create')->assertOk()->assertSee('Provision a server');
@@ -94,7 +97,7 @@ class CredentialManagementTest extends TestCase
             ]]),
         ]);
 
-        $provider = new \App\Cloud\DigitalOcean\DigitalOceanProvider('token');
+        $provider = new DigitalOceanProvider('token');
         $id = $provider->ensureSshKey('Primary', $publicKey, 'SHA256:0Wh4u3VrA3XBBCKZWgKg3z');
 
         $this->assertSame('555', $id);
@@ -116,7 +119,7 @@ class CredentialManagementTest extends TestCase
             return Http::response(['ssh_keys' => $keys]);
         });
 
-        $provider = new \App\Cloud\DigitalOcean\DigitalOceanProvider('token');
+        $provider = new DigitalOceanProvider('token');
 
         $this->assertSame('777', $provider->ensureSshKey('Primary', $publicKey, 'SHA256:mismatch'));
     }
