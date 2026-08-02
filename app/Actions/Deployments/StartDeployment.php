@@ -16,6 +16,16 @@ final class StartDeployment
         if ($site->deployments()->whereIn('status', [DeploymentStatus::Pending, DeploymentStatus::Running])->exists()) {
             throw ValidationException::withMessages(['deployment' => 'A deployment is already in progress.']);
         }
+
+        // A new site is seeded with cache, queue, session, and Redis variables but no
+        // database ones: those arrive only when a managed database is attached. Deploy
+        // without them and Laravel falls back to its built-in sqlite default, which fails
+        // two minutes in with "could not find driver" because the provisioned PHP carries
+        // only the mysql and pgsql drivers. Say so up front instead. Setting DB_CONNECTION
+        // by hand is the escape hatch for an application that genuinely has no database.
+        if (! $site->environmentVariables()->where('key', 'DB_CONNECTION')->exists()) {
+            throw ValidationException::withMessages(['deployment' => 'This site has no database configured. Create one for it from the server\'s Databases tab, or set DB_CONNECTION yourself on the Environment tab if this application does not use a database.']);
+        }
         $deployment = $site->deployments()->create([
             'user_id' => $user?->id,
             'status' => DeploymentStatus::Pending,

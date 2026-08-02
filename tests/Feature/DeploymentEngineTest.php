@@ -55,6 +55,21 @@ class DeploymentEngineTest extends TestCase
         $this->assertStringNotContainsString('super-secret', \DB::table('environment_variables')->where('site_id', $site->id)->where('key', 'DB_PASSWORD')->value('value'));
     }
 
+    public function test_a_site_without_a_database_cannot_be_deployed(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+        $site = $this->site($user, $server);
+        // Exactly the state CloudDeck leaves a new site in: cache, queue, session, and Redis
+        // variables, but nothing describing a database.
+        $site->environmentVariables()->where('key', 'DB_CONNECTION')->delete();
+
+        $this->actingAs($user)->post("/sites/{$site->id}/deployments")->assertSessionHasErrors('deployment');
+
+        $this->assertSame(0, $site->deployments()->count());
+        Queue::assertNotPushed(DeployLaravelJob::class);
+    }
+
     public function test_manual_deploy_creates_one_queued_deployment(): void
     {
         Queue::fake();
@@ -281,6 +296,12 @@ class DeploymentEngineTest extends TestCase
 
     private function site(User $user, Server $server, array $attributes = []): Site
     {
-        return Site::create([...['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'repository_url' => 'https://github.com/acme/app.git', 'branch' => 'main', 'status' => 'active', 'auto_deploy' => false, 'zero_downtime' => true, 'webhook_secret' => Str::random(64)], ...$attributes]);
+        $site = Site::create([...['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'repository_url' => 'https://github.com/acme/app.git', 'branch' => 'main', 'status' => 'active', 'auto_deploy' => false, 'zero_downtime' => true, 'webhook_secret' => Str::random(64)], ...$attributes]);
+        // A site is only deployable once it has a database connection, so the fixture for a
+        // deployable site carries one. test_a_site_without_a_database_cannot_be_deployed
+        // covers the case where it does not.
+        $site->environmentVariables()->create(['key' => 'DB_CONNECTION', 'value' => 'mysql', 'is_secret' => false]);
+
+        return $site;
     }
 }
