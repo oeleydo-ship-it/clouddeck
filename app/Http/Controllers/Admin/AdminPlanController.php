@@ -1,0 +1,50 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Plan;
+use App\Services\AuditLogger;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+
+class AdminPlanController extends Controller
+{
+    public function store(Request $request, AuditLogger $audit): RedirectResponse
+    {
+        $data = $this->validated($request);
+        $plan = Plan::create($data);
+        $audit->record($request, 'plan.created', $plan, [], $data);
+
+        return back()->with('status', 'Plan created.');
+    }
+
+    public function update(Request $request, Plan $plan, AuditLogger $audit): RedirectResponse
+    {
+        $data = $this->validated($request, $plan);
+        $old = $plan->only(['name', 'slug', 'monthly_price', 'yearly_price', 'limits', 'features', 'active', 'public']);
+        $plan->update($data);
+        $audit->record($request, 'plan.updated', $plan, $old, $data);
+
+        return back()->with('status', 'Plan updated.');
+    }
+
+    public function stripe(Request $request, Plan $plan, AuditLogger $audit): RedirectResponse
+    {
+        $data = $request->validate(['stripe_monthly_price_id' => ['nullable', 'regex:/^price_[A-Za-z0-9]+$/', 'max:100'], 'stripe_yearly_price_id' => ['nullable', 'regex:/^price_[A-Za-z0-9]+$/', 'max:100']]);
+        $old = $plan->only(['stripe_monthly_price_id', 'stripe_yearly_price_id']);
+        $plan->update($data);
+        $audit->record($request, 'plan.stripe-prices-updated', $plan, $old, $data);
+
+        return back()->with('status', 'Stripe price mapping updated.');
+    }
+
+    private function validated(Request $request, ?Plan $plan = null): array
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'slug' => ['nullable', 'alpha_dash', 'max:100', Rule::unique('plans')->ignore($plan)], 'monthly_price' => ['required', 'integer', 'min:0'], 'yearly_price' => ['required', 'integer', 'min:0'], 'currency' => ['required', 'size:3'], 'servers' => ['required', 'integer', 'min:-1'], 'sites' => ['required', 'integer', 'min:-1'], 'databases' => ['required', 'integer', 'min:-1'], 'api_tokens' => ['required', 'integer', 'min:-1'], 'teams' => ['required', 'integer', 'min:-1'], 'team_members' => ['required', 'integer', 'min:-1'], 'active' => ['sometimes', 'boolean'], 'public' => ['sometimes', 'boolean'], 'feature_monitoring' => ['sometimes', 'boolean'], 'feature_remote_management' => ['sometimes', 'boolean'], 'feature_teams' => ['sometimes', 'boolean'], 'sort_order' => ['nullable', 'integer', 'between:0,1000']]);
+
+        return ['name' => $data['name'], 'slug' => $data['slug'] ?? Str::slug($data['name']), 'monthly_price' => $data['monthly_price'], 'yearly_price' => $data['yearly_price'], 'currency' => strtoupper($data['currency']), 'limits' => collect(['servers', 'sites', 'databases', 'api_tokens', 'teams', 'team_members'])->mapWithKeys(fn ($key) => [$key => (int) $data[$key]])->all(), 'features' => ['monitoring' => $request->boolean('feature_monitoring'), 'remote_management' => $request->boolean('feature_remote_management'), 'teams' => $request->boolean('feature_teams')], 'active' => $request->boolean('active'), 'public' => $request->boolean('public'), 'sort_order' => $data['sort_order'] ?? 0];
+    }
+}

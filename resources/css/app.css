@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+[x-cloak] { display: none !important; }
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source "../**/*.blade.php";
+@source "../**/*.js";
+@source "../**/*.vue";
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+@layer base {
+    body { @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100; }
+    ::selection { @apply bg-cyan-400/30; }
+}
+
+@layer components {
+    .field {
+        @apply mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition
+        placeholder:text-slate-400 focus:border-cyan-400 focus:ring-4 focus:ring-cyan-400/10
+        dark:border-white/10 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:shadow-none dark:focus:ring-cyan-400/20;
+    }
+    .nav-link {
+        @apply rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900
+        dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white;
+    }
+    .panel {
+        @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-200/60
+        dark:border-white/10 dark:bg-white/[.04] dark:shadow-none;
+    }
+    .button-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-3
+        text-sm font-semibold text-white shadow-md shadow-cyan-500/25 transition hover:shadow-lg hover:shadow-cyan-500/30
+        disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+    }
+    .button-secondary {
+        @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
+        font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50
+        disabled:cursor-not-allowed disabled:opacity-50
+        dark:border-white/10 dark:bg-transparent dark:text-slate-200 dark:hover:bg-white/5;
+    }
+    .icon-button {
+        @apply grid size-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition
+        hover:border-slate-300 hover:text-slate-900
+        dark:border-white/10 dark:bg-transparent dark:text-slate-400 dark:hover:text-white;
+    }
+    .badge {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+    }
+    .badge-dot {
+        @apply size-1.5 rounded-full;
+    }
+    .stat-card {
+        @apply relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/60
+        dark:border-white/10 dark:bg-white/[.04] dark:shadow-none;
+    }
+    /* Not ".table-row": that is a built-in Tailwind display utility and would override display:grid. */
+    .data-row {
+        @apply border-b border-slate-100 px-6 py-4 transition last:border-0 hover:bg-slate-50
+        dark:border-white/5 dark:hover:bg-white/[.03];
+    }
+    .muted {
+        @apply text-slate-500 dark:text-slate-400;
+    }
+    .heading {
+        @apply text-slate-900 dark:text-white;
+    }
+}

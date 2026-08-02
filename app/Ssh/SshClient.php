@@ -1,0 +1,123 @@
+<?php
+
+namespace App\Ssh;
+
+use App\Models\Server;
+use Illuminate\Contracts\Process\ProcessResult;
+use Illuminate\Support\Facades\Process;
+use RuntimeException;
+
+final class SshClient
+{
+    public function run(Server $server, string $command): string
+    {
+        $result = $this->execute($server, $command);
+        if ($result->failed()) {
+            throw new RuntimeException($result->errorOutput());
+        }
+
+        return $result->output();
+    }
+
+    public function runStreaming(Server $server, string $command, callable $output): ProcessResult
+    {
+        return $this->execute($server, $command, $output);
+    }
+
+    public function runScript(Server $server, string $path, array $env = []): string
+    {
+        $result = $this->executeScript($server, $this->script($path, $env));
+        if ($result->failed()) {
+            throw new RuntimeException($result->errorOutput());
+        }
+
+        return $result->output();
+    }
+
+    public function runScriptStreaming(Server $server, string $path, array $env, callable $output): ProcessResult
+    {
+        return $this->executeScript($server, $this->script($path, $env), $output);
+    }
+
+    private function execute(Server $server, string $command, ?callable $output = null): ProcessResult
+    {
+        $this->guard($command);
+        $key = $this->keyFile($server);
+        try {
+            return Process::timeout(1800)->run(['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new', '-i', $key, "root@{$server->public_ip}", $command], $output);
+        } finally {
+            if (is_file($key)) {
+                unlink($key);
+            }
+        }
+    }
+
+    private function executeScript(Server $server, string $script, ?callable $output = null): ProcessResult
+    {
+        $key = $this->keyFile($server);
+        try {
+            return Process::timeout(1800)->input($script)->run(['ssh', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new', '-i', $key, "root@{$server->public_ip}", 'bash', '-s'], $output);
+        } finally {
+            if (is_file($key)) {
+                unlink($key);
+            }
+        }
+    }
+
+    private function script(string $path, array $env): string
+    {
+        $script = file_get_contents($path);
+        foreach ($env as $key => $value) {
+            $script = str_replace("{{{$key}}}", escapeshellarg((string) $value), $script);
+        }
+
+        return $script;
+    }
+
+    private function guard(string $command): void
+    {
+        if (str_contains($command, "\0")) {
+            throw new RuntimeException('Invalid command.');
+        }
+    }
+
+    private function keyFile(Server $server): string
+    {
+        if (! $server->sshKey?->private_key) {
+            throw new RuntimeException('A managed private key is required for provisioning.');
+        }
+
+        // Unique per invocation: the file is locked down to a single reader, so a shared
+        // per-server path would make concurrent jobs collide and unlink each other's key.
+        $directory = storage_path('app/private/ssh');
+        if (! is_dir($directory)) {
+            mkdir($directory, 0700, true);
+        }
+        $path = $directory.'/'.$server->id.'-'.bin2hex(random_bytes(8));
+        file_put_contents($path, $server->sshKey->private_key);
+        $this->secureKeyFile($path);
+
+        return $path;
+    }
+
+    private function secureKeyFile(string $path): void
+    {
+        if (PHP_OS_FAMILY !== 'Windows') {
+            chmod($path, 0600);
+
+            return;
+        }
+
+        $identity = trim(Process::run(['whoami'])->output());
+        if ($identity === '') {
+            throw new RuntimeException('Unable to determine the Windows account used by the SSH worker.');
+        }
+
+        // Modify, not read-only: OpenSSH only requires that no other account has access, and a
+        // read-only grant leaves the key file undeletable, stranding private keys on disk.
+        $acl = Process::run(['icacls', $path, '/inheritance:r', '/grant:r', "{$identity}:(M)"]);
+        if ($acl->failed()) {
+            throw new RuntimeException('Unable to secure the temporary SSH private key: '.$acl->errorOutput());
+        }
+    }
+}

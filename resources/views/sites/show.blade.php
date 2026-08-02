@@ -1,0 +1,130 @@
+@extends('layouts.app')
+@section('content')
+<div class="mx-auto max-w-7xl px-5 py-10" x-data="{tab:'overview'}">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <a class="text-sm font-medium text-cyan-600 dark:text-cyan-300" href="{{ route('sites.index') }}">← Sites</a>
+            <div class="mt-2 flex flex-wrap items-center gap-3"><h1 class="text-3xl font-semibold heading">{{ $site->domain }}</h1>
+                @php $tint = ['active' => 'emerald', 'failed' => 'rose'][$site->status] ?? 'amber'; @endphp
+                <span class="badge {{ $tint === 'emerald' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300' : ($tint === 'rose' ? 'bg-rose-50 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300') }} capitalize"><span class="badge-dot bg-{{ $tint }}-500"></span>{{ $site->status }}</span>
+            </div>
+            <p class="mt-2 text-sm muted">{{ $site->server->name }} · PHP {{ $site->php_version }}</p>
+        </div>
+        <div class="flex gap-3"><button @click="tab='deploy'" class="button-secondary">Edit site</button><form method="POST" action="{{ route('sites.deploy',$site) }}">@csrf<button class="button-primary" @disabled($site->status !== 'active')>Deploy now</button></form></div>
+    </div>
+    @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
+    <div class="mt-5"><a href="{{ route('sites.remote',$site) }}" class="button-secondary inline-block">Open PHP, Nginx, files, and console</a></div>
+    @can('delete', $site)
+        <details id="danger-zone" class="panel mt-5 !border-rose-200 dark:!border-rose-400/20"><summary class="cursor-pointer font-medium text-rose-600 dark:text-rose-300">Danger zone</summary><p class="mt-3 text-sm muted">Permanently removes this site from CloudDeck and deletes its Nginx configuration, PHP-FPM pool, SSL certificate, and files from the server. This cannot be undone.</p><form method="POST" action="{{ route('sites.destroy',$site) }}" class="mt-4 flex flex-wrap gap-3" onsubmit="return confirm('Permanently delete {{ $site->domain }} and all its files on the server?')">@csrf @method('DELETE')<input class="field mt-0" name="confirmation" placeholder="Type {{ $site->domain }} to confirm"><button class="button-secondary !text-rose-600 dark:!text-rose-300">Delete site</button></form></details>
+    @endcan
+    <div class="mt-8 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-white/10">@foreach(['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook'] as $key=>$label)<button @click="tab='{{ $key }}'" :class="tab==='{{ $key }}' ? 'border-cyan-500 text-slate-900 dark:border-cyan-400 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400'" class="border-b-2 px-4 py-3 text-sm font-medium">{{ $label }}</button>@endforeach</div>
+    <div x-show="tab==='overview'" class="mt-6"><div class="grid gap-4 sm:grid-cols-3"><div class="panel"><p class="text-xs uppercase tracking-wide muted">Repository</p><p class="mt-2 truncate text-sm heading">{{ $site->repository_url }}</p></div><div class="panel"><p class="text-xs uppercase tracking-wide muted">Branch</p><p class="mt-2 font-mono text-sm heading">{{ $site->branch }}</p></div><div class="panel"><p class="text-xs uppercase tracking-wide muted">Last deployed</p><p class="mt-2 text-sm heading">{{ $site->last_deployed_at?->diffForHumans() ?? 'Never' }}</p></div></div>
+        <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60 dark:border-white/10 dark:bg-white/[.03] dark:shadow-none"><div class="border-b border-slate-200 px-6 py-4 dark:border-white/10"><h2 class="font-semibold heading">Deployment history</h2></div>@forelse($deployments as $deployment)<div class="data-row grid items-center gap-4 sm:grid-cols-[1fr_150px_120px_auto]"><a href="{{ route('deployments.show',$deployment) }}"><p class="font-mono text-sm heading">{{ $deployment->release ?? Str::limit($deployment->id,14) }}</p><p class="mt-1 text-xs muted">{{ $deployment->trigger }} by {{ $deployment->user?->name ?? 'webhook' }} · {{ $deployment->created_at->diffForHumans() }}</p></a><span class="text-sm font-medium capitalize {{ $deployment->status->value === 'failed' ? 'text-rose-600 dark:text-rose-300' : ($deployment->status->value === 'successful' ? 'text-emerald-600 dark:text-emerald-300' : 'text-cyan-600 dark:text-cyan-300') }}">{{ str_replace('_',' ',$deployment->status->value) }}</span><span class="text-xs muted">{{ $deployment->duration_for_humans ?? '—' }}</span>@if($deployment->release && in_array($deployment->status,[\App\Enums\DeploymentStatus::Successful,\App\Enums\DeploymentStatus::RolledBack],true))<form method="POST" action="{{ route('sites.rollback',[$site,$deployment]) }}">@csrf<button class="button-secondary !px-3 !py-1.5 text-xs !text-amber-600 dark:!text-amber-300">Rollback</button></form>@else<span></span>@endif</div>@empty<div class="px-6 py-10 text-center muted">No deployments yet.</div>@endforelse</section><div class="mt-5">{{ $deployments->links() }}</div>
+    </div>
+    <div x-cloak x-show="tab==='environment'" class="mt-6"><form method="POST" action="{{ route('sites.environment',$site) }}" class="panel">@csrf @method('PUT')<h2 class="font-semibold heading">Encrypted environment</h2><p class="mt-2 text-sm muted">Values are encrypted at rest and written only to the server's shared release directory.</p><textarea class="field mt-5 min-h-[28rem] font-mono text-xs leading-6" name="environment" spellcheck="false">{{ $environment }}</textarea><button class="button-primary mt-5">Save environment</button></form></div>
+    <div x-cloak x-show="tab==='deploy'" class="mt-6"><form method="POST" action="{{ route('sites.update',$site) }}" class="panel">@csrf @method('PATCH')<div class="grid gap-5 sm:grid-cols-2"><label class="text-sm heading sm:col-span-2">Repository URL<input class="field font-mono text-xs" name="repository_url" value="{{ $site->repository_url }}" placeholder="https://github.com/acme/app.git"></label><label class="text-sm heading">Branch<input class="field" name="branch" value="{{ $site->branch }}"></label><label class="text-sm heading">PHP version<select class="field" name="php_version">@foreach(['8.4','8.3','8.2'] as $version)<option @selected($site->php_version===$version)>{{ $version }}</option>@endforeach</select></label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_deploy" value="1" @checked($site->auto_deploy)>Automatic deployments</label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="zero_downtime" value="1" @checked($site->zero_downtime)>Zero-downtime releases</label><label class="text-sm heading sm:col-span-2">Custom post-build script<textarea class="field min-h-44 font-mono text-xs" name="deployment_script">{{ $site->deployment_script }}</textarea></label></div><button class="button-primary mt-5">Save settings</button></form></div>
+    <div x-cloak x-show="tab==='ssl'" class="mt-6">
+        @php $certificate = $site->sslCertificates->sortByDesc('created_at')->first(); @endphp
+        <section class="panel">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+                <div><h2 class="font-semibold heading">{{ $site->domain }}</h2><p class="mt-1 text-sm muted">{{ $certificate ? ucfirst($certificate->status) : 'No certificate' }}@if($certificate?->expires_at) · expires {{ $certificate->expires_at->toFormattedDateString() }}@endif</p></div>
+                @if($certificate?->status === 'active')<span class="text-sm font-medium text-emerald-600 dark:text-emerald-300">Secure</span>@endif
+            </div>
+            <form method="POST" action="{{ route('ssl.store',$site) }}" class="mt-5 flex flex-wrap items-center gap-4">@csrf
+                <label class="flex gap-2 text-sm heading"><input type="checkbox" name="force_https" value="1" @checked($certificate?->force_https ?? true)>Force HTTPS</label>
+                <label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_renew" value="1" @checked($certificate?->auto_renew ?? true)>Auto renew</label>
+                <button class="button-primary" @disabled($site->status !== 'active')>{{ $certificate ? 'Renew / update' : 'Issue certificate' }}</button>
+            </form>
+            @if($certificate?->failure_reason)<p class="mt-3 text-xs text-rose-600 dark:text-rose-300">{{ $certificate->failure_reason }}</p>@endif
+            @if($site->status !== 'active')<p class="mt-3 text-xs muted">The site must finish configuring before a certificate can be issued.</p>@endif
+        </section>
+    </div>
+    <div x-cloak x-show="tab==='cron'" class="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">
+        <form method="POST" action="{{ route('sites.cron-jobs.store',$site) }}" class="panel h-fit">@csrf
+            <h2 class="font-semibold heading">Add cron job</h2>
+            <p class="mt-1 text-sm muted">Runs on {{ $site->server->name }} for this site.</p>
+            <label class="mt-4 block text-sm heading">Name<input class="field" name="name" placeholder="Laravel scheduler"></label>
+            <label class="mt-4 block text-sm heading">Expression<input class="field font-mono" name="expression" value="* * * * *"></label>
+            <label class="mt-4 block text-sm heading">Command<input class="field font-mono text-xs" name="command" placeholder="cd /var/www/{{ $site->domain }}/current && php artisan schedule:run"></label>
+            <button class="button-primary mt-5">Add cron</button>
+        </form>
+        <div class="space-y-3">
+            @forelse($site->cronJobs as $cron)
+                <article class="panel">
+                    <div class="flex flex-wrap justify-between gap-4">
+                        <div><h3 class="font-medium heading">{{ $cron->name }} <span class="text-xs muted capitalize">· {{ $cron->status }}</span></h3><code class="mt-2 block text-xs muted">{{ $cron->expression }} · {{ $cron->command }}</code></div>
+                        <div class="flex gap-3">
+                            <form method="POST" action="{{ route('cron-jobs.toggle',$cron) }}">@csrf @method('PATCH')<button class="text-sm text-cyan-600 dark:text-cyan-300">{{ $cron->enabled ? 'Disable' : 'Enable' }}</button></form>
+                            <form method="POST" action="{{ route('cron-jobs.destroy',$cron) }}">@csrf @method('DELETE')<button class="text-sm text-rose-600 dark:text-rose-300">Delete</button></form>
+                        </div>
+                    </div>
+                </article>
+            @empty
+                <div class="panel text-center muted">No cron jobs for this site.</div>
+            @endforelse
+        </div>
+    </div>
+    <div x-cloak x-show="tab==='queue'" class="mt-6 space-y-6">
+        <section class="panel">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div><h2 class="font-semibold heading">Failed jobs</h2><p class="mt-1 text-sm muted">Counts rows in this site's own <code>failed_jobs</code> table.</p></div>
+                <div class="flex items-center gap-4">
+                    @if($site->queue_checked_at)<p class="text-sm heading">{{ $site->queue_failed_count === null ? 'Unable to check' : $site->queue_failed_count.' failed' }} <span class="muted">· checked {{ $site->queue_checked_at->diffForHumans() }}</span></p>@endif
+                    <form method="POST" action="{{ route('sites.queue-health',$site) }}">@csrf<button class="button-secondary" @disabled($site->status !== 'active')>Check now</button></form>
+                </div>
+            </div>
+        </section>
+        <section class="panel">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div><h2 class="font-semibold heading">Horizon &amp; Reverb</h2><p class="mt-1 text-sm muted">Detected in the currently deployed release, from <code>composer show</code>.</p></div>
+                <form method="POST" action="{{ route('site-packages.check',$site) }}">@csrf<button class="button-secondary text-xs" @disabled($site->status !== 'active')>Refresh detection</button></form>
+            </div>
+            <div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">
+                @php $installed = $site->installed_packages ?? []; $managed = $site->managed_packages ?? []; @endphp
+                @foreach(['laravel/horizon' => 'Horizon', 'laravel/reverb' => 'Reverb'] as $package => $label)
+                    @php $version = $installed[$package] ?? null; @endphp
+                    <div class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                        <div>
+                            <span class="{{ $version ? 'text-emerald-600 dark:text-emerald-300' : 'muted' }}">{{ $label }} {{ $version ? '· '.$version.' installed' : '· not detected' }}</span>
+                            @if(in_array($package, $managed, true))<span class="badge ml-2 bg-cyan-50 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300">Kept on every deploy</span>@endif
+                            @if($package === 'laravel/horizon' && $version)<p class="mt-1 text-xs muted">Dashboard: <a class="text-cyan-600 dark:text-cyan-300" href="https://{{ $site->domain }}/horizon" target="_blank" rel="noopener">https://{{ $site->domain }}/horizon</a></p>@endif
+                        </div>
+                        <div class="flex gap-3">
+                            @if(!in_array($package, $managed, true))
+                                <form method="POST" action="{{ route('site-packages.store',$site) }}">@csrf<input type="hidden" name="package" value="{{ $package }}"><button class="text-xs font-medium text-cyan-600 dark:text-cyan-300" @disabled($site->status !== 'active')>{{ $version ? 'Keep on every deploy' : 'Install' }}</button></form>
+                            @else
+                                <form method="POST" action="{{ route('site-packages.destroy',$site) }}">@csrf @method('DELETE')<input type="hidden" name="package" value="{{ $package }}"><button class="text-xs font-medium text-rose-600 dark:text-rose-300">Stop keeping</button></form>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            @if(isset($installed['laravel/horizon']))
+                <form method="POST" action="{{ route('site-horizon-admins.update',$site) }}" class="mt-5 border-t border-slate-100 pt-5 dark:border-white/5">@csrf
+                    <label class="block text-sm heading">Horizon dashboard access<span class="mt-1 block text-xs font-normal muted">Emails of your app's own users allowed to view <code>/horizon</code>. Comma or newline separated. Takes effect immediately — no redeploy needed.</span></label>
+                    <textarea class="field mt-2 min-h-20 font-mono text-xs" name="emails" placeholder="admin@example.com">{{ implode("\n", $site->horizon_admin_emails ?? []) }}</textarea>
+                    <button class="button-secondary mt-3 text-xs">Save access list</button>
+                </form>
+            @endif
+        </section>
+        <section class="panel">
+            <h2 class="font-semibold heading">Supervisor processes</h2>
+            <p class="mt-1 text-sm muted">Runs <code>php artisan horizon</code> or <code>reverb:start</code> under Supervisor once the package above is installed.</p>
+            <div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">
+                @forelse($site->queueWorkers as $worker)
+                    <div class="py-3 text-sm">
+                        <div class="flex items-center justify-between gap-3">
+                            <span class="heading">{{ $worker->name }} · <span class="capitalize">{{ $worker->type }}</span>{{ $worker->type === 'queue' ? ' · '.$worker->processes.' processes · '.$worker->queue : '' }}{{ $worker->type === 'reverb' ? ' · ws://'.$site->server->public_ip.':'.$worker->port : '' }}</span>
+                            <form method="POST" action="{{ route('workers.status',$worker) }}">@csrf<button class="text-xs font-medium text-cyan-600 dark:text-cyan-300">Check status</button></form>
+                        </div>
+                        @if($worker->runtime_status)<p class="mt-1 text-xs {{ in_array($worker->runtime_status,['RUNNING','STARTING'],true) ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300' }}">Supervisor: {{ $worker->runtime_status }} · checked {{ $worker->runtime_checked_at?->diffForHumans() }}</p>@endif
+                    </div>
+                @empty
+                    <p class="py-5 text-center text-sm muted">No workers configured yet. Add one from this server's <a class="text-cyan-600 dark:text-cyan-300" href="{{ route('servers.manage',$site->server) }}">management page</a>.</p>
+                @endforelse
+            </div>
+        </section>
+    </div>
+    <div x-cloak x-show="tab==='webhook'" class="mt-6"><div class="panel"><h2 class="font-semibold heading">Automatic deployment webhook</h2><p class="mt-2 text-sm muted">Configure GitHub or Bitbucket with the endpoint and HMAC secret. GitLab may send the secret as <code>X-Gitlab-Token</code>.</p><label class="mt-5 block text-sm heading">Endpoint<code class="mt-2 block break-all rounded-xl bg-slate-100 p-3 text-cyan-700 dark:bg-black/30 dark:text-cyan-200">{{ route('webhooks.site',$site) }}</code></label><label class="mt-4 block text-sm heading">Secret<code class="mt-2 block break-all rounded-xl bg-slate-100 p-3 text-amber-700 dark:bg-black/30 dark:text-amber-200">{{ $site->webhook_secret }}</code></label><p class="mt-4 text-xs muted">Only pushes to <b>{{ $site->branch }}</b> are deployed. Duplicate commit hashes are ignored.</p></div></div>
+</div>
+@endsection
