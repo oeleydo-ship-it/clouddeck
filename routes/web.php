@@ -42,6 +42,7 @@ use App\Http\Controllers\TeamController;
 use App\Http\Controllers\TerminalController;
 use App\Http\Controllers\TwoFactorChallengeController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\WordPressController;
 use App\Livewire\ServerProvisionWizard;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -175,6 +176,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
     Route::post('/sites/{site}/queue-health', [SiteController::class, 'queueHealth'])->name('sites.queue-health');
     Route::post('/sites/{site}/wordpress-status', [SiteController::class, 'wordpressStatus'])->name('sites.wordpress-status');
+    Route::post('/sites/{site}/wordpress/manage', [WordPressController::class, 'manage'])->name('wordpress.manage');
+    Route::post('/sites/{site}/wordpress/backups', [WordPressController::class, 'backup'])->name('wordpress.backup');
+    Route::post('/site-backups/{siteBackup}/restore', [WordPressController::class, 'restore'])->name('wordpress.restore');
     Route::get('/deployments/{deployment}', [DeploymentController::class, 'show'])->name('deployments.show');
 
     Route::prefix('admin')->middleware('admin')->name('admin.')->group(function () {

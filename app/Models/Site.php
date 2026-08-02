@@ -89,6 +89,11 @@ class Site extends Model
         return $this->hasMany(SslCertificate::class);
     }
 
+    public function backups()
+    {
+        return $this->hasMany(SiteBackup::class)->latest();
+    }
+
     public function queueWorkers()
     {
         return $this->hasMany(QueueWorker::class);
