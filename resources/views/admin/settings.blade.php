@@ -21,6 +21,8 @@
                 <label class="mt-4 flex gap-2 text-sm heading"><input type="checkbox" name="registration_enabled" value="1" @checked($settings->get('registration_enabled')?->value !== '0')>Public registration enabled</label>
                 <label class="mt-3 flex gap-2 text-sm heading"><input type="checkbox" name="email_verification_required" value="1" @checked(($settings->get('email_verification_required')?->value ?? (config('clouddeck.email_verification_required') ? '1' : '0')) === '1')>Require email verification</label>
                 <p class="mt-2 text-xs muted">Verification needs working mail below. With it off, new registrations are marked verified immediately and existing unverified accounts are let through.</p>
+                <label class="mt-4 flex gap-2 text-sm heading"><input type="checkbox" name="public_site_enabled" value="1" @checked(($settings->get('public_site_enabled')?->value ?? '1') === '1')>Public marketing pages enabled</label>
+                <p class="mt-2 text-xs muted">Serves the home, about, features, use cases, blog, and contact pages. Turn this off when the install is only the application — on a subdomain, say — and every visitor lands on the sign-in form instead. Blog posts stay editable here either way.</p>
                 <button class="button-primary mt-5">Save general settings</button>
             </form>
         </section>

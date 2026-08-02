@@ -3,8 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Notifications\ResetPasswordNotification;
 use App\Services\TwoFactorService;
-use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -53,7 +53,7 @@ class AccountSecurityTest extends TestCase
         Notification::fake();
         $user = User::factory()->create();
         $this->post('/forgot-password', ['email' => $user->email])->assertSessionHas('status');
-        Notification::assertSentTo($user, ResetPassword::class);
+        Notification::assertSentTo($user, ResetPasswordNotification::class);
     }
 
     public function test_changing_email_revokes_verification_and_sends_a_new_link(): void

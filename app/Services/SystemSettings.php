@@ -47,6 +47,25 @@ final class SystemSettings
     }
 
     /**
+     * Whether the marketing pages are served at all. An instance running on a subdomain is
+     * often only ever the application, and there a home page is a wrong front door rather
+     * than a feature.
+     */
+    public function publicSiteEnabled(): bool
+    {
+        return $this->boolean('public_site_enabled', true);
+    }
+
+    /**
+     * Where someone who is not signed in should land. With the marketing pages turned off
+     * the site starts at the sign-in form.
+     */
+    public function landingUrl(): string
+    {
+        return $this->publicSiteEnabled() ? route('home') : route('login');
+    }
+
+    /**
      * What the header renders. Falls back to the built-in name so an instance that has
      * never opened the settings page still looks like a product rather than a blank bar.
      */

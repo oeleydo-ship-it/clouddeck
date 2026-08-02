@@ -43,6 +43,7 @@ use App\Http\Controllers\TerminalController;
 use App\Http\Controllers\TwoFactorChallengeController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\WordPressController;
+use App\Http\Middleware\EnsurePublicSiteEnabled;
 use App\Livewire\ServerProvisionWizard;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -50,14 +51,18 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/install', [InstallController::class, 'show'])->name('install');
 Route::post('/install', [InstallController::class, 'store'])->middleware('throttle:10,1');
-Route::get('/', [PageController::class, 'home'])->name('home');
-Route::get('/about', [PageController::class, 'about'])->name('about');
-Route::get('/features', [PageController::class, 'features'])->name('features');
-Route::get('/use-cases', [PageController::class, 'useCases'])->name('use-cases');
-Route::get('/contact', [PageController::class, 'contact'])->name('contact');
-Route::post('/contact', [PageController::class, 'submitContact'])->middleware('throttle:5,1')->name('contact.submit');
-Route::get('/blog', [BlogController::class, 'index'])->name('blog');
-Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+// Every public-facing page sits behind one switch, so turning the marketing site off in
+// settings cannot leave one of them reachable by its own URL.
+Route::middleware(EnsurePublicSiteEnabled::class)->group(function () {
+    Route::get('/', [PageController::class, 'home'])->name('home');
+    Route::get('/about', [PageController::class, 'about'])->name('about');
+    Route::get('/features', [PageController::class, 'features'])->name('features');
+    Route::get('/use-cases', [PageController::class, 'useCases'])->name('use-cases');
+    Route::get('/contact', [PageController::class, 'contact'])->name('contact');
+    Route::post('/contact', [PageController::class, 'submitContact'])->middleware('throttle:5,1')->name('contact.submit');
+    Route::get('/blog', [BlogController::class, 'index'])->name('blog');
+    Route::get('/blog/{slug}', [BlogController::class, 'show'])->name('blog.show');
+});
 Route::post('/webhooks/sites/{site}', WebhookController::class)->middleware('throttle:60,1')->name('webhooks.site');
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'loginForm'])->name('login');
