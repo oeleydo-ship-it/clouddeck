@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ServerStatus;
 use App\Jobs\Sites\BackupWordPressSiteJob;
+use App\Jobs\Sites\InstallWordPressCoreJob;
 use App\Jobs\Sites\RefreshWordPressInventoryJob;
 use App\Jobs\Sites\RestoreWordPressSiteJob;
 use App\Jobs\Sites\RunWordPressCommandJob;
@@ -260,6 +261,75 @@ class WordPressManagementTest extends TestCase
             ->assertSee('Astra')
             ->assertSee('Brainstorm Force')
             ->assertSee('1,000,000+ installs');
+    }
+
+    public function test_wordpress_setup_is_finished_without_the_browser_wizard(): void
+    {
+        Queue::fake();
+        [$user, $site] = $this->installedSite(installed: false);
+        $site->update(['last_deployed_at' => now()]);
+
+        $response = $this->actingAs($user)->post(route('wordpress.install', $site), [
+            'title' => 'My Blog',
+            'admin_user' => 'orlando',
+            'admin_email' => 'owner@example.com',
+        ])->assertSessionHas('status');
+
+        Queue::assertPushedOn('operations', InstallWordPressCoreJob::class, function (InstallWordPressCoreJob $job) {
+            $this->assertSame('My Blog', $job->title);
+            $this->assertSame('orlando', $job->adminUser);
+            // Generated rather than asked for, so it never travels through a form.
+            $this->assertGreaterThanOrEqual(20, strlen($job->adminPassword));
+
+            return true;
+        });
+
+        // Shown once, on the page, and kept nowhere else.
+        $password = $response->getSession()->get('wordpress_admin_password');
+        $this->assertNotEmpty($password);
+        $this->assertStringNotContainsString($password, json_encode(\DB::table('audit_logs')->get()));
+        $this->assertStringNotContainsString($password, json_encode(\DB::table('terminal_commands')->get()));
+        $this->assertStringNotContainsString($password, json_encode(\DB::table('environment_variables')->get()));
+    }
+
+    public function test_a_username_that_could_reach_the_shell_is_refused(): void
+    {
+        Queue::fake();
+        [$user, $site] = $this->installedSite(installed: false);
+        $site->update(['last_deployed_at' => now()]);
+
+        foreach (['ad min', 'admin;rm -rf /', '$(whoami)', 'ab'] as $username) {
+            $this->actingAs($user)->post(route('wordpress.install', $site), [
+                'title' => 'My Blog', 'admin_user' => $username, 'admin_email' => 'owner@example.com',
+            ])->assertSessionHasErrors('admin_user');
+        }
+
+        Queue::assertNotPushed(InstallWordPressCoreJob::class);
+    }
+
+    public function test_the_install_is_refused_before_a_deployment_and_after_one_that_worked(): void
+    {
+        Queue::fake();
+        [$user, $site] = $this->installedSite(installed: false);
+        $payload = ['title' => 'My Blog', 'admin_user' => 'orlando', 'admin_email' => 'owner@example.com'];
+
+        // No files on the server yet.
+        $this->actingAs($user)->post(route('wordpress.install', $site), $payload)->assertStatus(422);
+
+        // And running it over a finished install would wipe a live site.
+        $site->update(['last_deployed_at' => now(), 'wordpress_installed_at' => now()]);
+        $this->actingAs($user)->post(route('wordpress.install', $site), $payload)->assertStatus(422);
+
+        Queue::assertNotPushed(InstallWordPressCoreJob::class);
+    }
+
+    public function test_the_install_script_leaves_a_site_that_is_already_installed_alone(): void
+    {
+        // Reinstalling over live content would drop its database tables.
+        $script = file_get_contents(resource_path('scripts/wp-core-install.sh'));
+        $this->assertStringContainsString('core is-installed', $script);
+        $this->assertMatchesRegularExpression('/is-installed.*
+.*exit 0/s', $script);
     }
 
     public function test_the_first_visit_reads_the_list_instead_of_waiting_to_be_asked(): void
