@@ -115,7 +115,24 @@ ln -sfn "${RELEASE_PATH}" "${ROOT}/current.next"
 mv -Tf "${ROOT}/current.next" "${ROOT}/current"
 
 echo "[9/9] Reloading services and pruning old releases"
+# A long-running process keeps the code it started with, so switching the current symlink
+# leaves every worker serving the release before this one until it is recycled. Left alone
+# they drift indefinitely: a job class added in this release does not exist as far as the
+# running worker is concerned, and its jobs fail to unserialize with no usable error.
+# queue:restart covers plain queue workers. Horizon ignores that signal and needs its own.
+# Both finish the job in hand before exiting, which matters when CloudDeck deploys itself.
 php artisan queue:restart || true
+if [ -f "${RELEASE_PATH}/config/horizon.php" ]; then
+    php artisan horizon:terminate || true
+fi
+# Reverb never reloads on its own either, and recycling it only drops WebSocket connections,
+# which reconnect on their own.
+for conf in /etc/supervisor/conf.d/clouddeck-*.conf; do
+    [ -f "${conf}" ] || continue
+    if grep -q "/var/www/${DOMAIN}/current/artisan reverb:start" "${conf}"; then
+        supervisorctl restart "$(basename "${conf}" .conf):*" || true
+    fi
+done
 systemctl reload "php${PHP_VERSION}-fpm"
 systemctl reload nginx
 cd "${ROOT}/releases"
