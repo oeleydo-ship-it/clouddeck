@@ -166,7 +166,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/deployments/{deployment}', [DeploymentController::class, 'show'])->name('deployments.show');
 
     Route::prefix('admin')->middleware('admin')->name('admin.')->group(function () {
-        Route::get('/', AdminDashboardController::class)->name('dashboard');
+        Route::get('/', [AdminDashboardController::class, 'overview'])->name('dashboard');
+        Route::get('/users', [AdminDashboardController::class, 'users'])->name('users');
+        Route::get('/plans', [AdminDashboardController::class, 'plans'])->name('plans');
+        Route::get('/feature-flags', [AdminDashboardController::class, 'features'])->name('features');
+        Route::get('/billing-review', [AdminDashboardController::class, 'billing'])->name('billing');
+        Route::get('/payments', [AdminDashboardController::class, 'payments'])->name('payments');
+        Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');
+        Route::get('/audit', [AdminDashboardController::class, 'audit'])->name('audit');
         Route::patch('/users/{user}/suspension', [AdminUserController::class, 'suspend'])->name('users.suspend');
         Route::patch('/users/{user}/role', [AdminUserController::class, 'role'])->name('users.role');
         Route::post('/users/{user}/subscription', [AdminUserController::class, 'subscription'])->name('users.subscription');

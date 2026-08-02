@@ -13,12 +13,65 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+/**
+ * Each administrative section is its own page rather than a tab in one document. The tabbed
+ * version loaded every customer, plan, flag, billing request, and audit row on every visit,
+ * and a refresh always dropped the operator back on the first tab.
+ */
 class AdminDashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function overview(): View
     {
-        $users = User::with('currentSubscription.plan')->when($request->query('search'), fn ($query, $search) => $query->where(fn ($nested) => $nested->where('name', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))->latest()->paginate(20)->withQueryString();
+        return view('admin.overview', [
+            'stats' => [
+                'users' => User::count(),
+                'suspended' => User::whereNotNull('suspended_at')->count(),
+                'subscriptions' => Subscription::whereIn('status', ['active', 'trialing'])->count(),
+                'billing_requests' => BillingRequest::where('status', 'pending')->count(),
+            ],
+            'auditLogs' => AuditLog::with('actor')->latest()->limit(10)->get(),
+        ]);
+    }
 
-        return view('admin.dashboard', ['stats' => ['users' => User::count(), 'suspended' => User::whereNotNull('suspended_at')->count(), 'subscriptions' => Subscription::whereIn('status', ['active', 'trialing'])->count(), 'billing_requests' => BillingRequest::where('status', 'pending')->count()], 'users' => $users, 'plans' => Plan::withCount('subscriptions')->orderBy('sort_order')->get(), 'flags' => FeatureFlag::orderBy('key')->get(), 'billingRequests' => BillingRequest::with(['user', 'plan'])->where('status', 'pending')->latest()->get(), 'auditLogs' => AuditLog::with('actor')->latest()->limit(50)->get(), 'settings' => SystemSetting::all()->keyBy('key')]);
+    public function users(Request $request): View
+    {
+        return view('admin.users', [
+            'users' => User::with('currentSubscription.plan')
+                ->when($request->query('search'), fn ($query, $search) => $query->where(fn ($nested) => $nested->where('name', 'like', '%'.$search.'%')->orWhere('email', 'like', '%'.$search.'%')))
+                ->latest()
+                ->paginate(20)
+                ->withQueryString(),
+            'plans' => Plan::orderBy('sort_order')->get(),
+        ]);
+    }
+
+    public function plans(): View
+    {
+        return view('admin.plans', ['plans' => Plan::withCount('subscriptions')->orderBy('sort_order')->get()]);
+    }
+
+    public function features(): View
+    {
+        return view('admin.features', ['flags' => FeatureFlag::orderBy('key')->get()]);
+    }
+
+    public function billing(): View
+    {
+        return view('admin.billing', ['billingRequests' => BillingRequest::with(['user', 'plan'])->where('status', 'pending')->latest()->get()]);
+    }
+
+    public function payments(): View
+    {
+        return view('admin.payments', ['plans' => Plan::orderBy('sort_order')->get()]);
+    }
+
+    public function settings(): View
+    {
+        return view('admin.settings', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function audit(): View
+    {
+        return view('admin.audit', ['auditLogs' => AuditLog::with('actor')->latest()->paginate(50)]);
     }
 }
