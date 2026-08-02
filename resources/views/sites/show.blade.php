@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-7xl px-5 py-10" x-data="{tab:'overview'}">
+<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'overview', keys: ['overview','environment','deploy','ssl','cron','queue','webhook'], init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <a class="text-sm font-medium text-cyan-600 dark:text-cyan-300" href="{{ route('sites.index') }}">← Sites</a>

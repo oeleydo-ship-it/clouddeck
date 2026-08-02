@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-7xl px-5 py-10" x-data="{tab:'users'}">
+<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'users', keys: ['users','plans','features','billing','payments','settings','audit'], init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
     <div><p class="text-sm text-amber-600 dark:text-amber-300">Super administrator</p><h1 class="mt-1 text-3xl font-semibold">SaaS control center</h1><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Customer access, plans, entitlements, billing review, and immutable audit history.</p></div>
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 dark:border-rose-400/20 bg-rose-50 dark:bg-rose-400/10 p-4 text-sm text-rose-700 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">@foreach([['Users',$stats['users']],['Suspended',$stats['suspended']],['Active subscriptions',$stats['subscriptions']],['Billing requests',$stats['billing_requests']]] as [$label,$value])<div class="panel p-5"><p class="text-sm text-slate-500 dark:text-slate-400">{{ $label }}</p><p class="mt-2 text-3xl font-semibold">{{ $value }}</p></div>@endforeach</div>
