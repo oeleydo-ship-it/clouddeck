@@ -1,7 +1,7 @@
 <!doctype html><html lang="en" x-data="{dark: localStorage.theme === 'dark'}" x-init="$watch('dark', v => localStorage.theme = v ? 'dark' : 'light')" :class="dark && 'dark'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}"><title>{{ $title ?? 'CloudDeck' }}</title>@vite(['resources/css/app.css','resources/js/app.js']) @livewireStyles</head>
 <body class="min-h-screen bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
 <div class="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.08),transparent_35%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,.12),transparent_35%)]"></div>
-<header class="relative border-b border-slate-200 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-slate-950/80">
+<header class="relative z-50 border-b border-slate-200 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-slate-950/80">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
         @php $branding = $branding ?? ['name' => config('app.name', 'CloudDeck'), 'logo_url' => null]; @endphp
         <a href="/" class="flex items-center gap-3 font-semibold text-slate-900 dark:text-white">

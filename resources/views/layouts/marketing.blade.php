@@ -12,7 +12,9 @@
     $platform = app(\App\Services\SystemSettings::class)->branding()['name'];
 @endphp
 
-<div class="border-b border-slate-200 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-slate-950/60">
+{{-- Below the header: backdrop-blur creates a stacking context, so without an explicit
+     level this bar paints over the account menu and swallows its clicks. --}}
+<div class="relative z-10 border-b border-slate-200 bg-white/70 backdrop-blur dark:border-white/10 dark:bg-slate-950/60">
     <nav class="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-5 py-3 text-sm">
         @foreach($nav as $item)
             @php $current = request()->routeIs($item['route']) || ($item['route'] === 'blog' && request()->routeIs('blog.show')); @endphp
