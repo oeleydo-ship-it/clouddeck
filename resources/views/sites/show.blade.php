@@ -10,8 +10,19 @@
             </div>
             <p class="mt-2 text-sm muted">{{ $site->server->name }} · PHP {{ $site->php_version }}</p>
         </div>
-        <div class="flex gap-3"><button @click="tab='deploy'" class="button-secondary">Edit site</button><form method="POST" action="{{ route('sites.deploy',$site) }}">@csrf<button class="button-primary" @disabled($site->status !== 'active')>Deploy now</button></form></div>
+        @php $hasDatabase = $site->environmentVariables->contains(fn ($variable) => $variable->key === 'DB_CONNECTION'); @endphp
+        <div class="flex gap-3"><button @click="tab='deploy'" class="button-secondary">Edit site</button><form method="POST" action="{{ route('sites.deploy',$site) }}">@csrf<button class="button-primary" @disabled($site->status !== 'active' || ! $hasDatabase)>Deploy now</button></form></div>
     </div>
+    @unless($hasDatabase)
+        <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+            <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Create a database before deploying</p>
+            <p class="mt-1 text-sm text-amber-700 dark:text-amber-200/80">
+                This site has no <code>DB_CONNECTION</code> in its environment, so Laravel would fall back to SQLite and the deployment would fail during migrations — the provisioned PHP only carries the MySQL and PostgreSQL drivers.
+                Create one on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}">{{ $site->server->name }}</a> and attach it to this site; CloudDeck writes the <code>DB_*</code> connection details into the environment for you.
+                If this application genuinely has no database, set <code>DB_CONNECTION</code> yourself on the Environment tab.
+            </p>
+        </div>
+    @endunless
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     <div class="mt-5"><a href="{{ route('sites.remote',$site) }}" class="button-secondary inline-block">Open PHP, Nginx, files, and console</a></div>
     @can('delete', $site)
