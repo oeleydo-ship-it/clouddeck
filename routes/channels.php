@@ -2,6 +2,7 @@
 
 use App\Models\Deployment;
 use App\Models\Server;
+use App\Models\Site;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Gate;
 
@@ -13,6 +14,12 @@ Broadcast::channel('servers.{serverId}', function ($user, string $serverId) {
     $server = Server::find($serverId);
 
     return $server && Gate::forUser($user)->allows('view', $server);
+});
+
+Broadcast::channel('sites.{siteId}', function ($user, string $siteId) {
+    $site = Site::find($siteId);
+
+    return $site && Gate::forUser($user)->allows('view', $site);
 });
 
 Broadcast::channel('deployments.{deploymentId}', function ($user, string $deploymentId) {

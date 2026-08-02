@@ -5,8 +5,7 @@
         <div>
             <a class="text-sm font-medium text-cyan-600 dark:text-cyan-300" href="{{ route('sites.index') }}">← Sites</a>
             <div class="mt-2 flex flex-wrap items-center gap-3"><h1 class="text-3xl font-semibold heading">{{ $site->domain }}</h1>
-                @php $tint = ['active' => 'emerald', 'failed' => 'rose'][$site->status] ?? 'amber'; @endphp
-                <span class="badge {{ $tint === 'emerald' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300' : ($tint === 'rose' ? 'bg-rose-50 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300') }} capitalize"><span class="badge-dot bg-{{ $tint }}-500"></span>{{ $site->status }}</span>
+                @livewire('site-status-badge', ['site' => $site])
                 @php
                     // http until a certificate is actually active: linking to https before then
                     // lands on a browser warning rather than the site.

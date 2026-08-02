@@ -2,15 +2,38 @@
 
 namespace App\Models;
 
+use App\Events\SiteStatusUpdated;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Throwable;
 
 class Site extends Model
 {
     use HasUuid, SoftDeletes;
 
     protected $guarded = [];
+
+    /**
+     * Announced from the model rather than from the jobs that move a site between
+     * configuring, active, and failed, so every writer is covered — including any added
+     * later, which would otherwise leave the page silently stale again.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (Site $site): void {
+            if (! $site->wasChanged('status')) {
+                return;
+            }
+
+            try {
+                SiteStatusUpdated::dispatch($site);
+            } catch (Throwable $e) {
+                // Configuring a site must not fail because the WebSocket server is down.
+                report($e);
+            }
+        });
+    }
 
     protected function casts(): array
     {
