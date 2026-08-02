@@ -21,7 +21,7 @@ class CustomServerTest extends TestCase
     private function user(): User
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $plan = Plan::create(['name' => 'Unlimited', 'slug' => 'unlimited', 'monthly_price' => 0, 'yearly_price' => 0, 'currency' => 'USD', 'limits' => ['servers' => -1, 'sites' => -1, 'databases' => -1, 'api_tokens' => -1, 'teams' => -1, 'team_members' => -1], 'features' => [], 'active' => true, 'public' => true]);
+        $plan = Plan::firstOrCreate(['slug' => 'unlimited'], ['name' => 'Unlimited', 'monthly_price' => 0, 'yearly_price' => 0, 'currency' => 'USD', 'limits' => ['servers' => -1, 'sites' => -1, 'databases' => -1, 'api_tokens' => -1, 'teams' => -1, 'team_members' => -1], 'features' => [], 'active' => true, 'public' => true]);
         Subscription::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'provider' => 'system', 'status' => 'active']);
 
         return $user;
@@ -127,15 +127,64 @@ class CustomServerTest extends TestCase
         (new ConnectCustomServerJob($server->id))->handle(app(SshClient::class));
     }
 
-    public function test_a_provider_clouddeck_cannot_drive_is_stored_without_pretending_to_validate(): void
+    public function test_an_ip_provider_asks_for_an_address_and_hands_over_to_the_ssh_step(): void
     {
         $user = $this->user();
 
-        $this->actingAs($user)->post('/cloud-accounts', ['name' => 'Hetzner main', 'provider' => 'hetzner', 'token' => str_repeat('h', 32)])
-            ->assertSessionHas('status')
-            ->assertSessionHasNoErrors();
+        $response = $this->actingAs($user)->post('/cloud-accounts', [
+            'name' => 'Hetzner main', 'provider' => 'hetzner', 'public_ip' => '203.0.113.20', 'ssh_port' => 2222,
+        ])->assertSessionHasNoErrors();
 
-        $this->assertDatabaseHas('cloud_accounts', ['provider' => 'hetzner', 'name' => 'Hetzner main']);
+        $account = $user->cloudAccounts()->sole();
+        $response->assertRedirect(route('servers.custom', [
+            'cloud_account' => $account->id, 'public_ip' => '203.0.113.20', 'ssh_port' => 2222,
+        ]));
+        // No token was asked for, so none should have been invented.
+        $this->assertSame([], $account->credentials);
+    }
+
+    public function test_an_ip_provider_will_not_accept_a_missing_or_malformed_address(): void
+    {
+        $this->actingAs($this->user())->post('/cloud-accounts', ['name' => 'Hetzner', 'provider' => 'hetzner'])
+            ->assertSessionHasErrors('public_ip');
+
+        $this->actingAs($this->user())->post('/cloud-accounts', ['name' => 'Hetzner', 'provider' => 'hetzner', 'public_ip' => 'not-an-ip', 'ssh_port' => 22])
+            ->assertSessionHasErrors('public_ip');
+    }
+
+    public function test_an_api_provider_still_demands_a_token_rather_than_an_address(): void
+    {
+        $this->actingAs($this->user())->post('/cloud-accounts', ['name' => 'DO', 'provider' => 'digitalocean', 'public_ip' => '203.0.113.30'])
+            ->assertSessionHasErrors('token');
+    }
+
+    public function test_the_ssh_step_carries_the_address_over_and_files_the_server_under_the_account(): void
+    {
+        Queue::fake();
+        $user = $this->user();
+        $this->actingAs($user)->post('/cloud-accounts', ['name' => 'Hetzner main', 'provider' => 'hetzner', 'public_ip' => '203.0.113.20', 'ssh_port' => 2222]);
+        $account = $user->cloudAccounts()->sole();
+
+        $this->actingAs($user)->get(route('servers.custom', ['cloud_account' => $account->id, 'public_ip' => '203.0.113.20', 'ssh_port' => 2222]))
+            ->assertOk()
+            ->assertSee('203.0.113.20', false)
+            ->assertSee('Hetzner main');
+
+        $this->actingAs($user)->post('/servers/custom', $this->payload([
+            'public_ip' => '203.0.113.20', 'ssh_port' => 2222, 'cloud_account_id' => $account->id,
+        ]))->assertRedirect();
+
+        $this->assertSame($account->id, Server::sole()->cloud_account_id);
+    }
+
+    public function test_a_server_cannot_be_filed_under_someone_elses_provider_connection(): void
+    {
+        $stranger = $this->user();
+        $this->actingAs($stranger)->post('/cloud-accounts', ['name' => 'Theirs', 'provider' => 'hetzner', 'public_ip' => '203.0.113.40', 'ssh_port' => 22]);
+        $theirAccount = $stranger->cloudAccounts()->sole();
+
+        $this->actingAs($this->user())->post('/servers/custom', $this->payload(['cloud_account_id' => $theirAccount->id]))
+            ->assertSessionHasErrors('cloud_account_id');
     }
 
     public function test_an_unknown_provider_is_still_refused(): void

@@ -7,19 +7,42 @@
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     <div class="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
         <form method="POST" action="/cloud-accounts" class="panel h-fit">@csrf
-            <h2 class="font-semibold heading">Connect a provider</h2>
-            @php $providers = config('clouddeck.providers'); @endphp
-            <label class="mt-5 block text-sm heading">Provider
-                <select class="field" name="provider" x-data x-ref="provider">
-                    @foreach($providers as $key => $provider)
-                        <option value="{{ $key }}" @selected(old('provider', 'digitalocean') === $key)>{{ $provider['label'] }}{{ $provider['api'] ? '' : ' — connect by IP' }}</option>
-                    @endforeach
-                </select>
-            </label>
-            <label class="mt-4 block text-sm heading">Connection name<input class="field" name="name" value="{{ old('name') }}" placeholder="Production"></label>
-            <label class="mt-4 block text-sm heading">API token<input class="field" type="password" name="token" autocomplete="off"></label>
-            <p class="mt-2 text-xs muted">DigitalOcean tokens are validated and used to create and destroy servers; they need read and write access to droplets and SSH keys. Other providers are stored for your reference — attach their servers with <a class="text-cyan-600 dark:text-cyan-300" href="{{ route('servers.custom') }}">Add existing server</a>.</p>
-            <button class="button-primary mt-5 w-full">Connect</button>
+            @php
+                $providers = config('clouddeck.providers');
+                $apiFlags = collect($providers)->map(fn ($provider) => (bool) $provider['api']);
+            @endphp
+            <div x-data="{ provider: @js(old('provider', 'digitalocean')), api: @js($apiFlags) }">
+                <h2 class="font-semibold heading">Connect a provider</h2>
+                <label class="mt-5 block text-sm heading">Provider
+                    <select class="field" name="provider" x-model="provider">
+                        @foreach($providers as $key => $provider)
+                            <option value="{{ $key }}">{{ $provider['label'] }}{{ $provider['api'] ? '' : ' — connect by IP' }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <label class="mt-4 block text-sm heading">Connection name<input class="field" name="name" value="{{ old('name') }}" placeholder="Production"></label>
+
+                {{-- Only what the chosen provider actually needs: a token CloudDeck will
+                     never call is not worth asking for, and an address is. --}}
+                <template x-if="api[provider]">
+                    <div>
+                        <label class="mt-4 block text-sm heading">API token<input class="field" type="password" name="token" autocomplete="off"></label>
+                        <p class="mt-2 text-xs muted">Validated now, then used to create and destroy servers. Needs read and write access to droplets and SSH keys.</p>
+                    </div>
+                </template>
+
+                <template x-if="! api[provider]">
+                    <div>
+                        <div class="mt-4 grid gap-4 sm:grid-cols-[1fr_110px]">
+                            <label class="text-sm heading">Server IP address<input class="field font-mono text-sm" name="public_ip" value="{{ old('public_ip') }}" placeholder="203.0.113.10"></label>
+                            <label class="text-sm heading">SSH port<input class="field" type="number" name="ssh_port" value="{{ old('ssh_port', 22) }}" min="1" max="65535"></label>
+                        </div>
+                        <p class="mt-2 text-xs muted">CloudDeck cannot create servers at <span x-text="provider"></span>, so it connects to one you already run. Next you will authorise its SSH key on the server as root.</p>
+                    </div>
+                </template>
+
+                <button class="button-primary mt-5 w-full" x-text="api[provider] ? 'Validate and connect' : 'Continue to SSH setup'">Connect</button>
+            </div>
         </form>
         <div class="space-y-3">
             @forelse($accounts as $account)

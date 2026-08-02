@@ -25,7 +25,12 @@ class CustomServerController extends Controller
 {
     public function create(Request $request, SshKeyGenerator $generator): View
     {
-        return view('servers.custom', ['key' => $this->managedKey($request, $generator)]);
+        return view('servers.custom', [
+            'key' => $this->managedKey($request, $generator),
+            // Carried over when the operator arrived from connecting a provider CloudDeck
+            // cannot drive, so they do not retype the address they just gave us.
+            'account' => $request->user()->cloudAccounts()->find($request->query('cloud_account')),
+        ]);
     }
 
     public function store(Request $request, QuotaManager $quotas, SshKeyGenerator $generator, AuditLogger $audit): RedirectResponse
@@ -39,10 +44,13 @@ class CustomServerController extends Controller
             'public_ip' => ['required', 'ip', Rule::unique('servers', 'public_ip')->whereNull('deleted_at')],
             'ssh_port' => ['required', 'integer', 'between:1,65535'],
             'image' => ['required', Rule::in(['ubuntu-24-04-x64', 'ubuntu-22-04-x64'])],
+            // Scoped to the operator's own accounts so a guessed id cannot file a server
+            // under somebody else's provider connection.
+            'cloud_account_id' => ['nullable', 'uuid', Rule::exists('cloud_accounts', 'id')->where('user_id', $request->user()->id)],
         ]);
 
         $server = $request->user()->servers()->create([
-            'cloud_account_id' => null,
+            'cloud_account_id' => $data['cloud_account_id'] ?? null,
             'ssh_key_id' => $this->managedKey($request, $generator)->id,
             'name' => $data['name'],
             'hostname' => Str::slug($data['name']) ?: 'server',

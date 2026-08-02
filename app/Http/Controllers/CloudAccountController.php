@@ -21,22 +21,40 @@ class CloudAccountController extends Controller
     public function store(Request $request, CloudProviderManager $providers): RedirectResponse
     {
         $providerKeys = array_keys(config('clouddeck.providers'));
-        $data = $request->validate([
+        $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'provider' => ['required', Rule::in($providerKeys)],
-            'token' => ['required', 'string', 'min:20', 'max:255'],
         ]);
-        $account = new CloudAccount(['name' => $data['name'], 'provider' => $data['provider'], 'credentials' => ['token' => $data['token']]]);
+        $drivesApi = (bool) config('clouddeck.providers.'.$request->input('provider').'.api');
+
+        // Each provider is asked only for what it actually needs. CloudDeck drives some
+        // through an API, where a token can be proved here and then used to create and
+        // destroy servers. For the rest it connects to a machine the operator already
+        // runs, so an address is the useful thing and a token would be decoration.
+        $data = $request->validate($drivesApi
+            ? ['token' => ['required', 'string', 'min:20', 'max:255']]
+            : [
+                'public_ip' => ['required', 'ip', Rule::unique('servers', 'public_ip')->whereNull('deleted_at')],
+                'ssh_port' => ['required', 'integer', 'between:1,65535'],
+            ]);
+
+        $account = new CloudAccount([
+            'name' => $request->input('name'),
+            'provider' => $request->input('provider'),
+            'credentials' => $drivesApi ? ['token' => $data['token']] : [],
+        ]);
         $account->user()->associate($request->user());
 
-        // Only providers CloudDeck drives through an API can have their credentials proved
-        // here. For the rest the token is stored for the operator's own reference, and
-        // their servers are attached by IP with the custom-server flow — so validating
-        // against an API we do not call would be theatre.
-        if (! config('clouddeck.providers.'.$data['provider'].'.api')) {
+        if (! $drivesApi) {
             $account->save();
 
-            return back()->with('status', config('clouddeck.providers.'.$data['provider'].'.label').' account saved. Attach its servers with "Add existing server".');
+            // Handed to the SSH step with the address already filled in, because the key
+            // still has to be authorised on the server before anything can reach it.
+            return redirect()->route('servers.custom', [
+                'cloud_account' => $account->id,
+                'public_ip' => $data['public_ip'],
+                'ssh_port' => $data['ssh_port'],
+            ]);
         }
 
         try {
