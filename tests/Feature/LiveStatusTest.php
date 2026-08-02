@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DeploymentStatus;
 use App\Enums\ServerStatus;
 use App\Events\ServerProvisioningUpdated;
 use App\Jobs\Servers\InteractsWithServerProgress;
+use App\Livewire\DeploymentLogStream;
 use App\Livewire\ServerStatusList;
 use App\Models\CloudAccount;
 use App\Models\Server;
@@ -131,6 +133,27 @@ class LiveStatusTest extends TestCase
         $this->actingAs($user)->get("/sites/{$site->id}")
             ->assertOk()
             ->assertSee('href="https://app.example.com"', false);
+    }
+
+    public function test_the_deployment_log_keeps_itself_current_while_work_is_outstanding(): void
+    {
+        $user = User::factory()->create();
+        $server = $this->server($user, ['status' => ServerStatus::Ready, 'progress' => 100]);
+        $site = Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'app.example.com', 'php_version' => '8.4', 'repository_url' => 'https://github.com/acme/app.git', 'branch' => 'main', 'status' => 'active', 'webhook_secret' => Str::random(64)]);
+        $deployment = $site->deployments()->create(['user_id' => $user->id, 'status' => DeploymentStatus::Pending, 'trigger' => 'manual']);
+
+        // Without the poll this page sat on "Waiting for a deployment worker" through an
+        // entire deployment whenever the WebSocket could not be reached.
+        Livewire::actingAs($user)->test(DeploymentLogStream::class, ['deployment' => $deployment])
+            ->assertViewHas('active', true)
+            ->assertSee('wire:poll.2s', false)
+            ->assertSee('Live');
+
+        $deployment->update(['status' => DeploymentStatus::Successful, 'finished_at' => now()]);
+
+        Livewire::actingAs($user)->test(DeploymentLogStream::class, ['deployment' => $deployment->fresh()])
+            ->assertViewHas('active', false)
+            ->assertDontSee('wire:poll', false);
     }
 
     public function test_a_site_without_a_database_is_warned_and_cannot_press_deploy(): void
