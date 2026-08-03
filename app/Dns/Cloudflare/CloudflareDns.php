@@ -36,8 +36,13 @@ final class CloudflareDns
     {
         $verify = $this->client()->get('/user/tokens/verify');
 
-        if ($verify->status() === 401 || $verify->status() === 403) {
-            throw new DnsCredentialException('Cloudflare rejected this API token. Create a token with Zone:Read and DNS:Edit and paste it again.');
+        if (in_array($verify->status(), [400, 401, 403], true)) {
+            // Cloudflare says exactly what is wrong — "Invalid API Token", "Expired",
+            // "Invalid request headers" — and repeating it beats a generic sentence that
+            // sends people to re-create a token that was never the problem.
+            throw new DnsCredentialException(
+                'Cloudflare rejected this credential'.$this->reason($verify).'. '.$this->hint()
+            );
         }
 
         $this->assertSucceeded($verify, 'verify the token');
@@ -125,13 +130,43 @@ final class CloudflareDns
             return;
         }
 
-        $errors = collect($response->json('errors') ?? [])
-            ->map(fn ($error) => is_array($error) ? ($error['message'] ?? null) : (string) $error)
+        throw new DnsCredentialException("Cloudflare could not {$action}".($this->reason($response) ?: ' (HTTP '.$response->status().')').'.');
+    }
+
+    /**
+     * Cloudflare's own error text, with its code, which is what its documentation and
+     * support are indexed by. Errors nest — a 6003 carries the real cause underneath — so
+     * both levels are collected rather than only the outer one.
+     */
+    private function reason(Response $response): string
+    {
+        $messages = collect($response->json('errors') ?? [])
+            ->flatMap(fn ($error) => is_array($error)
+                ? [$error, ...($error['error_chain'] ?? [])]
+                : [['message' => (string) $error]])
+            ->map(function ($error) {
+                $message = is_array($error) ? ($error['message'] ?? null) : (string) $error;
+                $code = is_array($error) ? ($error['code'] ?? null) : null;
+
+                return $message ? trim($message).($code ? " (code {$code})" : '') : null;
+            })
             ->filter()
+            ->unique()
             ->implode('; ');
 
-        throw new DnsCredentialException(
-            "Cloudflare could not {$action}".($errors !== '' ? ": {$errors}" : ' (HTTP '.$response->status().').')
-        );
+        return $messages === '' ? '' : ': '.$messages;
+    }
+
+    /**
+     * The two mistakes that actually happen. A Global API Key is 37 hex characters and is
+     * not a bearer token at all, so it fails in a way that looks identical to a typo.
+     */
+    private function hint(): string
+    {
+        if (preg_match('/^[a-f0-9]{32,40}$/', $this->token) === 1) {
+            return 'That looks like a Global API Key, which this does not accept. In Cloudflare go to My Profile → API Tokens → Create Token, use the "Edit zone DNS" template, and paste the token it shows you once.';
+        }
+
+        return 'Create a token under My Profile → API Tokens with Zone:Read and DNS:Edit, include the zones you want to manage in its Zone Resources, and paste it again.';
     }
 }

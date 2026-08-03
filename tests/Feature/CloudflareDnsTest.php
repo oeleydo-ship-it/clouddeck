@@ -38,6 +38,52 @@ class CloudflareDnsTest extends TestCase
         $this->assertDatabaseCount('dns_accounts', 0);
     }
 
+    public function test_cloudflares_own_reason_is_repeated_back_rather_than_a_generic_sentence(): void
+    {
+        Http::fake(['https://api.cloudflare.com/client/v4/user/tokens/verify' => Http::response([
+            'success' => false,
+            'errors' => [['code' => 1000, 'message' => 'Invalid API Token']],
+        ], 401)]);
+
+        $this->actingAs(User::factory()->create())
+            ->post('/dns/accounts', ['name' => 'Cloudflare', 'token' => str_repeat('t', 40)])
+            ->assertSessionHasErrors('token');
+
+        // The code is what Cloudflare's docs and support are indexed by, so it travels too.
+        $message = session('errors')->first('token');
+        $this->assertStringContainsString('Invalid API Token', $message);
+        $this->assertStringContainsString('code 1000', $message);
+    }
+
+    public function test_a_nested_cloudflare_error_is_not_swallowed_by_its_wrapper(): void
+    {
+        // A 6003 carries the real cause underneath; reporting only the outer message would
+        // say "Invalid request headers" and leave the actual problem unmentioned.
+        Http::fake(['https://api.cloudflare.com/client/v4/user/tokens/verify' => Http::response([
+            'success' => false,
+            'errors' => [['code' => 6003, 'message' => 'Invalid request headers', 'error_chain' => [['code' => 6111, 'message' => 'Invalid format for Authorization header']]]],
+        ], 400)]);
+
+        $this->actingAs(User::factory()->create())
+            ->post('/dns/accounts', ['name' => 'Cloudflare', 'token' => str_repeat('t', 40)])
+            ->assertSessionHasErrors('token');
+
+        $this->assertStringContainsString('Invalid format for Authorization header', session('errors')->first('token'));
+    }
+
+    public function test_a_global_api_key_is_named_as_the_mistake_it_is(): void
+    {
+        Http::fake(['https://api.cloudflare.com/client/v4/user/tokens/verify' => Http::response(['success' => false, 'errors' => []], 400)]);
+
+        // 37 hex characters is the shape of a Global API Key, which is not a bearer token
+        // at all and otherwise fails looking exactly like a typo.
+        $this->actingAs(User::factory()->create())
+            ->post('/dns/accounts', ['name' => 'Cloudflare', 'token' => str_repeat('a1b2', 9).'c'])
+            ->assertSessionHasErrors('token');
+
+        $this->assertStringContainsString('Global API Key', session('errors')->first('token'));
+    }
+
     public function test_an_inactive_token_is_refused_even_though_the_call_succeeded(): void
     {
         Http::fake(['https://api.cloudflare.com/client/v4/user/tokens/verify' => Http::response(['success' => true, 'result' => ['status' => 'disabled']])]);
