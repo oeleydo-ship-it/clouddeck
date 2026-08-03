@@ -24,9 +24,13 @@
             ['href' => route('servers.index'), 'label' => 'Servers', 'match' => 'servers*', 'icon' => 'M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5ZM4 16a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3ZM8 7h.01M8 18h.01'],
             ['href' => route('sites.index'), 'label' => 'Sites', 'match' => 'sites*', 'icon' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z'],
             ['href' => route('cloud-accounts'), 'label' => 'Providers', 'match' => 'cloud-accounts*', 'icon' => 'M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.4 4.5 4.5 0 0 0 6.5 19h11Z'],
-            ['href' => route('dns.index'), 'label' => 'DNS', 'match' => 'dns*', 'icon' => 'M4 6h16M4 12h16M4 18h10M18 15l3 3-3 3'],
-            ['href' => route('ssh-keys'), 'label' => 'SSH keys', 'match' => 'ssh-keys*', 'icon' => 'M15 7a5 5 0 1 1-4.9 6H7v3H4v-3H2v-3h8.1A5 5 0 0 1 15 7Zm2 4h.01'],
         ];
+        // Mirrors the routes rather than deciding anything: DNS is switched off in admin
+        // settings, and the entry follows so the nav never offers a 404.
+        if ($dnsEnabled ?? true) {
+            $sections[] = ['href' => route('dns.index'), 'label' => 'DNS', 'match' => 'dns*', 'icon' => 'M4 6h16M4 12h16M4 18h10M18 15l3 3-3 3'];
+        }
+        $sections[] = ['href' => route('ssh-keys'), 'label' => 'SSH keys', 'match' => 'ssh-keys*', 'icon' => 'M15 7a5 5 0 1 1-4.9 6H7v3H4v-3H2v-3h8.1A5 5 0 0 1 15 7Zm2 4h.01'];
         if ($user->isSuperAdmin()) {
             $sections[] = ['href' => route('admin.dashboard'), 'label' => 'Admin', 'match' => 'admin*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 0v4'];
         }
@@ -79,10 +83,9 @@
             </nav>
 
             <div class="mt-auto space-y-4 px-4 pt-4">
-                <a href="{{ route('servers.create') }}" class="button-primary w-full !rounded-xl">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="size-4"><path d="M12 5v14M5 12h14"/></svg>
-                    Provision server
-                </a>
+                {{-- No Provision server button here: the Servers and Dashboard pages both
+                     carry that action where the servers themselves are, and a second copy
+                     pinned to the nav competed with them from every unrelated page. --}}
                 <div class="space-y-1 border-t border-white/10 pt-4">
                     <a href="{{ route('contact') }}" class="side-mini-link !px-2">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>

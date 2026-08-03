@@ -57,6 +57,16 @@ final class SystemSettings
     }
 
     /**
+     * Whether the DNS section is offered at all. Not every install manages DNS from here —
+     * plenty of teams keep it with whoever holds the registrar — and an empty section
+     * inviting a Cloudflare token is a question those operators would rather not be asked.
+     */
+    public function dnsEnabled(): bool
+    {
+        return $this->boolean('dns_enabled', true);
+    }
+
+    /**
      * Where someone who is not signed in should land. With the marketing pages turned off
      * the site starts at the sign-in form.
      */

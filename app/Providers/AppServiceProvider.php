@@ -43,7 +43,9 @@ class AppServiceProvider extends ServiceProvider
         // Resolved per render rather than shared once, so a logo or name saved on the
         // settings page shows up on the next request instead of after a deploy.
         View::composer('layouts.app', function ($view): void {
-            $view->with('branding', app(SystemSettings::class)->branding());
+            $settings = app(SystemSettings::class);
+            $view->with('branding', $settings->branding());
+            $view->with('dnsEnabled', $settings->dnsEnabled());
             $view->with('shellAlerts', $this->shellAlerts());
         });
     }

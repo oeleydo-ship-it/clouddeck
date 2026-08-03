@@ -37,10 +37,11 @@ class AdminSettingController extends Controller
             'registration_enabled' => ['sometimes', 'boolean'],
             'email_verification_required' => ['sometimes', 'boolean'],
             'public_site_enabled' => ['sometimes', 'boolean'],
+            'dns_enabled' => ['sometimes', 'boolean'],
             'maintenance_banner' => ['nullable', 'string', 'max:500'],
         ]);
 
-        foreach (['platform_name' => 'string', 'support_email' => 'string', 'registration_enabled' => 'boolean', 'email_verification_required' => 'boolean', 'public_site_enabled' => 'boolean', 'maintenance_banner' => 'string'] as $key => $type) {
+        foreach (['platform_name' => 'string', 'support_email' => 'string', 'registration_enabled' => 'boolean', 'email_verification_required' => 'boolean', 'public_site_enabled' => 'boolean', 'dns_enabled' => 'boolean', 'maintenance_banner' => 'string'] as $key => $type) {
             $value = $type === 'boolean' ? ($request->boolean($key) ? '1' : '0') : ($data[$key] ?? '');
             $settings->put($key, $value, $type, true);
         }

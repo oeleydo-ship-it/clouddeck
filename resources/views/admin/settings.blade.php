@@ -23,6 +23,8 @@
                 <p class="mt-2 text-xs muted">Verification needs working mail below. With it off, new registrations are marked verified immediately and existing unverified accounts are let through.</p>
                 <label class="mt-4 flex gap-2 text-sm heading"><input type="checkbox" name="public_site_enabled" value="1" @checked(($settings->get('public_site_enabled')?->value ?? '1') === '1')>Public marketing pages enabled</label>
                 <p class="mt-2 text-xs muted">Serves the home, about, features, use cases, blog, and contact pages. Turn this off when the install is only the application — on a subdomain, say — and every visitor lands on the sign-in form instead. Blog posts stay editable here either way.</p>
+                <label class="mt-4 flex gap-2 text-sm heading"><input type="checkbox" name="dns_enabled" value="1" @checked(($settings->get('dns_enabled')?->value ?? '1') === '1')>DNS management enabled</label>
+                <p class="mt-2 text-xs muted">Shows the DNS section, where a Cloudflare token can be connected and zone records edited. Turn it off when DNS is handled elsewhere: the nav entry disappears and every DNS URL returns a 404, so a kept link cannot reach it. Connections already saved are left untouched and come back if it is turned on again.</p>
                 <button class="button-primary mt-5">Save general settings</button>
             </form>
         </section>

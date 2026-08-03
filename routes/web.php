@@ -45,6 +45,7 @@ use App\Http\Controllers\TerminalController;
 use App\Http\Controllers\TwoFactorChallengeController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\WordPressController;
+use App\Http\Middleware\EnsureDnsEnabled;
 use App\Http\Middleware\EnsurePublicSiteEnabled;
 use App\Livewire\ServerProvisionWizard;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -116,14 +117,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/cloud-accounts/{cloudAccount}/servers', [CloudServerImportController::class, 'store'])->middleware('throttle:10,1')->name('cloud-accounts.servers.store');
     Route::delete('/cloud-accounts/{cloudAccount}', [CloudAccountController::class, 'destroy']);
 
-    Route::get('/dns', [DnsController::class, 'index'])->name('dns.index');
-    Route::post('/dns/accounts', [DnsController::class, 'store'])->middleware('throttle:5,1')->name('dns.accounts.store');
-    Route::post('/dns/accounts/{dnsAccount}/sync', [DnsController::class, 'sync'])->middleware('throttle:20,1')->name('dns.accounts.sync');
-    Route::delete('/dns/accounts/{dnsAccount}', [DnsController::class, 'destroy'])->name('dns.accounts.destroy');
-    Route::get('/dns/zones/{dnsZone}', [DnsController::class, 'show'])->name('dns.zones.show');
-    Route::post('/dns/zones/{dnsZone}/records', [DnsController::class, 'storeRecord'])->name('dns.records.store');
-    Route::patch('/dns/zones/{dnsZone}/records/{record}', [DnsController::class, 'updateRecord'])->name('dns.records.update');
-    Route::delete('/dns/zones/{dnsZone}/records/{record}', [DnsController::class, 'destroyRecord'])->name('dns.records.destroy');
+    // Behind the switch as a group: hiding the nav entry alone would leave every one of
+    // these reachable by anyone who kept a link.
+    Route::middleware(EnsureDnsEnabled::class)->group(function () {
+        Route::get('/dns', [DnsController::class, 'index'])->name('dns.index');
+        Route::post('/dns/accounts', [DnsController::class, 'store'])->middleware('throttle:5,1')->name('dns.accounts.store');
+        Route::post('/dns/accounts/{dnsAccount}/sync', [DnsController::class, 'sync'])->middleware('throttle:20,1')->name('dns.accounts.sync');
+        Route::delete('/dns/accounts/{dnsAccount}', [DnsController::class, 'destroy'])->name('dns.accounts.destroy');
+        Route::get('/dns/zones/{dnsZone}', [DnsController::class, 'show'])->name('dns.zones.show');
+        Route::post('/dns/zones/{dnsZone}/records', [DnsController::class, 'storeRecord'])->name('dns.records.store');
+        Route::patch('/dns/zones/{dnsZone}/records/{record}', [DnsController::class, 'updateRecord'])->name('dns.records.update');
+        Route::delete('/dns/zones/{dnsZone}/records/{record}', [DnsController::class, 'destroyRecord'])->name('dns.records.destroy');
+    });
 
     Route::get('/ssh-keys', [SshKeyController::class, 'index'])->name('ssh-keys');
     Route::post('/ssh-keys/generate', [SshKeyController::class, 'generate']);
