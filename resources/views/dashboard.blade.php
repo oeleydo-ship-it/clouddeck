@@ -63,6 +63,68 @@
     </section>
 
     @php
+        $planName = $plan['plan']?->name ?? 'No plan';
+        $price = $plan['plan'] ? $plan['plan']->monthly_price : null;
+        $currency = $plan['plan']?->currency ?? 'USD';
+        $renews = $plan['subscription']?->current_period_ends_at;
+        $resourceLabels = ['servers' => 'Servers', 'sites' => 'Sites', 'databases' => 'Databases'];
+    @endphp
+    <section class="panel mt-8 !p-0">
+        <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/5">
+            <div class="flex flex-wrap items-center gap-3">
+                <h2 class="section-title">Current plan</h2>
+                <span class="badge badge-info">{{ $planName }}</span>
+                {{-- A plan already called "Free" does not need "Free" printed beside it. --}}
+                @if($price > 0)
+                    <span class="text-sm muted">{{ $currency }} {{ number_format($price / 100, 2) }}/mo</span>
+                @elseif($plan['plan'] && ! Str::contains(Str::lower($planName), 'free'))
+                    <span class="text-sm muted">Free</span>
+                @endif
+                @if($renews)
+                    <span class="text-sm muted">· renews {{ $renews->toFormattedDateString() }}</span>
+                @endif
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <a href="{{ route('billing.index') }}" class="button-secondary">Manage billing</a>
+                @if($plan['upgrade'])
+                    <a href="{{ route('billing.index') }}" class="button-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 19V5m0 0-7 7m7-7 7 7"/></svg>
+                        Upgrade to {{ $plan['upgrade']->name }}
+                    </a>
+                @endif
+            </div>
+        </div>
+        <div class="grid gap-8 px-6 py-6 md:grid-cols-3">
+            @foreach($plan['usage'] as $resource => $figures)
+                @php
+                    $unlimited = $figures['limit'] < 0;
+                    $percent = $unlimited || $figures['limit'] === 0 ? 0 : min(100, $figures['used'] * 100 / $figures['limit']);
+                    $exhausted = ! $unlimited && $figures['limit'] > 0 && $figures['used'] >= $figures['limit'];
+                @endphp
+                <div>
+                    <div class="flex items-baseline justify-between gap-3">
+                        <span class="text-sm font-medium heading">{{ $resourceLabels[$resource] ?? Str::headline($resource) }}</span>
+                        <span class="tnum text-sm font-semibold {{ $exhausted ? 'text-rose-600 dark:text-rose-400' : 'muted' }}">
+                            {{ $figures['used'] }} / {{ $unlimited ? '∞' : $figures['limit'] }}
+                        </span>
+                    </div>
+                    <div class="meter mt-3">
+                        <span class="meter-fill {{ $exhausted ? '!bg-rose-500' : '' }}" style="width: {{ $unlimited ? 100 : $percent }}%"></span>
+                    </div>
+                    @if($exhausted)
+                        <p class="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">Limit reached — upgrade to add more.</p>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+        @if(! $plan['upgrade'] && $plan['plan'])
+            <p class="border-t border-slate-100 px-6 py-4 text-xs muted dark:border-white/5">
+                {{ $planName }} is the highest plan available, so there is nothing to upgrade to.
+            </p>
+        @endif
+    </section>
+
+    @php
         $meters = [
             ['label' => 'CPU load', 'value' => $health['cpu'], 'tone' => 'bg-[#0058bc]', 'text' => 'text-[#0058bc] dark:text-blue-300'],
             ['label' => 'Memory usage', 'value' => $health['memory'], 'tone' => 'bg-[#00677e]', 'text' => 'text-[#00677e] dark:text-cyan-300'],

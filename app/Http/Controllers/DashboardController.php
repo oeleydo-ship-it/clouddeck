@@ -5,13 +5,17 @@ namespace App\Http\Controllers;
 use App\Enums\DeploymentStatus;
 use App\Enums\ServerStatus;
 use App\Models\Deployment;
+use App\Models\Plan;
 use App\Models\ServerMetric;
+use App\Models\Subscription;
+use App\Services\EntitlementService;
+use App\Services\QuotaManager;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): View
+    public function __invoke(Request $request, EntitlementService $entitlements, QuotaManager $quotas): View
     {
         $servers = $request->user()->accessibleServers();
 
@@ -28,7 +32,41 @@ class DashboardController extends Controller
                 'offline' => $offline,
             ],
             'health' => $this->health($monitoredServers->pluck('id')->all(), $monitoredServers->count(), $offline),
+            'plan' => $this->plan($request, $entitlements, $quotas),
         ]);
+    }
+
+    /**
+     * The plan panel. Usage comes from the same services the billing page uses, so the two
+     * cannot drift into telling different stories about the same account.
+     *
+     * The upgrade itself deliberately stays on the billing page: whether an upgrade is a
+     * Stripe checkout or a request an operator approves depends on configuration, and a
+     * second copy of that decision here would be a second thing to keep correct.
+     *
+     * @return array{plan: Plan|null, subscription: Subscription|null, usage: array<string, array{used: int, limit: int}>, upgrade: Plan|null}
+     */
+    private function plan(Request $request, EntitlementService $entitlements, QuotaManager $quotas): array
+    {
+        $plan = $entitlements->plan($request->user());
+
+        return [
+            'plan' => $plan,
+            'subscription' => $entitlements->subscription($request->user()),
+            'usage' => collect(['servers', 'sites', 'databases'])
+                ->mapWithKeys(fn (string $resource) => [$resource => [
+                    'used' => $quotas->usage($request->user(), $resource),
+                    'limit' => $entitlements->limit($request->user(), $resource),
+                ]])
+                ->all(),
+            // The cheapest public plan that costs more than this one, so the panel can say
+            // what upgrading actually means rather than pointing at a price list.
+            'upgrade' => $plan
+                ? Plan::where('active', true)->where('public', true)
+                    ->where('monthly_price', '>', $plan->monthly_price)
+                    ->orderBy('monthly_price')->first()
+                : null,
+        ];
     }
 
     /**
