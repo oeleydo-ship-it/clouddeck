@@ -3,6 +3,7 @@
 namespace App\Jobs\Sites;
 
 use App\Models\SiteBackup;
+use App\Notifications\OperationalEventNotification;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -42,6 +43,17 @@ class BackupWordPressSiteJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        SiteBackup::find($this->backupId)?->update(['status' => 'failed', 'failure_reason' => $exception->getMessage()]);
+        $backup = SiteBackup::with('site.user')->find($this->backupId);
+        $backup?->update(['status' => 'failed', 'failure_reason' => $exception->getMessage()]);
+
+        // A backup nobody knows failed is worse than no backup at all: it is relied on.
+        $backup?->site?->user?->notify(new OperationalEventNotification(
+            event: 'backup_failed',
+            title: 'Backup failed for '.$backup->site->domain,
+            body: $exception->getMessage(),
+            url: route('sites.show', $backup->site).'#backups',
+            severity: 'critical',
+            context: ['backup_id' => $backup->id, 'site_id' => $backup->site_id],
+        ));
     }
 }

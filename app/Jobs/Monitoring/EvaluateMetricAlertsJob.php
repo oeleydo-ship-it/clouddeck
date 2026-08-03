@@ -4,7 +4,6 @@ namespace App\Jobs\Monitoring;
 
 use App\Models\AlertIncident;
 use App\Models\AlertRule;
-use App\Models\NotificationChannel;
 use App\Models\ServerMetric;
 use App\Notifications\AlertTriggeredNotification;
 use Illuminate\Bus\Queueable;
@@ -64,7 +63,6 @@ class EvaluateMetricAlertsJob implements ShouldQueue
         if (! $incident->last_notified_at || $incident->last_notified_at->lte(now()->subMinutes($rule->cooldown_minutes))) {
             $incident->update(['last_notified_at' => now()]);
             $rule->user->notify(new AlertTriggeredNotification($incident));
-            NotificationChannel::where('user_id', $rule->user_id)->where('enabled', true)->whereIn('type', ['slack', 'discord', 'telegram'])->pluck('id')->each(fn ($channelId) => DeliverAlertChannelsJob::dispatch($incident->id, $channelId));
         }
     }
 

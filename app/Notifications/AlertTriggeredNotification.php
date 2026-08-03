@@ -19,29 +19,23 @@ class AlertTriggeredNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        $channels = ['database'];
-        if ($notifiable->notificationChannels()->where('type', 'email')->where('enabled', true)->exists()) {
-            $channels[] = 'mail';
-        }
-
-        $channels[] = 'clouddeck';
-
-        return $channels;
+        return $this->recipients($notifiable) === [] ? ['database'] : ['database', 'mail'];
     }
 
     /**
      * The metric decides which subscription this belongs to, so someone who asked only to
      * hear about a server going down is not also told about its disk.
+     *
+     * @return array<int, string>
      */
-    public function toOutbound(object $notifiable): OutboundMessage
+    private function recipients(object $notifiable): array
     {
-        return new OutboundMessage(
-            event: $this->incident->metric === 'server_offline' ? 'server_down' : ($this->incident->metric === 'disk_percent' ? 'disk_full' : 'server_down'),
-            title: strtoupper($this->incident->severity).' alert: '.$this->incident->server->name,
-            body: $this->incident->message.' Current value: '.$this->incident->value.'; threshold: '.$this->incident->threshold.'.',
-            url: route('servers.manage', $this->incident->server),
-            severity: $this->incident->severity,
-        );
+        return method_exists($notifiable, 'emailRecipientsFor') ? $notifiable->emailRecipientsFor($this->notificationEvent()) : [];
+    }
+
+    public function notificationEvent(): string
+    {
+        return $this->incident->metric === 'disk_percent' ? 'disk_full' : 'server_down';
     }
 
     public function toMail(object $notifiable): MailMessage

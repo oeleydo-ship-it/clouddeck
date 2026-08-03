@@ -14,6 +14,7 @@ use App\Jobs\Sites\DeleteSiteJob;
 use App\Jobs\Sites\RefreshWordPressInventoryJob;
 use App\Models\Deployment;
 use App\Models\Site;
+use App\Notifications\OperationalEventNotification;
 use App\Services\AuditLogger;
 use App\Services\EnvironmentFile;
 use App\Services\QuotaManager;
@@ -60,6 +61,14 @@ class SiteController extends Controller
             return $site;
         });
         ConfigureSiteJob::dispatch($site->id)->onQueue('provisioning');
+
+        $request->user()->notify(new OperationalEventNotification(
+            event: 'site_added',
+            title: $site->domain.' was added to '.$site->server->name,
+            body: 'The '.($site->isWordPress() ? 'WordPress' : 'Laravel').' site is being configured on the server. It can be deployed once that finishes.',
+            url: route('sites.show', $site),
+            context: ['site_id' => $site->id, 'server_id' => $site->server_id],
+        ));
 
         return redirect()->route('sites.show', $site)->with('status', 'Site configuration has been queued.');
     }

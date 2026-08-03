@@ -20,16 +20,19 @@ class NotificationChannel extends Model
     }
 
     /**
-     * Which events reach this destination. Every event CloudDeck can raise; a channel that
-     * names none of them is subscribed to all, so one created before events existed keeps
-     * behaving as it did.
+     * Every event CloudDeck can raise. A recipient that names none of them is subscribed to
+     * all, so one created before events existed keeps behaving as it did.
      */
     public const EVENTS = [
-        'deploy_complete' => 'Deploy complete',
+        'server_provisioned' => 'Server provisioned',
         'server_down' => 'Server down',
-        'ssl_expiring' => 'SSL expiring',
         'disk_full' => 'Disk full',
+        'site_added' => 'Site added',
+        'deploy_complete' => 'Deploy complete',
+        'ssl_installed' => 'SSL certificate issued',
+        'ssl_expiring' => 'SSL certificate expiring',
         'queue_failed' => 'Queue failed',
+        'backup_failed' => 'Backup failed',
     ];
 
     public function wantsEvent(string $event): bool

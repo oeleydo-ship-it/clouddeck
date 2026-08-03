@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Jobs\Monitoring\CheckOfflineServersJob;
-use App\Jobs\Monitoring\DeliverAlertChannelsJob;
 use App\Jobs\Monitoring\EvaluateMetricAlertsJob;
 use App\Jobs\Monitoring\ManageMonitoringAgentJob;
 use App\Models\CloudAccount;
@@ -12,7 +11,6 @@ use App\Models\User;
 use App\Notifications\AlertTriggeredNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
@@ -99,28 +97,34 @@ class MonitoringTest extends TestCase
         $this->assertDatabaseHas('alert_incidents', ['alert_rule_id' => $rule->id, 'status' => 'open']);
     }
 
-    public function test_notification_configuration_is_encrypted_and_webhooks_are_host_restricted(): void
+    public function test_a_recipients_configuration_is_encrypted_at_rest(): void
     {
         [$user] = $this->infrastructure();
-        $this->actingAs($user)->post('/notification-channels', ['name' => 'Slack operations', 'type' => 'slack', 'webhook_url' => 'https://hooks.slack.com/services/T/B/X'])->assertSessionHas('status');
+        $this->actingAs($user)->post('/notification-channels', ['name' => 'Operations', 'address' => 'ops@example.com'])->assertSessionHas('status');
         $channel = $user->notificationChannels()->firstOrFail();
 
-        $this->assertSame('https://hooks.slack.com/services/T/B/X', $channel->configuration['webhook_url']);
-        $this->assertStringNotContainsString('hooks.slack.com', DB::table('notification_channels')->where('id', $channel->id)->value('configuration'));
-        $this->actingAs($user)->post('/notification-channels', ['name' => 'Unsafe', 'type' => 'slack', 'webhook_url' => 'https://127.0.0.1/internal'])->assertUnprocessable();
+        $this->assertSame('ops@example.com', $channel->configuration['address']);
+        $this->assertStringNotContainsString('ops@example.com', DB::table('notification_channels')->where('id', $channel->id)->value('configuration'));
     }
 
-    public function test_alert_channel_job_delivers_to_configured_webhook(): void
+    public function test_an_alert_emails_whoever_subscribed_to_that_metric(): void
     {
-        Http::fake(['hooks.slack.com/*' => Http::response([], 200)]);
+        Notification::fake();
         [$user, $server] = $this->infrastructure();
-        $channel = $user->notificationChannels()->create(['name' => 'Slack', 'type' => 'slack', 'configuration' => ['webhook_url' => 'https://hooks.slack.com/services/T/B/X']]);
-        $rule = $server->alertRules()->create(['user_id' => $user->id, 'name' => 'High CPU', 'metric' => 'cpu_percent', 'operator' => 'gte', 'threshold' => 90, 'consecutive_samples' => 1, 'cooldown_minutes' => 30, 'severity' => 'critical']);
-        $incident = $server->alertIncidents()->create(['user_id' => $user->id, 'alert_rule_id' => $rule->id, 'status' => 'open', 'severity' => 'critical', 'metric' => 'cpu_percent', 'value' => 95, 'threshold' => 90, 'message' => 'High CPU', 'started_at' => now()]);
+        $user->notificationChannels()->create(['name' => 'Ops', 'type' => 'email', 'configuration' => ['address' => 'ops@example.com'], 'events' => ['disk_full'], 'enabled' => true]);
+        $rule = $server->alertRules()->create(['user_id' => $user->id, 'name' => 'Disk', 'metric' => 'disk_percent', 'operator' => 'gte', 'threshold' => 90, 'consecutive_samples' => 1, 'cooldown_minutes' => 30, 'severity' => 'critical']);
+        $incident = $server->alertIncidents()->create(['user_id' => $user->id, 'alert_rule_id' => $rule->id, 'status' => 'open', 'severity' => 'critical', 'metric' => 'disk_percent', 'value' => 95, 'threshold' => 90, 'message' => 'Disk nearly full', 'started_at' => now()]);
 
-        (new DeliverAlertChannelsJob($incident->id, $channel->id))->handle();
+        $user->notify(new AlertTriggeredNotification($incident));
 
-        Http::assertSent(fn ($request) => $request->url() === 'https://hooks.slack.com/services/T/B/X' && $request['text'] === '[CRITICAL] App: High CPU (95)');
+        Notification::assertSentTo($user, AlertTriggeredNotification::class, function ($notification) use ($user) {
+            // The metric picks the subscription, so a disk alert does not reach someone who
+            // only asked to hear about a server going offline.
+            $this->assertSame('disk_full', $notification->notificationEvent());
+            $this->assertSame(['ops@example.com'], $user->routeNotificationForMail($notification));
+
+            return true;
+        });
     }
 
     public function test_metric_history_and_rule_management_are_tenant_scoped(): void

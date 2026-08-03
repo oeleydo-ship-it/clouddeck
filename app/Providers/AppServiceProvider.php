@@ -7,12 +7,10 @@ use App\Billing\ManualBillingGateway;
 use App\Events\DeploymentFinished;
 use App\Listeners\SendDeploymentNotification;
 use App\Models\SystemSetting;
-use App\Notifications\Channels\OutboundChannel;
 use App\Services\SystemSettings;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -35,12 +33,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(DeploymentFinished::class, SendDeploymentNotification::class);
-
-        // One channel that fans out to whatever destinations a customer has configured, so a
-        // notification never has to know that Discord or Telegram exist.
-        Notification::resolved(function ($service) {
-            $service->extend('clouddeck', fn ($app) => $app->make(OutboundChannel::class));
-        });
         Gate::define('viewHorizon', fn ($user) => $user->isSuperAdmin());
         $this->applyStripeCredentialsFromSettings();
         $this->applyMailCredentialsFromSettings();

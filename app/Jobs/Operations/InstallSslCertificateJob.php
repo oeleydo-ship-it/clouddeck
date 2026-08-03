@@ -3,6 +3,7 @@
 namespace App\Jobs\Operations;
 
 use App\Models\SslCertificate;
+use App\Notifications\OperationalEventNotification;
 use App\Services\ReverbEnvironment;
 use App\Ssh\SshClient;
 use Carbon\Carbon;
@@ -29,6 +30,14 @@ class InstallSslCertificateJob implements ShouldQueue
         $output = $ssh->run($certificate->site->server, "openssl x509 -in /etc/letsencrypt/live/{$certificate->site->domain}/cert.pem -noout -enddate");
         $expires = trim(str_replace('notAfter=', '', $output));
         $certificate->update(['status' => 'active', 'issued_at' => now(), 'expires_at' => Carbon::parse($expires), 'failure_reason' => null]);
+
+        $certificate->site?->user?->notify(new OperationalEventNotification(
+            event: 'ssl_installed',
+            title: 'Certificate issued for '.$certificate->site->domain,
+            body: 'The certificate is active and expires on '.$certificate->fresh()->expires_at->toFormattedDayDateString().'.',
+            url: route('sites.show', $certificate->site).'#ssl',
+            context: ['certificate_id' => $certificate->id, 'site_id' => $certificate->site_id],
+        ));
 
         // A site that gains TLS has to move its WebSocket to wss:// on 443, otherwise the
         // browser blocks the connection as mixed content on the now-HTTPS page.

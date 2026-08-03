@@ -137,6 +137,46 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'super_admin';
     }
 
+    /**
+     * Where an event's email should go. Configuring no recipients at all means the account
+     * address and every event, so notifications work before anyone has visited the settings —
+     * silence is never the default. Once recipients exist, they decide.
+     *
+     * @return array<int, string>
+     */
+    public function emailRecipientsFor(string $event): array
+    {
+        $recipients = $this->notificationChannels()->get();
+
+        // Having configured none is different from having configured some and turned them
+        // off. The first means nobody has been asked, the second is an answer.
+        if ($recipients->isEmpty()) {
+            return [$this->email];
+        }
+
+        return $recipients
+            ->filter(fn (NotificationChannel $channel) => $channel->enabled)
+            ->filter(fn (NotificationChannel $channel) => $channel->wantsEvent($event))
+            ->map(fn (NotificationChannel $channel) => $channel->configuration['address'] ?? $this->email)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Laravel hands the notification in, so where an email goes can depend on what it is
+     * about. A notification that names an event is routed to whoever subscribed to it;
+     * anything else — a password reset, a team invitation — goes to the account holder.
+     */
+    public function routeNotificationForMail(mixed $notification): array|string
+    {
+        if (method_exists($notification, 'notificationEvent')) {
+            return $this->emailRecipientsFor($notification->notificationEvent()) ?: $this->email;
+        }
+
+        return $this->email;
+    }
+
     public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
     {
         $this->notify(new ResetPasswordNotification($token));

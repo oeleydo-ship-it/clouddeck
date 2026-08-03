@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'monitoring', channelType: 'email', backupType: 'database', frequency: 'daily', keys: ['monitoring','databases','backups','cron','workers','services'], init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
+<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'monitoring', backupType: 'database', frequency: 'daily', keys: ['monitoring','databases','backups','cron','workers','services'], init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
     <div><a href="/dashboard" class="text-sm text-cyan-600 dark:text-cyan-300">← Dashboard</a><h1 class="mt-2 text-3xl font-semibold">{{ $server->name }}</h1><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">{{ $server->public_ip }} · {{ $server->region }} · <span class="capitalize">{{ $server->status->value }}</span></p></div>
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 dark:border-rose-400/20 bg-rose-50 dark:bg-rose-400/10 p-4 text-sm text-rose-700 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     @if($server->status === \App\Enums\ServerStatus::Failed && $server->provider_id && $server->public_ip)<div class="mt-5 rounded-xl border border-rose-200 dark:border-rose-400/20 bg-rose-50 dark:bg-rose-400/10 p-4"><p class="text-sm text-rose-700 dark:text-rose-200">Bootstrap failed: {{ $server->failure_reason }}</p><form method="POST" action="{{ route('servers.retry-provisioning',$server) }}" class="mt-3">@csrf<button class="button-primary">Retry server bootstrap</button></form></div>@endif
@@ -97,28 +97,12 @@ CLOUDDECK_MONITORING_SECRET={{ session('monitoring_secret') }}</pre><p class="mt
         <div class="grid gap-6 lg:grid-cols-2">
             <section class="panel"><h2 class="font-semibold">Incidents</h2><div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">@forelse($server->alertIncidents as $incident)<div class="py-3"><div class="flex justify-between"><span>{{ $incident->message }}</span><span class="text-xs uppercase {{ $incident->status === 'open' ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-300' }}">{{ $incident->status }}</span></div><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ $incident->metric }} {{ $incident->value }} / threshold {{ $incident->threshold }} / {{ $incident->started_at->diffForHumans() }}</p></div>@empty<p class="py-5 text-sm text-slate-500 dark:text-slate-400">No incidents.</p>@endforelse</div></section>
             <section class="panel">
-                <h2 class="font-semibold heading">Notification channels</h2>
-                <p class="mt-1 text-sm muted">Where CloudDeck sends deploys, alerts, and expiry warnings.</p>
+                <h2 class="font-semibold heading">Email notifications</h2>
+                <p class="mt-1 text-sm muted">With no recipients here, everything goes to your account address. Add one to send elsewhere or to narrow what you hear about.</p>
 
                 <form method="POST" action="{{ route('notification-channels.store') }}" class="mt-4">@csrf
-                    <input class="field" name="name" placeholder="Operations alerts" required>
-                    <select class="field" name="type" x-model="channelType">
-                        <option value="email">Email</option>
-                        <option value="slack">Slack</option>
-                        <option value="discord">Discord</option>
-                        <option value="telegram">Telegram</option>
-                        <option value="sms">SMS (Twilio)</option>
-                        <option value="push">Push (Pushover)</option>
-                    </select>
-                    <input x-cloak x-show="channelType==='slack'||channelType==='discord'" class="field" name="webhook_url" placeholder="Official HTTPS webhook URL">
-                    <input x-cloak x-show="channelType==='telegram'" class="field" name="bot_token" placeholder="Telegram bot token">
-                    <input x-cloak x-show="channelType==='telegram'" class="field" name="chat_id" placeholder="Telegram chat ID">
-                    <input x-cloak x-show="channelType==='sms'" class="field" name="account_sid" placeholder="Twilio account SID">
-                    <input x-cloak x-show="channelType==='sms'" class="field" name="auth_token" placeholder="Twilio auth token">
-                    <input x-cloak x-show="channelType==='sms'" class="field" name="from" placeholder="From number, e.g. +14155550123">
-                    <input x-cloak x-show="channelType==='sms'" class="field" name="to" placeholder="To number, e.g. +14155550123">
-                    <input x-cloak x-show="channelType==='push'" class="field" name="app_token" placeholder="Pushover application token">
-                    <input x-cloak x-show="channelType==='push'" class="field" name="user_key" placeholder="Pushover user key">
+                    <input class="field" name="name" placeholder="Operations team" required>
+                    <input class="field" type="email" name="address" placeholder="Leave blank to use your account address">
 
                     <fieldset class="mt-4">
                         <legend class="text-sm font-medium heading">Notify about</legend>
@@ -130,14 +114,14 @@ CLOUDDECK_MONITORING_SECRET={{ session('monitoring_secret') }}</pre><p class="mt
                         </div>
                     </fieldset>
 
-                    <button class="button-primary mt-4">Add channel</button>
+                    <button class="button-primary mt-4">Add recipient</button>
                 </form>
 
                 <div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">
                     @foreach($notificationChannels as $channel)
                         <div class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                             <div class="min-w-0">
-                                <p class="truncate heading">{{ $channel->name }} <span class="muted">/ {{ $channel->type }}</span></p>
+                                <p class="truncate heading">{{ $channel->name }} <span class="muted">/ {{ $channel->configuration['address'] ?? auth()->user()->email }}</span></p>
                                 <p class="mt-0.5 text-xs muted">{{ $channel->events ? implode(', ', array_map(fn ($event) => $notificationEvents[$event] ?? $event, $channel->events)) : 'All events' }}</p>
                             </div>
                             <form method="POST" action="{{ route('notification-channels.destroy',$channel) }}">@csrf @method('DELETE')<button class="text-rose-600 dark:text-rose-300">Remove</button></form>
