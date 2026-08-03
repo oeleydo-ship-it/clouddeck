@@ -10,7 +10,19 @@ fi
 : "${CLOUDDECK_SERVER_ID:?Missing CLOUDDECK_SERVER_ID}"
 : "${CLOUDDECK_MONITORING_SECRET:?Missing CLOUDDECK_MONITORING_SECRET}"
 
-cpu=$(LC_ALL=C top -bn1 | awk '/Cpu\(s\)/ {print 100-$8; exit}')
+# Measured from /proc/stat rather than parsed out of top. top's "%Cpu(s)" line has moved
+# columns between procps versions ("0.0 id" vs "0.0%id"), and when the field lands
+# somewhere else awk reads an empty idle figure and reports a flat 100% busy on a machine
+# doing nothing. Two reads a second apart is the same arithmetic top does, without
+# depending on how it prints.
+read_cpu_totals() {
+    awk '/^cpu / {idle=$5+$6; total=0; for (i=2; i<=NF; i++) total+=$i; print idle, total; exit}' /proc/stat
+}
+read -r cpu_idle_start cpu_total_start < <(read_cpu_totals)
+sleep 1
+read -r cpu_idle_end cpu_total_end < <(read_cpu_totals)
+cpu=$(awk -v i0="$cpu_idle_start" -v t0="$cpu_total_start" -v i1="$cpu_idle_end" -v t1="$cpu_total_end" \
+    'BEGIN {dt=t1-t0; di=i1-i0; if (dt <= 0) {print "0.00"} else {busy=(dt-di)*100/dt; if (busy<0) busy=0; if (busy>100) busy=100; printf "%.2f", busy}}')
 read -r memory_total memory_used < <(free -b | awk '/^Mem:/ {print $2, $3}')
 read -r disk_total disk_used disk_percent < <(df -B1 --output=size,used,pcent / | tail -1 | awk '{gsub(/%/,"",$3); print $1, $2, $3}')
 load=$(cut -d' ' -f1 /proc/loadavg)
