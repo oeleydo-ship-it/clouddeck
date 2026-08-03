@@ -24,6 +24,7 @@
             ['href' => route('servers.index'), 'label' => 'Servers', 'match' => 'servers*', 'icon' => 'M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5ZM4 16a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3ZM8 7h.01M8 18h.01'],
             ['href' => route('sites.index'), 'label' => 'Sites', 'match' => 'sites*', 'icon' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z'],
             ['href' => route('cloud-accounts'), 'label' => 'Providers', 'match' => 'cloud-accounts*', 'icon' => 'M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.4 4.5 4.5 0 0 0 6.5 19h11Z'],
+            ['href' => route('dns.index'), 'label' => 'DNS', 'match' => 'dns*', 'icon' => 'M4 6h16M4 12h16M4 18h10M18 15l3 3-3 3'],
             ['href' => route('ssh-keys'), 'label' => 'SSH keys', 'match' => 'ssh-keys*', 'icon' => 'M15 7a5 5 0 1 1-4.9 6H7v3H4v-3H2v-3h8.1A5 5 0 0 1 15 7Zm2 4h.01'],
         ];
         if ($user->isSuperAdmin()) {

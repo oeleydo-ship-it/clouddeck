@@ -18,6 +18,7 @@ use App\Http\Controllers\CronJobController;
 use App\Http\Controllers\CustomServerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
+use App\Http\Controllers\DnsController;
 use App\Http\Controllers\FileManagerController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\LogController;
@@ -114,6 +115,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cloud-accounts/{cloudAccount}/servers', [CloudServerImportController::class, 'index'])->name('cloud-accounts.servers');
     Route::post('/cloud-accounts/{cloudAccount}/servers', [CloudServerImportController::class, 'store'])->middleware('throttle:10,1')->name('cloud-accounts.servers.store');
     Route::delete('/cloud-accounts/{cloudAccount}', [CloudAccountController::class, 'destroy']);
+
+    Route::get('/dns', [DnsController::class, 'index'])->name('dns.index');
+    Route::post('/dns/accounts', [DnsController::class, 'store'])->middleware('throttle:5,1')->name('dns.accounts.store');
+    Route::post('/dns/accounts/{dnsAccount}/sync', [DnsController::class, 'sync'])->middleware('throttle:20,1')->name('dns.accounts.sync');
+    Route::delete('/dns/accounts/{dnsAccount}', [DnsController::class, 'destroy'])->name('dns.accounts.destroy');
+    Route::get('/dns/zones/{dnsZone}', [DnsController::class, 'show'])->name('dns.zones.show');
+    Route::post('/dns/zones/{dnsZone}/records', [DnsController::class, 'storeRecord'])->name('dns.records.store');
+    Route::patch('/dns/zones/{dnsZone}/records/{record}', [DnsController::class, 'updateRecord'])->name('dns.records.update');
+    Route::delete('/dns/zones/{dnsZone}/records/{record}', [DnsController::class, 'destroyRecord'])->name('dns.records.destroy');
 
     Route::get('/ssh-keys', [SshKeyController::class, 'index'])->name('ssh-keys');
     Route::post('/ssh-keys/generate', [SshKeyController::class, 'generate']);

@@ -77,6 +77,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(SshKey::class);
     }
 
+    public function dnsAccounts()
+    {
+        return $this->hasMany(DnsAccount::class);
+    }
+
+    public function dnsZones()
+    {
+        return $this->hasMany(DnsZone::class);
+    }
+
     public function sites()
     {
         return $this->hasMany(Site::class);

@@ -41,4 +41,10 @@ return [
         'automatic_tax' => env('STRIPE_AUTOMATIC_TAX', true),
     ],
 
+    // No key here: Cloudflare tokens belong to an account, are entered in the console, and
+    // are stored encrypted per user. Only the base URL is configuration.
+    'cloudflare' => [
+        'url' => env('CLOUDFLARE_API_URL', 'https://api.cloudflare.com/client/v4'),
+    ],
+
 ];
