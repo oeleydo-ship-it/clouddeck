@@ -8,6 +8,14 @@ return [
     ],
 
     /*
+     * How long bootstrapping waits for a new host to start answering on its SSH port.
+     * A provider reports a machine "active" the moment it powers on, which is a good
+     * half-minute or more before sshd is listening, so the first connection attempt is
+     * a race the provision loses. Waiting is cheaper than failing a whole provision.
+     */
+    'ssh_ready_timeout' => (int) env('CLOUDDECK_SSH_READY_TIMEOUT', 180),
+
+    /*
      * Providers an account can be connected for. "api" marks the ones CloudDeck can drive
      * directly — creating and destroying servers through their API. The rest are recorded
      * so an operator can keep their credentials and infrastructure organised here, but
