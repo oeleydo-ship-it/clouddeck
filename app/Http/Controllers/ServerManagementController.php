@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Cloud\CloudProviderManager;
+use App\Models\NotificationChannel;
 use App\Models\Server;
 use App\Services\AuditLogger;
 use App\Services\TeamAccess;
@@ -41,6 +42,7 @@ class ServerManagementController extends Controller
                 'snapshots' => fn ($q) => $q->latest()->limit(30),
             ]),
             'notificationChannels' => $request->user()->notificationChannels()->latest()->get(),
+            'notificationEvents' => NotificationChannel::EVENTS,
             'transferTeams' => $request->user()->teamMemberships()->with('team')->whereNotNull('accepted_at')->get()->filter(fn ($membership) => $teams->canManage($request->user(), $membership->team))->pluck('team'),
         ]);
     }

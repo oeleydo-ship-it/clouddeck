@@ -125,6 +125,11 @@ class Site extends Model
         return $this->hasMany(FileOperation::class);
     }
 
+    public function logSnapshots()
+    {
+        return $this->hasMany(LogSnapshot::class);
+    }
+
     public function terminalCommands()
     {
         return $this->hasMany(TerminalCommand::class);

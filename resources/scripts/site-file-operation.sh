@@ -22,7 +22,7 @@ case "$ACTION" in
         while IFS= read -r -d '' entry; do
             name=$(basename -- "$entry" | base64 -w0)
             [[ -d "$entry" ]] && type=directory || type=file
-            printf '%s\t%s\t%s\t%s\n' "$name" "$type" "$(stat -c %s "$entry")" "$(stat -c %Y "$entry")"
+            printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$type" "$(stat -c %s "$entry")" "$(stat -c %Y "$entry")" "$(stat -c %a "$entry")" "$(stat -c %U:%G "$entry")"
         done < <(find "$TARGET" -mindepth 1 -maxdepth 1 -print0)
         ;;
     read)

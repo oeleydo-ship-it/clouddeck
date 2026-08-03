@@ -45,9 +45,11 @@ class ExecuteFileOperationJob implements ShouldQueue
         $updates = ['status' => 'successful', 'finished_at' => now()];
         if ($operation->action === 'list') {
             $updates['result'] = json_encode(collect(preg_split('/\r?\n/', trim($output)))->filter()->map(function (string $line): array {
-                [$encoded, $type, $size, $modified] = array_pad(explode("\t", $line), 4, null);
+                [$encoded, $type, $size, $modified, $mode, $owner] = array_pad(explode("\t", $line), 6, null);
 
-                return ['name' => base64_decode($encoded, true) ?: '', 'type' => $type, 'size' => (int) $size, 'modified_at' => (int) $modified];
+                // Mode and owner come from newer listings only. An older one still in the
+                // table simply shows no permissions rather than breaking the page.
+                return ['name' => base64_decode($encoded, true) ?: '', 'type' => $type, 'size' => (int) $size, 'modified_at' => (int) $modified, 'mode' => $mode, 'owner' => $owner];
             })->values()->all(), JSON_THROW_ON_ERROR);
         } elseif ($operation->action === 'read') {
             $updates['result'] = $this->decode($output);

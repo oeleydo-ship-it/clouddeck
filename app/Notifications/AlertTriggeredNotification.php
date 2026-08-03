@@ -24,7 +24,24 @@ class AlertTriggeredNotification extends Notification implements ShouldQueue
             $channels[] = 'mail';
         }
 
+        $channels[] = 'clouddeck';
+
         return $channels;
+    }
+
+    /**
+     * The metric decides which subscription this belongs to, so someone who asked only to
+     * hear about a server going down is not also told about its disk.
+     */
+    public function toOutbound(object $notifiable): OutboundMessage
+    {
+        return new OutboundMessage(
+            event: $this->incident->metric === 'server_offline' ? 'server_down' : ($this->incident->metric === 'disk_percent' ? 'disk_full' : 'server_down'),
+            title: strtoupper($this->incident->severity).' alert: '.$this->incident->server->name,
+            body: $this->incident->message.' Current value: '.$this->incident->value.'; threshold: '.$this->incident->threshold.'.',
+            url: route('servers.manage', $this->incident->server),
+            severity: $this->incident->severity,
+        );
     }
 
     public function toMail(object $notifiable): MailMessage

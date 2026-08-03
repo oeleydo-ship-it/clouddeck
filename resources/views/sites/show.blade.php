@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','themes','plugins','backups','environment','ssl','cron'] : ['overview','environment','deploy','ssl','cron','queue','webhook']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
+<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','themes','plugins','backups','environment','ssl','cron','logs'] : ['overview','environment','deploy','ssl','cron','queue','webhook','logs']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <a class="text-sm font-medium text-cyan-600 dark:text-cyan-300" href="{{ route('sites.index') }}">← Sites</a>
@@ -80,8 +80,8 @@
     @endcan
     <div class="mt-8 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-white/10">@php
         $tabs = $site->isWordPress()
-            ? ['overview'=>'Overview','themes'=>'Themes','plugins'=>'Plugins','backups'=>'Backups','environment'=>'Environment','ssl'=>'SSL','cron'=>'Cron']
-            : ['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook'];
+            ? ['overview'=>'Overview','themes'=>'Themes','plugins'=>'Plugins','backups'=>'Backups','environment'=>'Environment','ssl'=>'SSL','cron'=>'Cron','logs'=>'Logs']
+            : ['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook','logs'=>'Logs'];
     @endphp
     @foreach($tabs as $key=>$label)<button @click="tab='{{ $key }}'" :class="tab==='{{ $key }}' ? 'border-cyan-500 text-slate-900 dark:border-cyan-400 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400'" class="border-b-2 px-4 py-3 text-sm font-medium">{{ $label }}</button>@endforeach</div>
     <div x-show="tab==='overview'" class="mt-6"><div class="grid gap-4 sm:grid-cols-3">
@@ -132,6 +132,7 @@
             @if($site->status !== 'active')<p class="mt-3 text-xs muted">The site must finish configuring before a certificate can be issued.</p>@endif
         </section>
     </div>
+    <div x-cloak x-show="tab==='logs'" class="mt-6">@livewire('log-viewer',['site'=>$site])</div>
     <div x-cloak x-show="tab==='cron'" class="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">
         <form method="POST" action="{{ route('sites.cron-jobs.store',$site) }}" class="panel h-fit">@csrf
             <h2 class="font-semibold heading">Add cron job</h2>

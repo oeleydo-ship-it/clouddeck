@@ -19,7 +19,20 @@ class DeploymentFinishedNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', 'clouddeck'];
+    }
+
+    public function toOutbound(object $notifiable): OutboundMessage
+    {
+        $status = $this->deployment->status->value;
+
+        return new OutboundMessage(
+            event: 'deploy_complete',
+            title: 'Deployment '.$status.': '.$this->deployment->site->domain,
+            body: 'The '.$this->deployment->trigger.' deployment '.$status.'. Release: '.($this->deployment->release ?? 'not created').'.',
+            url: route('deployments.show', $this->deployment),
+            severity: in_array($status, ['successful', 'rolled_back'], true) ? 'info' : 'critical',
+        );
     }
 
     public function toMail(object $notifiable): MailMessage

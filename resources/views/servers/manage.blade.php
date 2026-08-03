@@ -96,7 +96,55 @@ CLOUDDECK_MONITORING_SECRET={{ session('monitoring_secret') }}</pre><p class="mt
         </div>
         <div class="grid gap-6 lg:grid-cols-2">
             <section class="panel"><h2 class="font-semibold">Incidents</h2><div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">@forelse($server->alertIncidents as $incident)<div class="py-3"><div class="flex justify-between"><span>{{ $incident->message }}</span><span class="text-xs uppercase {{ $incident->status === 'open' ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-300' }}">{{ $incident->status }}</span></div><p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ $incident->metric }} {{ $incident->value }} / threshold {{ $incident->threshold }} / {{ $incident->started_at->diffForHumans() }}</p></div>@empty<p class="py-5 text-sm text-slate-500 dark:text-slate-400">No incidents.</p>@endforelse</div></section>
-            <section class="panel"><h2 class="font-semibold">Notification channels</h2><form method="POST" action="{{ route('notification-channels.store') }}" class="mt-4">@csrf<input class="field" name="name" placeholder="Operations alerts"><select class="field" name="type" x-model="channelType"><option value="email">Email</option><option value="slack">Slack</option><option value="discord">Discord</option><option value="telegram">Telegram</option></select><input x-cloak x-show="channelType==='slack'||channelType==='discord'" class="field" name="webhook_url" placeholder="Official HTTPS webhook URL"><input x-cloak x-show="channelType==='telegram'" class="field" name="bot_token" placeholder="Telegram bot token"><input x-cloak x-show="channelType==='telegram'" class="field" name="chat_id" placeholder="Telegram chat ID"><button class="button-primary mt-4">Add channel</button></form><div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">@foreach($notificationChannels as $channel)<div class="flex justify-between py-3 text-sm"><span>{{ $channel->name }} / {{ $channel->type }}</span><form method="POST" action="{{ route('notification-channels.destroy',$channel) }}">@csrf @method('DELETE')<button class="text-rose-600 dark:text-rose-300">Remove</button></form></div>@endforeach</div></section>
+            <section class="panel">
+                <h2 class="font-semibold heading">Notification channels</h2>
+                <p class="mt-1 text-sm muted">Where CloudDeck sends deploys, alerts, and expiry warnings.</p>
+
+                <form method="POST" action="{{ route('notification-channels.store') }}" class="mt-4">@csrf
+                    <input class="field" name="name" placeholder="Operations alerts" required>
+                    <select class="field" name="type" x-model="channelType">
+                        <option value="email">Email</option>
+                        <option value="slack">Slack</option>
+                        <option value="discord">Discord</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="sms">SMS (Twilio)</option>
+                        <option value="push">Push (Pushover)</option>
+                    </select>
+                    <input x-cloak x-show="channelType==='slack'||channelType==='discord'" class="field" name="webhook_url" placeholder="Official HTTPS webhook URL">
+                    <input x-cloak x-show="channelType==='telegram'" class="field" name="bot_token" placeholder="Telegram bot token">
+                    <input x-cloak x-show="channelType==='telegram'" class="field" name="chat_id" placeholder="Telegram chat ID">
+                    <input x-cloak x-show="channelType==='sms'" class="field" name="account_sid" placeholder="Twilio account SID">
+                    <input x-cloak x-show="channelType==='sms'" class="field" name="auth_token" placeholder="Twilio auth token">
+                    <input x-cloak x-show="channelType==='sms'" class="field" name="from" placeholder="From number, e.g. +14155550123">
+                    <input x-cloak x-show="channelType==='sms'" class="field" name="to" placeholder="To number, e.g. +14155550123">
+                    <input x-cloak x-show="channelType==='push'" class="field" name="app_token" placeholder="Pushover application token">
+                    <input x-cloak x-show="channelType==='push'" class="field" name="user_key" placeholder="Pushover user key">
+
+                    <fieldset class="mt-4">
+                        <legend class="text-sm font-medium heading">Notify about</legend>
+                        <p class="mt-1 text-xs muted">Leave every box clear to receive all of them.</p>
+                        <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                            @foreach($notificationEvents as $key => $label)
+                                <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="events[]" value="{{ $key }}">{{ $label }}</label>
+                            @endforeach
+                        </div>
+                    </fieldset>
+
+                    <button class="button-primary mt-4">Add channel</button>
+                </form>
+
+                <div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">
+                    @foreach($notificationChannels as $channel)
+                        <div class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                            <div class="min-w-0">
+                                <p class="truncate heading">{{ $channel->name }} <span class="muted">/ {{ $channel->type }}</span></p>
+                                <p class="mt-0.5 text-xs muted">{{ $channel->events ? implode(', ', array_map(fn ($event) => $notificationEvents[$event] ?? $event, $channel->events)) : 'All events' }}</p>
+                            </div>
+                            <form method="POST" action="{{ route('notification-channels.destroy',$channel) }}">@csrf @method('DELETE')<button class="text-rose-600 dark:text-rose-300">Remove</button></form>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
         </div>
     </div>
     <div x-show="tab==='databases'" class="mt-6 space-y-3">@foreach($server->databases as $database)<div class="panel"><div class="flex flex-wrap items-center justify-between gap-4"><h3 class="font-medium">Import and export {{ $database->name }}</h3><form method="POST" action="{{ route('databases.export',$database) }}">@csrf<button class="button-secondary" @disabled($database->status!=='ready')>Create SQL export</button></form></div><form method="POST" enctype="multipart/form-data" action="{{ route('databases.import',$database) }}" class="mt-4 flex flex-wrap items-end gap-3">@csrf<label class="grow text-sm">SQL file, up to 10 MB<input type="file" name="sql" accept=".sql,.txt" class="field"></label><button class="button-primary">Import</button></form><div class="mt-4 flex flex-wrap gap-3">@foreach($database->backups->where('type','export') as $backup)@if($backup->status==='ready')<a class="text-sm text-cyan-600 dark:text-cyan-300" href="{{ route('database-backups.download',$backup) }}">Download {{ $backup->created_at->format('M j H:i') }} ({{ Number::fileSize($backup->size) }})</a>@else<span class="text-sm capitalize text-slate-500 dark:text-slate-400">Export {{ $backup->status }}</span>@endif @endforeach</div></div>@endforeach</div>

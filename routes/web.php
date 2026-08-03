@@ -20,6 +20,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\FileManagerController;
 use App\Http\Controllers\InstallController;
+use App\Http\Controllers\LogController;
 use App\Http\Controllers\ManagedDatabaseController;
 use App\Http\Controllers\MonitoringAgentController;
 use App\Http\Controllers\MonitoringController;
@@ -182,6 +183,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/sites/{site}/queue-health', [SiteController::class, 'queueHealth'])->name('sites.queue-health');
     Route::post('/sites/{site}/wordpress-status', [SiteController::class, 'wordpressStatus'])->name('sites.wordpress-status');
     Route::post('/sites/{site}/wordpress/manage', [WordPressController::class, 'manage'])->name('wordpress.manage');
+    Route::post('/sites/{site}/logs', [LogController::class, 'store'])->middleware('throttle:60,1')->name('site-logs.store');
     Route::post('/sites/{site}/wordpress/refresh', [WordPressController::class, 'refresh'])->name('wordpress.refresh');
     Route::post('/sites/{site}/wordpress/backups', [WordPressController::class, 'backup'])->name('wordpress.backup');
     Route::post('/site-backups/{siteBackup}/restore', [WordPressController::class, 'restore'])->name('wordpress.restore');

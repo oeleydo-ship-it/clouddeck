@@ -2,6 +2,7 @@
 
 use App\Jobs\Backups\DispatchDueBackupsJob;
 use App\Jobs\Monitoring\CheckOfflineServersJob;
+use App\Jobs\Monitoring\NotifyExpiringCertificatesJob;
 use App\Jobs\Operations\InstallSslCertificateJob;
 use App\Models\AlertIncident;
 use App\Models\DatabaseBackup;
@@ -40,3 +41,10 @@ Schedule::call(function () {
         InstallSslCertificateJob::dispatch($certificate->id)->onQueue('operations');
     });
 })->dailyAt('02:15')->name('renew-expiring-certificates')->withoutOverlapping();
+
+// Renewal above is automatic but can fail quietly — DNS moved, port 80 closed behind a
+// firewall — so the warning goes out on its own schedule rather than depending on it.
+Schedule::job(new NotifyExpiringCertificatesJob)
+    ->dailyAt('09:00')
+    ->name('notify-expiring-certificates')
+    ->withoutOverlapping();
