@@ -277,6 +277,31 @@ class WordPressManagementTest extends TestCase
             ->assertDontSee('&#8211;', false);
     }
 
+    public function test_a_site_without_its_own_server_block_is_configured_before_deploying(): void
+    {
+        // Without a block of its own, Nginx answers for the domain with whichever site it
+        // lists first, so the deployment reports success while the domain serves another
+        // application entirely.
+        $configure = file_get_contents(resource_path('scripts/configure-site.sh'));
+
+        $this->assertStringContainsString('if [ ! -f "/etc/nginx/sites-available/${DOMAIN}" ]', $configure);
+        // The link is made every time: the block existing is not the same as it being served.
+        $this->assertGreaterThan(
+            strpos($configure, 'if [ ! -f "/etc/nginx/sites-available/${DOMAIN}" ]'),
+            strpos($configure, 'ln -sfn "/etc/nginx/sites-available/${DOMAIN}"'),
+        );
+
+        foreach (['DeployWordPressJob', 'DeployLaravelJob'] as $job) {
+            $source = file_get_contents(app_path("Jobs/Deployments/{$job}.php"));
+            $this->assertStringContainsString('scripts/configure-site.sh', $source, $job);
+            $this->assertLessThan(
+                strpos($source, 'runScriptStreaming'),
+                strpos($source, 'configure-site.sh'),
+                $job.' must confirm the site is served before it deploys anything to it.'
+            );
+        }
+    }
+
     public function test_deploying_corrects_a_document_root_that_does_not_match_the_platform(): void
     {
         // The server block is written once, at creation, so a site configured from the wrong

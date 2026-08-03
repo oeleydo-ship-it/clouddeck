@@ -24,6 +24,10 @@ POOL
 "php-fpm${PHP_VERSION}" -t
 systemctl reload "php${PHP_VERSION}-fpm"
 
+# Written only when the site has none. This runs before every deployment so a site whose
+# configuration never landed cannot keep being served by whichever block Nginx lists first,
+# and rewriting an existing one would discard the lines Certbot adds for TLS.
+if [ ! -f "/etc/nginx/sites-available/${DOMAIN}" ]; then
 cat > "/etc/nginx/sites-available/${DOMAIN}" <<NGINX
 server {
     listen 80;
@@ -53,7 +57,11 @@ server {
     error_log /var/log/nginx/${DOMAIN}.error.log;
 }
 NGINX
+    echo "Wrote the Nginx server block for ${DOMAIN}"
+fi
 
+# Without this link Nginx has no block for the domain and answers with whichever site it
+# lists first, so the domain quietly serves someone else's application.
 ln -sfn "/etc/nginx/sites-available/${DOMAIN}" "/etc/nginx/sites-enabled/${DOMAIN}"
 nginx -t
 systemctl reload nginx

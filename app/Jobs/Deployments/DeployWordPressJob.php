@@ -53,6 +53,17 @@ class DeployWordPressJob implements ShouldQueue
         $deployment->update(['status' => DeploymentStatus::Running, 'started_at' => $started, 'progress' => 5, 'release' => $release, 'previous_release' => $previous]);
         $this->log($deployment, 'Starting WordPress release '.$release);
 
+        // The server block is written once, when the site is created. If that never landed,
+        // Nginx has no block for this domain and answers requests for it with whichever site
+        // it lists first — the deployment succeeds while the domain serves someone else's
+        // application. Confirming it here costs one command and cannot be forgotten. An
+        // existing block is left exactly as it is, so Certbot's TLS lines survive.
+        $ssh->runScript($site->server, resource_path('scripts/configure-site.sh'), [
+            'DOMAIN' => $site->domain,
+            'PHP_VERSION' => $site->php_version,
+            'DOCUMENT_ROOT' => $site->documentRoot(),
+        ]);
+
         $result = $ssh->runScriptStreaming($site->server, resource_path('scripts/deploy-wordpress.sh'), [
             'DOMAIN' => $site->domain,
             'RELEASE' => $release,

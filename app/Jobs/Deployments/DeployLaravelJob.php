@@ -45,6 +45,17 @@ class DeployLaravelJob implements ShouldQueue
 
         $this->ensureApplicationKey($deployment->site);
         $environment = $deployment->site->environmentVariables->map(fn ($variable) => $variable->key.'='.$this->quoteEnv($variable->value))->implode("\n")."\n";
+        // The server block is written once, when the site is created. If that never landed,
+        // Nginx has no block for this domain and answers requests for it with whichever site
+        // it lists first — the deployment succeeds while the domain serves someone else's
+        // application. Confirming it here costs one command and cannot be forgotten. An
+        // existing block is left exactly as it is, so Certbot's TLS lines survive.
+        $ssh->runScript($deployment->site->server, resource_path('scripts/configure-site.sh'), [
+            'DOMAIN' => $deployment->site->domain,
+            'PHP_VERSION' => $deployment->site->php_version,
+            'DOCUMENT_ROOT' => $deployment->site->documentRoot(),
+        ]);
+
         $result = $ssh->runScriptStreaming($deployment->site->server, resource_path('scripts/deploy-laravel.sh'), [
             'DOMAIN' => $deployment->site->domain,
             'REPOSITORY' => $deployment->site->repository_url,
