@@ -20,7 +20,9 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('site_id')->nullable()->constrained()->cascadeOnDelete();
             $table->foreignUuid('server_id')->constrained()->cascadeOnDelete();
-            $table->foreignUuid('user_id')->nullable()->constrained()->nullOnDelete();
+            // foreignId, not foreignUuid: users.id is a bigint. Sites and servers are the
+            // uuid-keyed tables, users are not.
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('source', 32);
             $table->unsignedSmallInteger('lines')->default(200);
             $table->string('status', 20)->default('pending');
