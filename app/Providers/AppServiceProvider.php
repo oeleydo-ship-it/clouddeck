@@ -4,8 +4,11 @@ namespace App\Providers;
 
 use App\Billing\Contracts\BillingGateway;
 use App\Billing\ManualBillingGateway;
+use App\Enums\DeploymentStatus;
 use App\Events\DeploymentFinished;
 use App\Listeners\SendDeploymentNotification;
+use App\Models\AlertIncident;
+use App\Models\Deployment;
 use App\Models\SystemSetting;
 use App\Services\SystemSettings;
 use Illuminate\Support\Facades\Event;
@@ -41,7 +44,60 @@ class AppServiceProvider extends ServiceProvider
         // settings page shows up on the next request instead of after a deploy.
         View::composer('layouts.app', function ($view): void {
             $view->with('branding', app(SystemSettings::class)->branding());
+            $view->with('shellAlerts', $this->shellAlerts());
         });
+    }
+
+    /**
+     * What the header bell shows. Real open incidents and real failed deployments only —
+     * an empty bell is the honest answer when nothing is wrong, and each entry links
+     * straight to the page where the problem can be acted on.
+     *
+     * @return array<int, array{title: string, description: string, href: string, tone: string}>
+     */
+    private function shellAlerts(): array
+    {
+        $user = auth()->user();
+
+        if (! $user || ! Schema::hasTable('alert_incidents')) {
+            return [];
+        }
+
+        try {
+            $incidents = AlertIncident::query()
+                ->with('server')
+                ->where('status', 'open')
+                ->whereHas('server', fn ($query) => $query->accessibleTo($user))
+                ->latest('started_at')
+                ->limit(5)
+                ->get()
+                ->map(fn (AlertIncident $incident) => [
+                    'title' => Str::headline($incident->metric).' alert',
+                    'description' => ($incident->server?->name ?? 'Server').' · '.$incident->started_at?->diffForHumans(),
+                    'href' => $incident->server ? route('servers.manage', $incident->server) : route('servers.index'),
+                    'tone' => $incident->severity === 'critical' ? 'danger' : 'warning',
+                ]);
+
+            $deployments = Deployment::query()
+                ->with('site')
+                ->where('status', DeploymentStatus::Failed)
+                ->whereHas('site.server', fn ($query) => $query->accessibleTo($user))
+                ->latest()
+                ->limit(5)
+                ->get()
+                ->map(fn (Deployment $deployment) => [
+                    'title' => 'Deployment failed',
+                    'description' => ($deployment->site?->domain ?? 'Site').' · '.$deployment->created_at?->diffForHumans(),
+                    'href' => route('deployments.show', $deployment),
+                    'tone' => 'danger',
+                ]);
+
+            return $incidents->concat($deployments)->take(6)->values()->all();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return [];
+        }
     }
 
     /**

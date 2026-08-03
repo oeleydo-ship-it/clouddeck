@@ -1,9 +1,9 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-5xl px-5 py-10">
-    <p class="text-sm font-medium text-cyan-600 dark:text-cyan-300">Provider connections</p>
-    <h1 class="mt-1 text-3xl font-semibold heading">Cloud accounts</h1>
-    <p class="mt-2 muted">Tokens are validated against DigitalOcean before being encrypted and stored.</p>
+<div class="app-main">
+    <p class="page-eyebrow">Provider connections</p>
+    <h1 class="page-title">Cloud accounts</h1>
+    <p class="page-subtitle">Tokens are validated against the provider before being encrypted and stored in the vault.</p>
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     <div class="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
         <form method="POST" action="/cloud-accounts" class="panel h-fit">@csrf
@@ -12,7 +12,10 @@
                 $apiFlags = collect($providers)->map(fn ($provider) => (bool) $provider['api']);
             @endphp
             <div x-data="{ provider: @js(old('provider', 'digitalocean')), api: @js($apiFlags) }">
-                <h2 class="font-semibold heading">Connect a provider</h2>
+                <h2 class="flex items-center gap-3 section-title">
+                    <span class="stat-icon bg-blue-50 text-[#0058bc] dark:bg-blue-400/10 dark:text-blue-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5"><path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 0 1 0 10h-2M8 12h8"/></svg></span>
+                    Connect a provider
+                </h2>
                 <label class="mt-5 block text-sm heading">Provider
                     <select class="field" name="provider" x-model="provider">
                         @foreach($providers as $key => $provider)
@@ -45,8 +48,12 @@
             </div>
         </form>
         <div class="space-y-3">
+            <div class="flex items-center justify-between gap-4 pb-1">
+                <h2 class="section-title">Active connections</h2>
+                <span class="badge badge-info">{{ $accounts->count() }} {{ Str::plural('connection', $accounts->count()) }}</span>
+            </div>
             @forelse($accounts as $account)
-                <article class="panel">
+                <article class="panel panel-interactive">
                     <div class="flex items-start justify-between gap-4">
                         <div class="flex items-start gap-3">
                             <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5"><path d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5ZM4 16a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3ZM8 7h.01M8 18h.01"/></svg></span>
@@ -80,8 +87,13 @@
                     @endif
                 </article>
             @empty
-                <div class="panel text-center muted">No cloud accounts connected.</div>
             @endforelse
+            <div class="dashed-cta">
+                <span class="grid size-11 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="size-5"><path d="M12 5v14M5 12h14"/></svg>
+                </span>
+                <span class="text-sm muted">{{ $accounts->isEmpty() ? 'Connect your first cloud provider to start provisioning.' : 'Add another cloud provider to scale your infrastructure.' }}</span>
+            </div>
         </div>
     </div>
 </div>

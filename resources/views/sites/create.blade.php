@@ -1,8 +1,8 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-3xl px-5 py-10">
-    <p class="text-sm font-medium text-cyan-600 dark:text-cyan-300">New application</p>
-    <h1 class="mt-1 text-3xl font-semibold heading">Create a site</h1>
+<div class="app-main !max-w-3xl">
+    <p class="page-eyebrow">New application</p>
+    <h1 class="page-title">Create a site</h1>
     <p class="mt-2 muted">CloudDeck configures Nginx and prepares the release directories in the background.</p>
 
     @if($errors->any())

@@ -31,7 +31,19 @@ class SiteController extends Controller
 {
     public function index(Request $request): View
     {
-        return view('sites.index', ['sites' => $request->user()->sites()->with(['server', 'latestDeployment'])->latest()->paginate(15)]);
+        $sites = $request->user()->sites();
+
+        return view('sites.index', [
+            'sites' => (clone $sites)->with(['server', 'latestDeployment'])->latest()->paginate(15),
+            // Counted over every site the user owns, not just the current page, so the
+            // strip keeps meaning once the list paginates.
+            'summary' => [
+                'total' => (clone $sites)->count(),
+                'active' => (clone $sites)->where('status', 'active')->count(),
+                'deployments' => Deployment::whereIn('site_id', (clone $sites)->select('id'))->whereDate('created_at', today())->count(),
+                'failed' => Deployment::whereIn('site_id', (clone $sites)->select('id'))->where('status', DeploymentStatus::Failed)->count(),
+            ],
+        ]);
     }
 
     public function create(Request $request): View

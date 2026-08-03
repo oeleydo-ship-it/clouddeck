@@ -13,11 +13,11 @@
         ['route' => 'admin.audit', 'label' => 'Audit', 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M9 15h6M9 11h3'],
     ];
 @endphp
-<div class="mx-auto max-w-7xl gap-8 px-5 py-10 lg:grid lg:grid-cols-[220px_1fr]">
+<div class="app-main gap-8 lg:grid lg:grid-cols-[220px_1fr]">
     <aside class="mb-6 lg:mb-0">
         <div class="px-3">
-            <p class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-300">Super administrator</p>
-            <p class="mt-1 text-base font-semibold heading">SaaS control center</p>
+            <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">Super administrator</p>
+            <p class="mt-1 font-display text-base font-semibold heading">SaaS control center</p>
         </div>
         <nav class="mt-4 flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
             @foreach($sections as $section)
@@ -39,7 +39,7 @@
     <div class="min-w-0">
         <div class="flex flex-wrap items-end justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-semibold heading">@yield('admin-title')</h1>
+                <h1 class="font-display text-3xl font-bold tracking-tight heading">@yield('admin-title')</h1>
                 <p class="mt-1 text-sm muted">@yield('admin-description')</p>
             </div>
             @yield('admin-actions')

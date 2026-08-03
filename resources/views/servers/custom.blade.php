@@ -3,8 +3,8 @@
 @php
     $command = 'mkdir -p /root/.ssh && chmod 700 /root/.ssh && echo '.escapeshellarg(trim($key->public_key)).' >> /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys';
 @endphp
-<div class="mx-auto max-w-3xl px-5 py-10">
-    <a class="text-sm font-medium text-cyan-600 dark:text-cyan-300" href="{{ route('servers.index') }}">← Servers</a>
+<div class="app-main !max-w-3xl">
+    <a class="page-eyebrow" href="{{ route('servers.index') }}">← Servers</a>
     <h1 class="mt-2 text-3xl font-semibold heading">Attach an existing server</h1>
     <p class="mt-2 muted">For a server you already run — another provider, bare metal, or a VM. CloudDeck connects over SSH by IP; no provider token is involved.</p>
 

@@ -1,10 +1,10 @@
 @extends('layouts.app')
 @section('content')
 @php use App\Enums\DeploymentStatus; @endphp
-<div class="mx-auto max-w-6xl px-5 py-10">
+<div class="app-main !max-w-6xl">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <a class="text-sm text-cyan-600 dark:text-cyan-300" href="{{ route('sites.show',$deployment->site) }}">← {{ $deployment->site->domain }}</a>
+            <a class="page-eyebrow" href="{{ route('sites.show',$deployment->site) }}">← {{ $deployment->site->domain }}</a>
             <h1 class="mt-2 text-3xl font-semibold">Deployment</h1>
             <p class="mt-2 font-mono text-sm text-slate-500 dark:text-slate-400">{{ $deployment->id }} · {{ $deployment->release ?? 'release pending' }}</p>
         </div>

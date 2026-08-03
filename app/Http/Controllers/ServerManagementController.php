@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Cloud\CloudProviderManager;
+use App\Models\AlertIncident;
 use App\Models\NotificationChannel;
 use App\Models\Server;
+use App\Models\ServerMetric;
 use App\Services\AuditLogger;
 use App\Services\TeamAccess;
 use Illuminate\Http\RedirectResponse;
@@ -17,11 +19,32 @@ class ServerManagementController extends Controller
 {
     public function index(Request $request): View
     {
+        $servers = $request->user()->accessibleServers()
+            ->with(['sites', 'latestMetric', 'cloudAccount', 'team'])
+            ->latest()
+            ->paginate(15);
+
+        $monitored = $request->user()->accessibleServers()->where('monitoring_enabled', true)->get(['id', 'last_seen_at']);
+        $reachable = $monitored->filter(fn ($server) => $server->last_seen_at && $server->last_seen_at->gte(now()->subMinutes(5)))->count();
+
+        // Summary strip above the table. Every figure comes from the same rows the table
+        // renders or from the agent's own samples, so the two can never disagree.
+        $cpuAverage = $monitored->isEmpty() ? null : ServerMetric::query()
+            ->whereIn('server_id', $monitored->pluck('id'))
+            ->where('recorded_at', '>=', now()->subDay())
+            ->avg('cpu_percent');
+
         return view('servers.index', [
-            'servers' => $request->user()->accessibleServers()
-                ->with(['sites', 'latestMetric', 'cloudAccount', 'team'])
-                ->latest()
-                ->paginate(15),
+            'servers' => $servers,
+            'summary' => [
+                'total' => $servers->total(),
+                'uptime' => $monitored->isEmpty() ? null : round($reachable / $monitored->count() * 100, 2),
+                'cpu' => $cpuAverage === null ? null : round((float) $cpuAverage, 1),
+                'alerts' => AlertIncident::query()
+                    ->where('status', 'open')
+                    ->whereHas('server', fn ($query) => $query->accessibleTo($request->user()))
+                    ->count(),
+            ],
         ]);
     }
 

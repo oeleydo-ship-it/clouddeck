@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-7xl px-5 py-10">
-    <div><p class="text-sm text-cyan-600 dark:text-cyan-300">Subscription</p><h1 class="mt-1 text-3xl font-semibold">Plans and usage</h1><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Current plan: {{ $plan?->name ?? 'Unmetered legacy account' }} @if($subscription?->current_period_ends_at)/ renews or ends {{ $subscription->current_period_ends_at->toFormattedDateString() }}@endif</p></div>
+<div class="app-main">
+    <div><p class="page-eyebrow">Subscription</p><h1 class="page-title">Plans and usage</h1><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Current plan: {{ $plan?->name ?? 'Unmetered legacy account' }} @if($subscription?->current_period_ends_at)/ renews or ends {{ $subscription->current_period_ends_at->toFormattedDateString() }}@endif</p></div>
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">@foreach($usage as $resource=>$value)<div class="panel p-5"><div class="flex justify-between text-sm"><span class="capitalize text-slate-500 dark:text-slate-400">{{ str_replace('_',' ',$resource) }}</span><span>{{ $value['used'] }} / {{ $value['limit'] < 0 ? 'Unlimited' : $value['limit'] }}</span></div>@if($value['limit']>0)<div class="mt-3 h-2 rounded bg-slate-100 dark:bg-white/10"><div class="h-full rounded bg-cyan-400" style="width:{{ min(100,$value['used']*100/$value['limit']) }}%"></div></div>@endif</div>@endforeach</div>
     @php
         $limitLabels = ['servers' => 'Servers', 'sites' => 'Sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members'];

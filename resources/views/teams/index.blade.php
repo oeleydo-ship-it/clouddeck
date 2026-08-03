@@ -10,11 +10,11 @@
     ];
     $activeTeamId = auth()->user()->current_team_id;
 @endphp
-<div class="mx-auto max-w-5xl px-5 py-10" x-data="{ creating: {{ $owned->isEmpty() ? 'true' : 'false' }} }">
+<div class="app-main !max-w-5xl" x-data="{ creating: {{ $owned->isEmpty() ? 'true' : 'false' }} }">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <p class="text-sm font-medium text-cyan-600 dark:text-cyan-300">Collaboration</p>
-            <h1 class="mt-1 text-3xl font-semibold heading">Teams</h1>
+            <p class="page-eyebrow">Collaboration</p>
+            <h1 class="page-title">Teams</h1>
             <p class="mt-2 muted">Share servers with colleagues. Roles decide who can look, who can deploy, and who can remove things.</p>
         </div>
         <button type="button" @click="creating = ! creating" class="button-primary shrink-0" x-text="creating ? 'Cancel' : 'New team'">New team</button>

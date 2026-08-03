@@ -1,9 +1,9 @@
 @extends('layouts.app')
 @section('content')
-<div class="mx-auto max-w-7xl px-5 py-10" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','themes','plugins','backups','environment','ssl','cron','logs'] : ['overview','environment','deploy','ssl','cron','queue','webhook','logs']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
+<div class="app-main" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','themes','plugins','backups','environment','ssl','cron','logs'] : ['overview','environment','deploy','ssl','cron','queue','webhook','logs']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
-            <a class="text-sm font-medium text-cyan-600 dark:text-cyan-300" href="{{ route('sites.index') }}">← Sites</a>
+            <a class="link-action" href="{{ route('sites.index') }}">← Sites</a>
             <div class="mt-2 flex flex-wrap items-center gap-3"><h1 class="text-3xl font-semibold heading">{{ $site->domain }}</h1>
                 @livewire('site-status-badge', ['site' => $site])
                 <span class="badge bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300">{{ $site->isWordPress() ? 'WordPress' : 'Laravel' }}</span>
@@ -148,7 +148,7 @@
                     <div class="flex flex-wrap justify-between gap-4">
                         <div><h3 class="font-medium heading">{{ $cron->name }} <span class="text-xs muted capitalize">· {{ $cron->status }}</span></h3><code class="mt-2 block text-xs muted">{{ $cron->expression }} · {{ $cron->command }}</code></div>
                         <div class="flex gap-3">
-                            <form method="POST" action="{{ route('cron-jobs.toggle',$cron) }}">@csrf @method('PATCH')<button class="text-sm text-cyan-600 dark:text-cyan-300">{{ $cron->enabled ? 'Disable' : 'Enable' }}</button></form>
+                            <form method="POST" action="{{ route('cron-jobs.toggle',$cron) }}">@csrf @method('PATCH')<button class="link-action">{{ $cron->enabled ? 'Disable' : 'Enable' }}</button></form>
                             <form method="POST" action="{{ route('cron-jobs.destroy',$cron) }}">@csrf @method('DELETE')<button class="text-sm text-rose-600 dark:text-rose-300">Delete</button></form>
                         </div>
                     </div>

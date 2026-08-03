@@ -11,16 +11,43 @@
     @forelse($servers as $server)
         @php $tint = match($server->status->value) { 'ready','active' => 'emerald', 'failed' => 'rose', default => 'amber' }; @endphp
         <div class="data-row grid items-center gap-4 lg:grid-cols-[1.4fr_1.4fr_1fr_190px_140px]" wire:key="server-{{ $server->id }}">
-            <a href="{{ route('servers.manage',$server) }}" class="min-w-0">
-                <p class="truncate font-medium heading">{{ $server->name }}</p>
-                <p class="mt-1 truncate text-xs muted">{{ $server->public_ip ?? $server->hostname }}</p>
-                @if($server->team)<span class="badge mt-1 bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300">{{ $server->team->name }}</span>@endif
+            <a href="{{ route('servers.manage',$server) }}" class="flex min-w-0 items-center gap-3">
+                <span class="stat-icon shrink-0 {{ $tint === 'emerald' ? 'bg-blue-50 text-[#0058bc] dark:bg-blue-400/10 dark:text-blue-300' : 'bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><path d="M6 7h.01M6 17h.01"/></svg>
+                </span>
+                <span class="min-w-0">
+                    <span class="block truncate font-semibold heading">{{ $server->name }}</span>
+                    <span class="mt-0.5 block truncate font-mono text-xs muted">{{ $server->public_ip ?? $server->hostname }}</span>
+                    @if($server->team)<span class="badge badge-neutral mt-1">{{ $server->team->name }}</span>@endif
+                </span>
             </a>
-            <div class="text-sm muted">{{ $server->region }} / {{ $server->size }} / {{ $server->sites->count() }} sites</div>
-            <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                <span class="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><span class="muted">CPU</span><br><b class="heading">{{ $server->latestMetric?->cpu_percent ?? '-' }}{{ $server->latestMetric ? '%' : '' }}</b></span>
-                <span class="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><span class="muted">RAM</span><br><b class="heading">{{ $server->latestMetric?->memory_percent ?? '-' }}{{ $server->latestMetric ? '%' : '' }}</b></span>
-                <span class="rounded-lg bg-slate-50 p-2 dark:bg-white/5"><span class="muted">Disk</span><br><b class="heading">{{ $server->latestMetric?->disk_percent ?? '-' }}{{ $server->latestMetric ? '%' : '' }}</b></span>
+            <div class="min-w-0 text-sm">
+                <p class="truncate muted">{{ $server->region }} / {{ $server->size }}</p>
+                <div class="mt-1.5 flex flex-wrap gap-1.5">
+                    <span class="badge badge-neutral !text-[10px] uppercase tracking-wide">{{ $server->sites->count() }} {{ Str::plural('site', $server->sites->count()) }}</span>
+                    {{-- PHP lives on the site, not the host, so this only claims a version
+                         when the sites on this server agree on one. --}}
+                    @php $phpVersions = $server->sites->pluck('php_version')->unique(); @endphp
+                    @if($phpVersions->count() === 1)<span class="badge badge-neutral !text-[10px] uppercase tracking-wide">PHP {{ $phpVersions->first() }}</span>@endif
+                </div>
+            </div>
+            @php
+                $resources = [
+                    ['label' => 'CPU', 'value' => $server->latestMetric?->cpu_percent],
+                    ['label' => 'RAM', 'value' => $server->latestMetric?->memory_percent],
+                    ['label' => 'Disk', 'value' => $server->latestMetric?->disk_percent],
+                ];
+            @endphp
+            <div class="space-y-2">
+                @foreach($resources as $resource)
+                    <div>
+                        <div class="flex items-center justify-between text-[11px]">
+                            <span class="font-semibold muted">{{ $resource['label'] }}</span>
+                            <span class="tnum {{ $resource['value'] === null ? 'muted' : 'font-semibold heading' }}">{{ $resource['value'] === null ? '—' : $resource['value'].'%' }}</span>
+                        </div>
+                        <div class="meter mt-1"><span class="meter-fill {{ ($resource['value'] ?? 0) >= 90 ? '!bg-rose-500' : '' }}" style="width:{{ min(100, max(0, (float) ($resource['value'] ?? 0))) }}%"></span></div>
+                    </div>
+                @endforeach
             </div>
             <div>
                 <div class="flex items-center justify-between text-xs"><span class="badge {{ $tints[$tint] }} capitalize"><span class="badge-dot bg-{{ $tint }}-500"></span>{{ $server->status->value }}</span><span class="muted">{{ $server->progress }}%</span></div>
