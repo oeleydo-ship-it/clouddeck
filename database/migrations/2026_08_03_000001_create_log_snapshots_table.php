@@ -8,6 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Guarded because this shipped once already: a deploy that created the table and
+        // died before recording the run leaves the table in place but the migration
+        // pending, and every later deploy then fails here. MySQL does not roll back DDL,
+        // so the only way past it is to treat an existing table as work already done.
+        if (Schema::hasTable('log_snapshots')) {
+            return;
+        }
+
         Schema::create('log_snapshots', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('site_id')->nullable()->constrained()->cascadeOnDelete();
