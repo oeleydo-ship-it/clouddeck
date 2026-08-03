@@ -62,33 +62,15 @@
         <div class="mt-5 rounded-xl border border-cyan-200 bg-cyan-50 p-4 dark:border-cyan-400/20 dark:bg-cyan-400/10">
             <p class="text-sm font-medium text-cyan-800 dark:text-cyan-200">Finish the WordPress install</p>
             <p class="mt-1 text-sm text-cyan-700 dark:text-cyan-200/80">
-                The files are deployed and <code>wp-config.php</code> is written. WordPress still needs its database
-                tables and an administrator account. CloudDeck can do that here, or you can use
-                <a class="font-medium underline" href="{{ ($secure ? 'https://' : 'http://').$site->domain }}/wp-admin/install.php" target="_blank" rel="noopener noreferrer">the WordPress installer</a>.
+                The files are deployed and <code>wp-config.php</code> is written. Complete the setup at
+                <a class="font-medium underline" href="{{ ($secure ? 'https://' : 'http://').$site->domain }}/wp-admin/install.php" target="_blank" rel="noopener noreferrer">{{ $site->domain }}/wp-admin/install.php</a>
+                to create the database tables and your administrator account.
             </p>
 
-            <form method="POST" action="{{ route('wordpress.install',$site) }}" class="mt-4 grid gap-3 sm:grid-cols-3">@csrf
-                <label class="text-sm text-cyan-800 dark:text-cyan-200">Site title<input class="field" name="title" value="{{ old('title', $site->domain) }}" maxlength="100" required></label>
-                <label class="text-sm text-cyan-800 dark:text-cyan-200">Admin username<input class="field" name="admin_user" value="{{ old('admin_user', 'admin') }}" pattern="[A-Za-z0-9_.@-]{3,60}" required></label>
-                <label class="text-sm text-cyan-800 dark:text-cyan-200">Admin email<input class="field" type="email" name="admin_email" value="{{ old('admin_email', auth()->user()->email) }}" required></label>
-                <div class="sm:col-span-3">
-                    <button class="button-primary">Install WordPress now</button>
-                    <span class="ml-3 text-xs text-cyan-700 dark:text-cyan-200/80">A password is generated and shown once, here, when you submit.</span>
-                </div>
-            </form>
-
-            <form method="POST" action="{{ route('sites.wordpress-status',$site) }}" class="mt-4 border-t border-cyan-200/60 pt-3 dark:border-cyan-400/20">@csrf
+            <form method="POST" action="{{ route('sites.wordpress-status',$site) }}" class="mt-3">@csrf
                 <button class="button-secondary !px-3 !py-1.5 text-xs">Check again</button>
                 @if($site->wordpress_checked_at)<span class="ml-2 text-xs muted">Last checked {{ $site->wordpress_checked_at->diffForHumans() }}</span>@endif
             </form>
-        </div>
-    @endif
-    @if(session('wordpress_admin_password'))
-        {{-- Shown once and never stored: the only copy is the one taken from here. --}}
-        <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
-            <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Copy your WordPress administrator password</p>
-            <p class="mt-1 text-sm text-amber-700 dark:text-amber-200/80">CloudDeck does not keep a copy. Leaving this page loses it, and you would have to reset it from WordPress.</p>
-            <p class="mt-3 select-all break-all rounded-lg bg-white px-4 py-3 font-mono text-sm text-slate-900 dark:bg-slate-900 dark:text-white">{{ session('wordpress_admin_password') }}</p>
         </div>
     @endif
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
