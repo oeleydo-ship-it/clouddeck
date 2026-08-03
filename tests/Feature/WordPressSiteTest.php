@@ -141,7 +141,27 @@ class WordPressSiteTest extends TestCase
         $this->assertStringContainsString("define('DB_HOST', '127.0.0.1:3306')", $config);
         // Nginx terminates TLS, so without this WordPress builds http:// URLs and loops.
         $this->assertStringContainsString('HTTP_X_FORWARDED_PROTO', $config);
+
+        // Fixing the scheme at deployment breaks the site in one direction or the other:
+        // https before a certificate exists leaves the browser waiting on a port nothing
+        // serves, and http after one arrives drops every visitor back out of TLS.
+        $this->assertStringNotContainsString("'https://blog.example.com'", $config);
+        $this->assertStringContainsString('$clouddeck_scheme', $config);
+        // The host itself stays fixed so a forged Host header cannot redirect visitors.
+        $this->assertStringContainsString("'://' . 'blog.example.com'", $config);
+        $this->assertStringNotContainsString('HTTP_HOST', $config);
         $this->assertStringContainsString("define('DISALLOW_FILE_MODS', true)", $config);
+    }
+
+    public function test_the_generated_config_is_valid_php(): void
+    {
+        [$user, $server] = $this->infrastructure();
+        $site = $this->wordpressSite($user, $server);
+
+        // This file is PHP we write by hand. A syntax error in it takes the whole site down
+        // with a blank page and nothing in the browser to say why.
+        token_get_all(app(WordPressConfig::class)->render($site), TOKEN_PARSE);
+        $this->assertTrue(true);
     }
 
     public function test_salts_are_generated_once_and_survive_later_deployments(): void

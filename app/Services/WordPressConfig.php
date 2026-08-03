@@ -68,8 +68,14 @@ final class WordPressConfig
         // redirecting when the site is served over https.
         $lines[] = "if ((\$_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https') { \$_SERVER['HTTPS'] = 'on'; }";
         $lines[] = '';
-        $lines[] = "define('WP_HOME', ".var_export('https://'.$site->domain, true).');';
-        $lines[] = "define('WP_SITEURL', ".var_export('https://'.$site->domain, true).');';
+        // The scheme follows the request rather than being fixed at deployment. Hard-coding
+        // https sent every visitor to a certificate that does not exist until one is issued,
+        // which leaves the browser waiting on nothing; hard-coding http would send them back
+        // out of TLS the moment a certificate arrives. The host stays fixed, so a forged Host
+        // header cannot make WordPress build links to somewhere else.
+        $lines[] = "\$clouddeck_scheme = (! empty(\$_SERVER['HTTPS']) && \$_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';";
+        $lines[] = "define('WP_HOME', \$clouddeck_scheme . '://' . ".var_export($site->domain, true).');';
+        $lines[] = "define('WP_SITEURL', \$clouddeck_scheme . '://' . ".var_export($site->domain, true).');';
         $lines[] = "define('WP_DEBUG', false);";
         // Updating core in place would be overwritten by the next deployment, and could
         // leave the release directory writable by the web server.
