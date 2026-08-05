@@ -24,7 +24,7 @@
             <div class="panel flex items-center gap-4">
                 <a href="{{ route('sites.show',$site) }}" class="min-w-0 grow transition hover:opacity-90">
                     <div class="flex flex-wrap items-center gap-3">
-                        <h2 class="truncate font-display text-lg font-semibold heading">{{ $site->domain }}</h2>
+                        <h2 class="truncate text-card font-semibold heading">{{ $site->domain }}</h2>
                         <span class="badge {{ $badgeClasses[$tint] }} capitalize"><span class="badge-dot bg-{{ $tint === 'slate' ? 'slate-400' : $tint.'-500' }}"></span>{{ $site->status }}</span>
                         @if($site->isStaging())
                             <span class="badge bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">Staging</span>
@@ -61,8 +61,8 @@
             <span class="grid size-11 place-items-center rounded-full bg-white shadow-sm dark:bg-white/10">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="size-5 text-[#0058bc] dark:text-cyan-300"><path d="M12 5v14M5 12h14"/></svg>
             </span>
-            <span class="font-display text-lg font-semibold heading">{{ $sites->isEmpty() ? 'Deploy your first application' : 'Deploy another application' }}</span>
-            <span class="text-sm muted">Connect a repository, or install WordPress on a ready server.</span>
+            <span class="text-card font-semibold heading">{{ $sites->isEmpty() ? 'Deploy your first application' : 'Deploy another application' }}</span>
+            <span class="text-body-sm muted">Connect a repository, or install WordPress on a ready server.</span>
         </a>
     </div>
 
@@ -83,7 +83,7 @@
                     <span class="stat-icon {{ $card['tint'] }}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5"><path d="{{ $card['icon'] }}"/></svg></span>
                     <div>
                         <p class="stat-label">{{ $card['label'] }}</p>
-                        <p class="stat-value !text-2xl !leading-8 {{ !empty($card['danger']) ? '!text-rose-600 dark:!text-rose-400' : '' }}">{{ $card['value'] }}</p>
+                        <p class="stat-value text-metric {{ !empty($card['danger']) ? '!text-rose-600 dark:!text-rose-400' : '' }}">{{ $card['value'] }}</p>
                     </div>
                 </div>
             </div>

@@ -10,14 +10,14 @@
             ['Billing requests', $stats['billing_requests'], 'admin.billing'],
         ] as [$label, $value, $route])
             <a href="{{ route($route) }}" class="panel p-5 transition hover:border-amber-300 dark:hover:border-amber-400/30">
-                <p class="text-sm muted">{{ $label }}</p>
-                <p class="mt-2 text-3xl font-semibold heading">{{ $value }}</p>
+                <p class="stat-label">{{ $label }}</p>
+                <p class="stat-value mt-2">{{ $value }}</p>
             </a>
         @endforeach
     </div>
 
     <section class="panel mt-6">
-        <h2 class="font-semibold heading">Recent administrative activity</h2>
+        <h2 class="section-title">Recent administrative activity</h2>
         <div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">
             @forelse($auditLogs->take(10) as $log)
                 <div class="grid gap-2 py-3 text-sm sm:grid-cols-[200px_1fr_160px]">

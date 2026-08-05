@@ -72,7 +72,7 @@
             <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/5">
                 <div>
                     <h2 class="section-title">Your servers</h2>
-                    <p class="mt-1 text-sm muted">Recently provisioned and connected hosts</p>
+                    <p class="mt-1 text-body-sm muted">Recently provisioned and connected hosts</p>
                 </div>
                 <a href="{{ route('servers.index') }}" class="text-sm font-semibold text-sky-600 hover:underline dark:text-sky-300">View all</a>
             </div>
@@ -113,7 +113,7 @@
             <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/5">
                 <div>
                     <h2 class="section-title">Recent deployments</h2>
-                    <p class="mt-1 text-sm muted">Latest release activity across your sites</p>
+                    <p class="mt-1 text-body-sm muted">Latest release activity across your sites</p>
                 </div>
                 <a href="{{ route('sites.index') }}" class="text-sm font-semibold text-sky-600 hover:underline dark:text-sky-300">Sites</a>
             </div>
@@ -208,7 +208,7 @@
             <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-5 dark:border-white/5">
                 <div>
                     <h2 class="section-title">Operational health</h2>
-                    <p class="mt-1 text-sm muted">Fleet averages over the last 24 hours</p>
+                    <p class="mt-1 text-body-sm muted">Fleet averages over the last 24 hours</p>
                 </div>
                 <span class="badge badge-neutral">Last 24 hours</span>
             </div>

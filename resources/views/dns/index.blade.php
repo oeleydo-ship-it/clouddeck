@@ -74,7 +74,7 @@
                 </span>
                 <div class="min-w-0 grow">
                     <div class="flex flex-wrap items-center gap-3">
-                        <h3 class="truncate font-display text-lg font-semibold heading">{{ $zone->name }}</h3>
+                        <h3 class="truncate text-card font-semibold heading">{{ $zone->name }}</h3>
                         <span class="badge {{ $zone->status === 'active' ? 'badge-success' : 'badge-warning' }} capitalize"><span class="badge-dot {{ $zone->status === 'active' ? 'bg-emerald-500' : 'bg-amber-500' }}"></span>{{ $zone->status }}</span>
                     </div>
                     <p class="mt-1 text-sm muted">{{ $zone->account?->name ?? 'Cloudflare' }}@if($zone->synced_at) · imported {{ $zone->synced_at->diffForHumans() }}@endif</p>

@@ -48,7 +48,7 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css','resources/js/app.js'])
     @livewireStyles
     @php
@@ -65,7 +65,7 @@
         {!! $insertCode['head'] !!}
     @endif
 </head>
-<body class="min-h-screen antialiased">
+<body @class(['min-h-screen antialiased', 'console-body' => auth()->check() && ! $onMarketing])>
 @php
     $branding = $branding ?? ['name' => config('app.name', 'Uplary'), 'logo_url' => null];
     // Public marketing pages keep the landing chrome for everyone — including signed-in
@@ -111,16 +111,16 @@
         <div x-cloak x-show="nav" x-transition.opacity @click="nav = false" class="fixed inset-0 z-50 bg-slate-900/50 lg:hidden"></div>
 
         <aside class="app-sidebar" :class="nav ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
-            <div class="mb-8 flex items-center justify-between px-6">
-                <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
+            <div class="mb-7 flex items-center justify-between px-3">
+                <a href="{{ route('dashboard') }}" class="sidebar-brand">
                     @if($branding['logo_url'])
-                        <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="size-10 rounded-xl object-contain">
+                        <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="sidebar-brand-mark">
                     @else
-                        <span class="grid size-10 place-items-center rounded-xl bg-sky-500 font-display text-lg font-extrabold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
+                        <span class="sidebar-brand-mark bg-sky-500 font-display text-sm font-bold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
                     @endif
                     <span class="min-w-0">
-                        <span class="block truncate font-display text-lg font-extrabold text-white">{{ $branding['name'] }}</span>
-                        <span class="block text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">Cloud management</span>
+                        <span class="sidebar-brand-name">{{ $branding['name'] }}</span>
+                        <span class="sidebar-brand-subtitle">Cloud management</span>
                     </span>
                 </a>
                 <button type="button" @click="nav = false" class="icon-button !text-slate-400 hover:!bg-white/10 hover:!text-white lg:hidden" aria-label="Close navigation">
@@ -132,17 +132,21 @@
                 @foreach($sections as $section)
                     @php $active = request()->is($section['match']); @endphp
                     <a href="{{ $section['href'] }}" @class(['side-link', 'side-link-active' => $active]) @if($active) aria-current="page" @endif>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-5 shrink-0"><path d="{{ $section['icon'] }}"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-3.5 shrink-0"><path d="{{ $section['icon'] }}"/></svg>
                         {{ $section['label'] }}
                     </a>
                 @endforeach
             </nav>
 
-            <div class="mt-auto space-y-4 px-4 pt-4">
+            <div class="mt-auto space-y-2 px-1.5 pt-3">
                 {{-- No Provision server button here: the Servers and Dashboard pages both
                      carry that action where the servers themselves are, and a second copy
                      pinned to the nav competed with them from every unrelated page. --}}
-                <div class="space-y-1 border-t border-white/10 pt-4">
+                <div class="space-y-0.5 border-t border-white/10 pt-2">
+                    <a href="{{ route('home') }}" target="_blank" rel="noopener noreferrer" class="side-mini-link !px-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+                        View website
+                    </a>
                     <a href="{{ route('docs') }}" @class(['side-mini-link !px-2', 'bg-white/10 text-white' => request()->is('docs*')])>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M9 15h6M9 11h3"/></svg>
                         Documentation
@@ -155,14 +159,14 @@
                     @endif
                 </div>
 
-                <div class="relative border-t border-white/10 pt-4" x-data="{ open: false }">
+                <div class="relative border-t border-white/10 pt-2" x-data="{ open: false }">
                     <button type="button" @click="open = ! open" @click.outside="open = false"
-                            @class(['flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition hover:bg-white/10', 'bg-white/10' => $inAccountArea])
+                            @class(['flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition hover:bg-white/10', 'bg-white/10' => $inAccountArea])
                             :aria-expanded="open" aria-haspopup="true">
-                        <span class="grid size-8 shrink-0 place-items-center rounded-full bg-cyan-200 text-xs font-bold uppercase text-[#00303d]">{{ Str::upper(Str::substr($user->name, 0, 2)) }}</span>
+                        <span class="grid size-6 shrink-0 place-items-center rounded-full bg-cyan-200 text-[9px] font-semibold uppercase text-[#00303d]">{{ Str::upper(Str::substr($user->name, 0, 2)) }}</span>
                         <span class="min-w-0 flex-1">
-                            <span class="block truncate text-xs font-semibold text-white">{{ $user->name }}</span>
-                            <span class="block truncate text-[10px] text-slate-400">{{ $user->isSuperAdmin() ? 'Administrator' : 'Account' }}</span>
+                            <span class="block truncate text-[10px] font-medium text-white">{{ $user->name }}</span>
+                            <span class="block truncate text-[9px] text-slate-400">{{ $user->isSuperAdmin() ? 'Administrator' : 'Account' }}</span>
                         </span>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="size-4 shrink-0 text-slate-400 transition" :class="open && 'rotate-180'"><path d="m6 9 6 6 6-6"/></svg>
                     </button>
@@ -219,7 +223,7 @@
                                 get results() { return this.q === '' ? [] : this.items.filter(i => i.label.toLowerCase().includes(this.q.toLowerCase())) },
                             }" @click.outside="q = ''">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 muted"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-                            <input type="search" x-model="q" class="search-input w-56 lg:w-72" placeholder="Search sites, servers…" aria-label="Search the console"
+                            <input type="search" x-model="q" class="search-input w-48 lg:w-56" placeholder="Search sites, servers…" aria-label="Search the console"
                                    @keydown.enter="results.length && (window.location = results[0].href)">
                             <div x-cloak x-show="results.length" class="menu-panel !w-full">
                                 <template x-for="item in results" :key="item.href">
@@ -235,7 +239,7 @@
                                 @if(count($alerts))<span class="absolute right-1.5 top-1.5 size-2 rounded-full bg-rose-500 ring-2 ring-[#f7f9fb] dark:ring-slate-950"></span>@endif
                             </button>
                             <div x-cloak x-show="open" x-transition.origin.top.right class="menu-panel !w-80">
-                                <p class="border-b border-slate-100 px-4 py-3 text-sm font-semibold heading dark:border-white/5">Notifications</p>
+                                <p class="border-b border-slate-100 px-4 py-3 text-card font-semibold heading dark:border-white/5">Notifications</p>
                                 @forelse($alerts as $alert)
                                     <a href="{{ $alert['href'] }}" class="menu-item flex gap-3">
                                         <span class="badge-dot mt-1.5 shrink-0 {{ $alert['tone'] === 'danger' ? 'bg-rose-500' : 'bg-amber-500' }}"></span>
@@ -258,7 +262,7 @@
                 </div>
 
                 @if(session('status'))
-                    <div class="mx-auto w-full max-w-[1440px] px-5 pt-6 lg:px-10">
+                    <div class="mx-auto w-full max-w-[1280px] px-4 pt-4 lg:px-7">
                         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">{{ session('status') }}</div>
                     </div>
                 @endif

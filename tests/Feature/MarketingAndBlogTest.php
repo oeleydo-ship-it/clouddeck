@@ -77,6 +77,21 @@ class MarketingAndBlogTest extends TestCase
             ->assertSee('app-sidebar', false);
     }
 
+    public function test_console_sidebar_links_to_the_public_homepage_in_a_new_tab(): void
+    {
+        $html = $this->actingAs(User::factory()->create())
+            ->get('/dashboard')
+            ->assertOk()
+            ->getContent();
+
+        $sidebar = str($html)->after('<aside')->before('</aside>')->toString();
+
+        $this->assertStringContainsString('View website', $sidebar);
+        $this->assertStringContainsString('href="'.route('home').'"', $sidebar);
+        $this->assertStringContainsString('target="_blank"', $sidebar);
+        $this->assertStringContainsString('rel="noopener noreferrer"', $sidebar);
+    }
+
     public function test_the_blog_shows_published_posts_and_hides_drafts_and_future_ones(): void
     {
         $this->markInstalled();

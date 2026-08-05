@@ -46,7 +46,7 @@
         @endforeach
     </section>
 
-    <section class="mt-8 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] dark:border-white/10 dark:bg-white/[.03] dark:shadow-none">
+    <section class="mt-8 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-white/10 dark:bg-white/[.03] dark:shadow-none">
         @if($servers->isNotEmpty())
             <div class="table-head hidden lg:grid lg:grid-cols-[1.4fr_1.4fr_1fr_190px_140px] lg:gap-4">
                 <span>Server</span><span>Details</span><span>Resources</span><span>Status</span><span class="text-right">Actions</span>

@@ -4,7 +4,7 @@
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <a class="link-action" href="{{ route('sites.index') }}">← Sites</a>
-            <div class="mt-2 flex flex-wrap items-center gap-3"><h1 class="text-3xl font-semibold heading">{{ $site->domain }}</h1>
+            <div class="mt-2 flex flex-wrap items-center gap-3"><h1 class="page-title !mt-0">{{ $site->domain }}</h1>
                 @livewire('site-status-badge', ['site' => $site])
                 <span class="badge bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300">{{ $site->isWordPress() ? 'WordPress' : 'Laravel' }}</span>
                 @if($site->isStaging())

@@ -19,18 +19,18 @@
         ['route' => 'admin.audit', 'label' => 'Audit', 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M9 15h6M9 11h3'],
     ];
 @endphp
-<div class="app-main gap-8 lg:grid lg:grid-cols-[220px_1fr]">
+<div class="app-main gap-6 lg:grid lg:grid-cols-[180px_minmax(0,1fr)]">
     <aside class="mb-6 lg:mb-0">
-        <div class="px-3">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">Super administrator</p>
-            <p class="mt-1 font-display text-base font-semibold heading">SaaS control center</p>
+        <div class="px-2">
+            <p class="text-[9px] font-semibold uppercase tracking-[0.1em] text-amber-600 dark:text-amber-300">Super administrator</p>
+            <p class="mt-1 font-display text-xs font-semibold heading">SaaS control center</p>
         </div>
-        <nav class="mt-4 flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
+        <nav class="mt-3 flex gap-0.5 overflow-x-auto lg:flex-col lg:overflow-visible">
             @foreach($sections as $section)
                 @php $current = request()->routeIs($section['route']); @endphp
                 <a href="{{ route($section['route']) }}"
                    @class([
-                       'flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition',
+                       'flex min-h-7 shrink-0 items-center gap-2 rounded px-2 py-1 text-[11px] transition',
                        'bg-amber-50 font-medium text-amber-700 dark:bg-amber-400/10 dark:text-amber-300' => $current,
                        'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5' => ! $current,
                    ])
@@ -43,10 +43,10 @@
     </aside>
 
     <div class="min-w-0">
-        <div class="flex flex-wrap items-end justify-between gap-4">
+        <div class="flex max-w-[900px] flex-wrap items-end justify-between gap-3">
             <div>
-                <h1 class="font-display text-3xl font-bold tracking-tight heading">@yield('admin-title')</h1>
-                <p class="mt-1 text-sm muted">@yield('admin-description')</p>
+                <h1 class="page-title">@yield('admin-title')</h1>
+                <p class="page-subtitle !mt-1">@yield('admin-description')</p>
             </div>
             @yield('admin-actions')
         </div>
@@ -55,7 +55,7 @@
                 <ul class="list-inside list-disc space-y-1">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
             </div>
         @endif
-        <div class="mt-6">@yield('admin')</div>
+        <div class="mt-4 max-w-[900px]">@yield('admin')</div>
     </div>
 </div>
 @endsection
