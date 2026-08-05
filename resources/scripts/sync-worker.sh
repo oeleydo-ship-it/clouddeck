@@ -12,7 +12,12 @@ TRIES={{TRIES}}
 TIMEOUT={{TIMEOUT}}
 MEMORY={{MEMORY}}
 PORT={{PORT}}
-FILE="/etc/supervisor/conf.d/clouddeck-${ID}.conf"
+# Canonical Supervisor program name matches production workers (clouddeck-{id}).
+# Legacy Uplary-{id} programs are stopped/removed on sync so status and deploy stay aligned.
+PROGRAM="clouddeck-${ID}"
+LEGACY_PROGRAM="Uplary-${ID}"
+FILE="/etc/supervisor/conf.d/${PROGRAM}.conf"
+LEGACY_FILE="/etc/supervisor/conf.d/${LEGACY_PROGRAM}.conf"
 PROXY="/etc/nginx/clouddeck/${DOMAIN}-reverb.conf"
 VHOST="/etc/nginx/sites-available/${DOMAIN}"
 
@@ -81,8 +86,12 @@ PROXYCONF
             ;;
     esac
 
+# Drop any leftover legacy program so we never run two supervisors for one worker.
+supervisorctl stop "${LEGACY_PROGRAM}:*" || true
+rm -f "${LEGACY_FILE}"
+
 cat > "${FILE}" <<CONF
-[program:clouddeck-${ID}]
+[program:${PROGRAM}]
 process_name=%(program_name)s_%(process_num)02d
 command=php /var/www/${DOMAIN}/current/artisan ${ARGS}
 directory=/var/www/${DOMAIN}/current
@@ -97,8 +106,9 @@ stdout_logfile=/var/log/clouddeck-worker-${ID}.log
 stopwaitsecs=$((TIMEOUT + 30))
 CONF
 else
-    supervisorctl stop "clouddeck-${ID}:*" || true
-    rm -f "${FILE}"
+    supervisorctl stop "${PROGRAM}:*" || true
+    supervisorctl stop "${LEGACY_PROGRAM}:*" || true
+    rm -f "${FILE}" "${LEGACY_FILE}"
     if [ "${TYPE}" = "reverb" ]; then
         # Leaving the glob include in the vhost is harmless once the file is gone.
         rm -f "${PROXY}"

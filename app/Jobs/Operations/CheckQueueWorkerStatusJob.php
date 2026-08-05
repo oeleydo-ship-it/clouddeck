@@ -3,6 +3,7 @@
 namespace App\Jobs\Operations;
 
 use App\Models\QueueWorker;
+use App\Services\SupervisorProgram;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,9 +26,12 @@ class CheckQueueWorkerStatusJob implements ShouldQueue
     public function handle(SshClient $ssh): void
     {
         $worker = QueueWorker::withTrashed()->with('site.server.sshKey')->findOrFail($this->workerId);
-        $output = $ssh->run($worker->site->server, 'supervisorctl status '.escapeshellarg('Uplary-'.$worker->id.':*').' 2>&1 || true');
-        preg_match('/\b(RUNNING|STARTING|BACKOFF|STOPPING|STOPPED|EXITED|FATAL)\b/', $output, $match);
-        $worker->update(['runtime_status' => $match[1] ?? 'unknown', 'runtime_output' => trim($output), 'runtime_checked_at' => now()]);
+        $output = $ssh->run($worker->site->server, SupervisorProgram::statusCommand($worker->id));
+        $worker->update([
+            'runtime_status' => SupervisorProgram::parseStatus($output, $worker->id),
+            'runtime_output' => trim($output),
+            'runtime_checked_at' => now(),
+        ]);
     }
 
     public function failed(Throwable $exception): void

@@ -324,7 +324,11 @@ class ServerOperationsTest extends TestCase
         [$user, $server, $site] = $this->infrastructure();
         $site->queueWorkers()->create(['user_id' => $user->id, 'name' => 'horizon', 'type' => 'horizon', 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256, 'runtime_status' => 'RUNNING', 'runtime_checked_at' => now()]);
 
-        $this->actingAs($user)->get("/servers/{$server->id}/manage")->assertOk()->assertSee('RUNNING');
+        $this->actingAs($user)->get("/servers/{$server->id}/manage")
+            ->assertOk()
+            ->assertSee('RUNNING')
+            ->assertSee('aria-label="Copy IP address"', false)
+            ->assertSee($server->public_ip);
     }
 
     public function test_worker_status_check_is_queued_and_parses_supervisor_state(): void
@@ -341,6 +345,32 @@ class ServerOperationsTest extends TestCase
 
         $this->assertSame('BACKOFF', $worker->fresh()->runtime_status);
         $this->assertNotNull($worker->fresh()->runtime_checked_at);
+    }
+
+    public function test_worker_status_check_parses_clouddeck_supervisor_program(): void
+    {
+        [$user, , $site] = $this->infrastructure();
+        $worker = $site->queueWorkers()->create(['user_id' => $user->id, 'name' => 'default', 'type' => 'queue', 'connection' => 'redis', 'queue' => 'default', 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256]);
+
+        $line = "clouddeck-{$worker->id}:clouddeck-{$worker->id}_00   RUNNING   pid 4242, uptime 0:12:01";
+        Process::fake(['*' => Process::result(output: $line, exitCode: 0)]);
+        (new CheckQueueWorkerStatusJob($worker->id))->handle(app(SshClient::class));
+
+        $this->assertSame('RUNNING', $worker->fresh()->runtime_status);
+        $this->assertStringContainsString($line, (string) $worker->fresh()->runtime_output);
+    }
+
+    public function test_worker_status_prefers_clouddeck_program_over_legacy_uplary(): void
+    {
+        [, , $site] = $this->infrastructure();
+        $worker = $site->queueWorkers()->create(['user_id' => $site->user_id, 'name' => 'horizon', 'type' => 'horizon', 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256]);
+
+        $output = "clouddeck-{$worker->id}:clouddeck-{$worker->id}_00   RUNNING   pid 10, uptime 1:00:00\n"
+            ."Uplary-{$worker->id}: ERROR (no such process)";
+        Process::fake(['*' => Process::result(output: $output, exitCode: 0)]);
+        (new CheckQueueWorkerStatusJob($worker->id))->handle(app(SshClient::class));
+
+        $this->assertSame('RUNNING', $worker->fresh()->runtime_status);
     }
 
     public function test_sync_worker_job_configures_supervisor_command_by_type(): void
