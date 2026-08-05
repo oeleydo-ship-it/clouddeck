@@ -47,7 +47,7 @@ Dedicated admin sections (sidebar): **Pages**, **SEO**, **Analytics**, **Webmast
 
 - Edit homepage hero, steps intro, and closing CTA copy (blank fields keep built-in defaults).
 - Set default meta description, keywords, Open Graph image URL, robots, Google Analytics (GA4 measurement ID), and Google Search Console verification token. Tags are injected in the shared layout head.
-- Paste custom HTML/JS (**Insert code**) for chat widgets and similar embeds into head/body. Defaults to marketing/public pages; console injection is optional. Raw markup is intentional for trusted operators only.
+- Paste custom HTML/JS (**Insert code**) for chat widgets and similar embeds into head/body. Defaults to marketing/public pages; console injection is optional. Raw markup is intentional for trusted operators only. Iframe-based widgets also need the widget host to allow framing — if that host is a site on this platform, enable **Allow embedding in iframes** under the site’s Remote → Nginx settings.
 - Enable an **AI platform guide** with an encrypted OpenAI API key and optional system prompt. When enabled, signed-in users see a floating chat helper that answers how-to questions about the console (throttled at `/guide/chat`).
 
 Stripe API keys and the webhook signing secret are configured under **Admin → Payments** (see `docs/stripe-billing.md`).

@@ -40,9 +40,19 @@ class SiteConfigurationController extends Controller
 
     private function nginx(Request $request): array
     {
-        $data = $request->validate(['client_max_body_mb' => ['required', 'integer', 'between:1,1024'], 'static_cache' => ['sometimes', 'boolean'], 'include_www' => ['sometimes', 'boolean']]);
+        $data = $request->validate([
+            'client_max_body_mb' => ['required', 'integer', 'between:1,1024'],
+            'static_cache' => ['sometimes', 'boolean'],
+            'include_www' => ['sometimes', 'boolean'],
+            'allow_iframe_embedding' => ['sometimes', 'boolean'],
+        ]);
 
-        return ['client_max_body_mb' => (int) $data['client_max_body_mb'], 'static_cache' => $request->boolean('static_cache'), 'include_www' => $request->boolean('include_www')];
+        return [
+            'client_max_body_mb' => (int) $data['client_max_body_mb'],
+            'static_cache' => $request->boolean('static_cache'),
+            'include_www' => $request->boolean('include_www'),
+            'allow_iframe_embedding' => $request->boolean('allow_iframe_embedding'),
+        ];
     }
 
     private function php(Request $request): array

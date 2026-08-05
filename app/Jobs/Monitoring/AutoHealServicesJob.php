@@ -103,7 +103,7 @@ class AutoHealServicesJob implements ShouldQueue
                 event: 'auto_heal',
                 title: 'Auto-heal queued on '.$server->name,
                 body: ucfirst($label).' was reported down for '.$required.' consecutive samples. A '.$operationType.' was queued.',
-                url: route('servers.manage', $server).'#monitoring',
+                url: route('servers.manage', ['server' => $server, 'tab' => 'monitoring']),
                 severity: 'warning',
                 context: ['server_id' => $server->id, 'service' => $service, 'operation_id' => $operation->id],
             ));

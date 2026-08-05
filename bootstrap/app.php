@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureEmailIsVerifiedWhenRequired;
 use App\Http\Middleware\EnsureInstalled;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\PreserveActiveTab;
 use App\Http\Middleware\RequireFeature;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
-        $middleware->web(prepend: [EnsureInstalled::class]);
+        $middleware->web(prepend: [EnsureInstalled::class], append: [PreserveActiveTab::class]);
         $middleware->append(EnsureNotSuspended::class);
         $middleware->alias(['abilities' => CheckAbilities::class, 'admin' => EnsureSuperAdmin::class, 'feature' => RequireFeature::class, 'verified' => EnsureEmailIsVerifiedWhenRequired::class]);
         $middleware->validateCsrfTokens(except: ['webhooks/*']);

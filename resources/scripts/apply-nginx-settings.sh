@@ -5,6 +5,7 @@ PHP_VERSION={{PHP_VERSION}}
 CLIENT_MAX_BODY_MB={{CLIENT_MAX_BODY_MB}}
 STATIC_CACHE={{STATIC_CACHE}}
 INCLUDE_WWW={{INCLUDE_WWW}}
+ALLOW_IFRAME_EMBEDDING={{ALLOW_IFRAME_EMBEDDING}}
 SSL_ENABLED={{SSL_ENABLED}}
 DOCUMENT_ROOT={{DOCUMENT_ROOT}}
 ROOT="/var/www/${DOMAIN}"
@@ -18,6 +19,13 @@ SERVER_NAMES="$DOMAIN"
 STATIC_BLOCK=""
 if [[ "$STATIC_CACHE" == "1" ]]; then
     STATIC_BLOCK='location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico|webp|woff2?)$ { expires 30d; access_log off; try_files $uri /index.php?$query_string; }'
+fi
+# Chat widgets and similar embeds load this site in a cross-origin iframe. SAMEORIGIN
+# blocks that (blank gray rectangle on the host page). Opt in only when the site is
+# meant to be framed; clickjacking protection stays on by default.
+FRAME_OPTIONS_HEADER='    add_header X-Frame-Options "SAMEORIGIN" always;'
+if [[ "$ALLOW_IFRAME_EMBEDDING" == "1" ]]; then
+    FRAME_OPTIONS_HEADER=''
 fi
 TLS_LINES=""
 if [[ "$SSL_ENABLED" == "1" ]]; then
@@ -44,7 +52,7 @@ server {
     index index.php;
     charset utf-8;
     client_max_body_size ${CLIENT_MAX_BODY_MB}M;
-    add_header X-Frame-Options "SAMEORIGIN" always;
+${FRAME_OPTIONS_HEADER}
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     include /etc/nginx/clouddeck/${DOMAIN}-reverb.conf*;

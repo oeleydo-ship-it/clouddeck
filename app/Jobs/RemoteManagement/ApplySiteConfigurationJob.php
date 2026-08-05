@@ -38,8 +38,9 @@ class ApplySiteConfigurationJob implements ShouldQueue
                 'DOMAIN' => $site->domain,
                 'PHP_VERSION' => $site->php_version,
                 'CLIENT_MAX_BODY_MB' => $settings['client_max_body_mb'],
-                'STATIC_CACHE' => $settings['static_cache'] ? '1' : '0',
-                'INCLUDE_WWW' => $settings['include_www'] ? '1' : '0',
+                'STATIC_CACHE' => ! empty($settings['static_cache']) ? '1' : '0',
+                'INCLUDE_WWW' => ! empty($settings['include_www']) ? '1' : '0',
+                'ALLOW_IFRAME_EMBEDDING' => ! empty($settings['allow_iframe_embedding']) ? '1' : '0',
                 'SSL_ENABLED' => $activeCertificate ? '1' : '0',
                 'DOCUMENT_ROOT' => $site->documentRoot(),
             ]);

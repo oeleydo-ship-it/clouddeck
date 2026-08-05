@@ -36,13 +36,54 @@ class RemoteManagementTest extends TestCase
         Queue::fake();
         [$user, , $site] = $this->infrastructure();
 
-        $this->actingAs($user)->post("/sites/{$site->id}/configurations", ['type' => 'nginx', 'client_max_body_mb' => 100, 'static_cache' => '1', 'include_www' => '1'])->assertSessionHas('status');
+        $this->actingAs($user)->post("/sites/{$site->id}/configurations", [
+            'type' => 'nginx',
+            'client_max_body_mb' => 100,
+            'static_cache' => '1',
+            'include_www' => '1',
+            'allow_iframe_embedding' => '1',
+        ])->assertSessionHas('status');
         $configuration = $site->configurations()->firstOrFail();
 
         $this->assertSame(1, $configuration->version);
         $this->assertTrue($configuration->settings['static_cache']);
+        $this->assertTrue($configuration->settings['allow_iframe_embedding']);
         $this->assertStringNotContainsString('client_max_body_mb', DB::table('site_configurations')->where('id', $configuration->id)->value('settings'));
         Queue::assertPushedOn('operations', ApplySiteConfigurationJob::class);
+    }
+
+    public function test_nginx_apply_accepts_iframe_embedding_setting(): void
+    {
+        Process::fake(['*' => Process::result(output: 'Nginx configuration applied', exitCode: 0)]);
+        [$user, , $site] = $this->infrastructure();
+        $configuration = $site->configurations()->create([
+            'user_id' => $user->id,
+            'type' => 'nginx',
+            'version' => 1,
+            'settings' => [
+                'client_max_body_mb' => 100,
+                'static_cache' => true,
+                'include_www' => false,
+                'allow_iframe_embedding' => true,
+            ],
+        ]);
+
+        (new ApplySiteConfigurationJob($configuration->id))->handle(app(SshClient::class));
+
+        $this->assertSame('active', $configuration->fresh()->status);
+        Process::assertRan(fn () => true);
+    }
+
+    public function test_nginx_script_omits_x_frame_options_when_embedding_is_allowed(): void
+    {
+        $script = file_get_contents(resource_path('scripts/apply-nginx-settings.sh'));
+
+        $this->assertStringContainsString('ALLOW_IFRAME_EMBEDDING={{ALLOW_IFRAME_EMBEDDING}}', $script);
+        $this->assertStringContainsString('X-Frame-Options "SAMEORIGIN"', $script);
+        $this->assertMatchesRegularExpression(
+            '/ALLOW_IFRAME_EMBEDDING" == "1".*FRAME_OPTIONS_HEADER=\'\'/s',
+            $script,
+        );
     }
 
     public function test_configuration_job_applies_and_supersedes_previous_revision(): void

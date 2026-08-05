@@ -43,7 +43,7 @@ class NotifyExpiringCertificatesJob implements ShouldQueue
                     title: 'Certificate for '.$certificate->site->domain.' expires in '.$days.' day'.($days === 1 ? '' : 's'),
                     body: 'The certificate expires on '.$certificate->expires_at->toDayDateTimeString().'. '
                         .($certificate->auto_renew ? 'Automatic renewal is on; check that it has run.' : 'Automatic renewal is off, so it must be renewed by hand.'),
-                    url: route('sites.show', $certificate->site).'#ssl',
+                    url: route('sites.show', ['site' => $certificate->site, 'tab' => 'ssl']),
                     severity: $days <= 3 ? 'critical' : 'warning',
                     context: ['certificate_id' => $certificate->id, 'site_id' => $certificate->site_id, 'days' => $days],
                 ));

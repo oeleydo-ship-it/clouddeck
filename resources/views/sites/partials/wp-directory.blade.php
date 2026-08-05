@@ -6,10 +6,11 @@
             <h2 class="font-semibold heading">Browse {{ $plural }}</h2>
             <p class="mt-1 text-sm muted">From the wordpress.org directory. Installing activates it immediately.</p>
         </div>
-        <form method="GET" action="{{ route('sites.show',$site) }}#{{ $target }}s" class="flex gap-2">
+        <form method="GET" action="{{ route('sites.show',$site) }}" class="flex gap-2">
+            <input type="hidden" name="tab" value="{{ $target }}s">
             <input class="field mt-0" name="{{ $target }}_search" value="{{ request($target.'_search') }}" placeholder="Search {{ $plural }}">
             <button class="button-secondary shrink-0">Search</button>
-            @if(request($target.'_search'))<a href="{{ route('sites.show',$site) }}#{{ $target }}s" class="button-secondary shrink-0">Clear</a>@endif
+            @if(request($target.'_search'))<a href="{{ route('sites.show',['site'=>$site,'tab'=>$target.'s']) }}" class="button-secondary shrink-0">Clear</a>@endif
         </form>
     </div>
 

@@ -51,7 +51,7 @@ class BackupWordPressSiteJob implements ShouldQueue
             event: 'backup_failed',
             title: 'Backup failed for '.$backup->site->domain,
             body: $exception->getMessage(),
-            url: route('sites.show', $backup->site).'#backups',
+            url: route('sites.show', ['site' => $backup->site, 'tab' => 'backups']),
             severity: 'critical',
             context: ['backup_id' => $backup->id, 'site_id' => $backup->site_id],
         ));

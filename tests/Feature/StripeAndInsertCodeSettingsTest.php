@@ -106,6 +106,28 @@ class StripeAndInsertCodeSettingsTest extends TestCase
             ->assertSee('<div id="insert-body-marker"></div>', false);
     }
 
+    public function test_insert_code_script_tags_are_not_escaped_on_marketing_pages(): void
+    {
+        $this->markInstalled();
+
+        app(SystemSettings::class)->put(
+            'insert_code_body',
+            '<script src="https://widgets.example.test/chat/embed.js" async data-insert-code-marker="1"></script>',
+            'string',
+            false,
+        );
+        app(SystemSettings::class)->put('insert_code_on_marketing', '1', 'boolean', true);
+        app(SystemSettings::class)->put('insert_code_on_console', '0', 'boolean', true);
+
+        $home = $this->get('/')->assertOk();
+        $home->assertSee('<script src="https://widgets.example.test/chat/embed.js" async data-insert-code-marker="1"></script>', false);
+        $home->assertDontSee('&lt;script', false);
+
+        $this->get('/about')
+            ->assertOk()
+            ->assertSee('data-insert-code-marker="1"', false);
+    }
+
     public function test_insert_code_stays_off_console_when_console_toggle_disabled(): void
     {
         $this->markInstalled();
@@ -118,5 +140,23 @@ class StripeAndInsertCodeSettingsTest extends TestCase
         $this->actingAs($admin)->get('/admin')
             ->assertOk()
             ->assertDontSee('insert-console-should-not-appear', false);
+    }
+
+    public function test_insert_code_renders_on_console_when_console_toggle_enabled(): void
+    {
+        $this->markInstalled();
+        $admin = $this->admin();
+
+        app(SystemSettings::class)->put('insert_code_body', '<div id="insert-console-marker"></div>', 'string', false);
+        app(SystemSettings::class)->put('insert_code_on_marketing', '0', 'boolean', true);
+        app(SystemSettings::class)->put('insert_code_on_console', '1', 'boolean', true);
+
+        $this->actingAs($admin)->get('/admin')
+            ->assertOk()
+            ->assertSee('<div id="insert-console-marker"></div>', false);
+
+        $this->get('/')
+            ->assertOk()
+            ->assertDontSee('insert-console-marker', false);
     }
 }

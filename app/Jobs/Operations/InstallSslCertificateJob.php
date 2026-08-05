@@ -35,7 +35,7 @@ class InstallSslCertificateJob implements ShouldQueue
             event: 'ssl_installed',
             title: 'Certificate issued for '.$certificate->site->domain,
             body: 'The certificate is active and expires on '.$certificate->fresh()->expires_at->toFormattedDayDateString().'.',
-            url: route('sites.show', $certificate->site).'#ssl',
+            url: route('sites.show', ['site' => $certificate->site, 'tab' => 'ssl']),
             context: ['certificate_id' => $certificate->id, 'site_id' => $certificate->site_id],
         ));
 

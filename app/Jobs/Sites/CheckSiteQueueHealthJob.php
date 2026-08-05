@@ -40,7 +40,7 @@ class CheckSiteQueueHealthJob implements ShouldQueue
                 event: 'queue_failed',
                 title: 'Failed jobs on '.$site->domain,
                 body: $current.' job'.($current === 1 ? '' : 's').' in the failed table, up from '.$previous.'.',
-                url: route('sites.show', $site).'#queue',
+                url: route('sites.show', ['site' => $site, 'tab' => 'queue']),
                 context: ['site_id' => $site->id, 'failed' => $current, 'previous' => $previous],
             ));
         }

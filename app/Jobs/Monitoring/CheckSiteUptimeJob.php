@@ -125,7 +125,7 @@ class CheckSiteUptimeJob implements ShouldQueue, ShouldBeUnique
             event: 'site_down',
             title: $site->domain.' appears down',
             body: $message,
-            url: route('sites.show', $site).'#monitoring',
+            url: route('sites.show', ['site' => $site, 'tab' => 'monitoring']),
             severity: 'critical',
             context: ['site_id' => $site->id, 'incident_id' => $incident->id],
         ));
@@ -147,7 +147,7 @@ class CheckSiteUptimeJob implements ShouldQueue, ShouldBeUnique
             event: 'site_recovered',
             title: $site->domain.' is back up',
             body: 'The site responded successfully after being reported down.',
-            url: route('sites.show', $site).'#monitoring',
+            url: route('sites.show', ['site' => $site, 'tab' => 'monitoring']),
             severity: 'info',
             context: ['site_id' => $site->id, 'incident_id' => $incident->id],
         ));

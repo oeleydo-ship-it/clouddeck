@@ -1,6 +1,12 @@
 @extends('layouts.app')
 @section('content')
-<div class="app-main" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','themes','plugins','backups','environment','ssl','cron','logs','monitoring'] : ['overview','environment','deploy','ssl','cron','queue','webhook','logs','monitoring']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
+@php
+    $siteTabKeys = $site->isWordPress()
+        ? ['overview','themes','plugins','backups','environment','ssl','cron','logs','monitoring']
+        : ['overview','environment','deploy','ssl','cron','queue','webhook','logs','monitoring'];
+    $initialSiteTab = in_array(request('tab'), $siteTabKeys, true) ? request('tab') : 'overview';
+@endphp
+<div class="app-main" x-data="managedTabs({ tab: @js($initialSiteTab), keys: @js($siteTabKeys) })" @submit.capture="ensureTab($event)">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <a class="link-action" href="{{ route('sites.index') }}">← Sites</a>
@@ -65,10 +71,10 @@
             <p class="mt-1 text-sm text-amber-700 dark:text-amber-200/80">
                 @if($site->isWordPress())
                     WordPress cannot run without one, and {{ $branding['name'] }} writes its credentials into <code>wp-config.php</code> when it installs.
-                    Create a database on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}#databases">{{ $site->server->name }}</a> and attach it to this site, then come back and install.
+                    Create a database on <a class="font-medium underline" href="{{ route('servers.manage',['server'=>$site->server,'tab'=>'databases']) }}">{{ $site->server->name }}</a> and attach it to this site, then come back and install.
                 @else
                     This site has no <code>DB_CONNECTION</code> in its environment, so Laravel would fall back to SQLite and the deployment would fail during migrations — the provisioned PHP only carries the MySQL and PostgreSQL drivers.
-                    Create one on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}#databases">{{ $site->server->name }}</a> and attach it to this site; {{ $branding['name'] }} writes the <code>DB_*</code> connection details into the environment for you.
+                    Create one on <a class="font-medium underline" href="{{ route('servers.manage',['server'=>$site->server,'tab'=>'databases']) }}">{{ $site->server->name }}</a> and attach it to this site; {{ $branding['name'] }} writes the <code>DB_*</code> connection details into the environment for you.
                     If this application genuinely has no database, set <code>DB_CONNECTION</code> yourself on the Environment tab.
                 @endif
             </p>
@@ -271,7 +277,7 @@
                         @if($worker->runtime_status)<p class="mt-1 text-xs {{ in_array($worker->runtime_status,['RUNNING','STARTING'],true) ? 'text-emerald-600 dark:text-emerald-300' : 'text-rose-600 dark:text-rose-300' }}">Supervisor: {{ $worker->runtime_status }} · checked {{ $worker->runtime_checked_at?->diffForHumans() }}</p>@endif
                     </div>
                 @empty
-                    <p class="py-5 text-center text-sm muted">No workers configured yet. Add one from this server's <a class="text-cyan-600 dark:text-cyan-300" href="{{ route('servers.manage',$site->server) }}">management page</a>.</p>
+                    <p class="py-5 text-center text-sm muted">No workers configured yet. Add one from this server's <a class="text-cyan-600 dark:text-cyan-300" href="{{ route('servers.manage',['server'=>$site->server,'tab'=>'workers']) }}">management page</a>.</p>
                 @endforelse
             </div>
         </section>

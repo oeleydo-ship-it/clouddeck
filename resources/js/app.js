@@ -2,6 +2,61 @@ import './bootstrap';
 import QRCode from 'qrcode';
 
 /**
+ * Alpine state for site/server manage tabs.
+ *
+ * Kept out of Blade attributes: @js() emits single-quoted literals, which prematurely
+ * close an x-data='...' attribute and dump the rest of the object as visible page text.
+ *
+ * Registered via Alpine.data on alpine:init (Vite ESM runs before Livewire's
+ * DOMContentLoaded Alpine.start). window.managedTabs remains a fallback for expression eval.
+ */
+function managedTabs({ tab, keys = [], backupType = 'database', frequency = 'daily' } = {}) {
+    return {
+        tab,
+        keys,
+        backupType,
+        frequency,
+        init() {
+            const fromQuery = new URLSearchParams(location.search).get('tab');
+            const fromHash = location.hash.replace('#', '');
+            if (this.keys.includes(fromQuery)) {
+                this.tab = fromQuery;
+            } else if (this.keys.includes(fromHash)) {
+                this.tab = fromHash;
+                this.persistTab(fromHash);
+            }
+            this.$watch('tab', (v) => this.persistTab(v));
+        },
+        persistTab(v) {
+            const url = new URL(location.href);
+            url.searchParams.set('tab', v);
+            url.hash = '';
+            history.replaceState(null, '', url);
+        },
+        ensureTab(event) {
+            const form = event.target;
+            if (! (form instanceof HTMLFormElement) || form.method.toUpperCase() === 'GET') {
+                return;
+            }
+            let input = form.querySelector('input[name=_tab]');
+            if (! input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = '_tab';
+                form.appendChild(input);
+            }
+            input.value = this.tab;
+        },
+    };
+}
+
+window.managedTabs = managedTabs;
+
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('managedTabs', (config = {}) => managedTabs(config));
+});
+
+/**
  * Renders the two-factor setup URI as a scannable code.
  *
  * Drawn in the browser rather than fetched as an image: the URI carries the TOTP secret,

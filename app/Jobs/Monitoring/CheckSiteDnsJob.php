@@ -113,7 +113,7 @@ class CheckSiteDnsJob implements ShouldQueue, ShouldBeUnique
             event: 'dns_mismatch',
             title: 'DNS mismatch for '.$site->domain,
             body: $message,
-            url: route('sites.show', $site).'#monitoring',
+            url: route('sites.show', ['site' => $site, 'tab' => 'monitoring']),
             severity: 'warning',
             context: ['site_id' => $site->id, 'incident_id' => $incident->id],
         ));
