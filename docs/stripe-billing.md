@@ -4,17 +4,20 @@ Uplary supports Stripe-hosted subscription Checkout and Customer Portal sessions
 
 ## Configuration
 
-Set the following production secrets:
+Set production secrets via **Admin → Payments** (encrypted `system_settings`), or as `.env` fallbacks:
 
 ```dotenv
+STRIPE_KEY=pk_live_...
 STRIPE_SECRET=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_AUTOMATIC_TAX=true
 ```
 
-In the super-admin **Stripe** tab, map each paid plan to its monthly and yearly recurring Stripe Price IDs. Plans without a mapped price remain available through the manual billing-request workflow but are not shown in hosted checkout.
+When a value is saved in admin settings it overrides the matching env key at boot. Secret fields in the form are write-only: leave them blank to keep the stored value.
 
-Register `POST /api/billing/stripe/webhook` as a Stripe webhook endpoint. Subscribe to `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, and other invoice lifecycle events that your operating policy needs.
+In the same **Payments** screen, map each paid plan to its monthly and yearly recurring Stripe Price IDs. Plans without a mapped price remain available through the manual billing-request workflow but are not shown in hosted checkout.
+
+Register the webhook endpoint shown on that page (`POST /api/billing/stripe/webhook`) in the Stripe Dashboard. Subscribe to `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.paid`, `invoice.payment_failed`, and other invoice lifecycle events that your operating policy needs.
 
 ## Security and processing
 
@@ -33,7 +36,7 @@ Stripe recommends using asynchronous subscription events as the source of truth 
 ## Operations checklist
 
 - Run Horizon with the `billing` and `notifications` supervisors.
-- Keep live and test webhook secrets separate and rotate them through environment configuration.
+- Keep live and test webhook secrets separate and rotate them from Admin → Payments (or environment configuration).
 - Configure Stripe Customer Portal products and cancellation behavior before enabling it for customers.
 - Configure Stripe Tax registrations and product tax codes; enabling automatic tax alone does not establish registrations.
 - Reconcile failed webhook rows and Stripe Workbench delivery failures.

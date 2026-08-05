@@ -9,6 +9,12 @@
         ['route' => 'admin.posts', 'label' => 'Blog', 'icon' => 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z'],
         ['route' => 'admin.billing', 'label' => 'Billing review', 'icon' => 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
         ['route' => 'admin.payments', 'label' => 'Payments', 'icon' => 'M2 9h20M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z'],
+        ['route' => 'admin.pages', 'label' => 'Pages', 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6'],
+        ['route' => 'admin.seo', 'label' => 'SEO', 'icon' => 'M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18'],
+        ['route' => 'admin.analytics', 'label' => 'Analytics', 'icon' => 'M3 3v18h18M7 16V9m5 7V5m5 11v-6'],
+        ['route' => 'admin.webmaster', 'label' => 'Webmaster', 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 12h6'],
+        ['route' => 'admin.insert-code', 'label' => 'Insert code', 'icon' => 'M16 18l6-6-6-6M8 6l-6 6 6 6'],
+        ['route' => 'admin.ai', 'label' => 'AI guide', 'icon' => 'M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z'],
         ['route' => 'admin.settings', 'label' => 'Settings', 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3a7.4 7.4 0 0 0-.1-1.1l2-1.6-2-3.4-2.4 1a7.5 7.5 0 0 0-1.9-1.1l-.4-2.5h-4l-.4 2.5a7.5 7.5 0 0 0-1.9 1.1l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.2l-2 1.6 2 3.4 2.4-1c.6.5 1.2.8 1.9 1.1l.4 2.5h4l.4-2.5c.7-.3 1.3-.6 1.9-1.1l2.4 1 2-3.4-2-1.6c.1-.4.1-.7.1-1.1Z'],
         ['route' => 'admin.audit', 'label' => 'Audit', 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M9 15h6M9 11h3'],
     ];

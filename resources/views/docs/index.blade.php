@@ -71,6 +71,7 @@
 
                 <div class="mt-5 rounded-xl bg-slate-50 p-4 text-sm muted dark:bg-white/5">
                     <p><strong class="heading">What you own:</strong> cloud accounts, VMs, and domains stay in your name. {{ $branding['name'] }} orchestrates SSH and provider APIs; stopping the panel does not delete your servers.</p>
+                    <p class="mt-2">Need a nudge while working? Use the floating <strong class="heading">AI guide</strong> (bottom-right) when a superadmin has enabled it.</p>
                 </div>
             </section>
 

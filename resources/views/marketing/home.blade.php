@@ -2,6 +2,7 @@
 @section('marketing')
 @php
     $platform = $branding['name'] ?? app(\App\Services\SystemSettings::class)->branding()['name'];
+    $landing = $landing ?? app(\App\Services\SystemSettings::class)->landing();
     $providers = ['DigitalOcean', 'Hetzner', 'Vultr', 'Linode', 'AWS', 'UpCloud', 'Contabo', 'Custom VPS'];
 @endphp
 
@@ -12,18 +13,18 @@
 
     <div class="relative mx-auto grid max-w-7xl items-center gap-10 px-5 py-14 md:grid-cols-2 md:gap-8 md:py-16 lg:gap-12 lg:py-20">
         <div class="landing-fade-up relative z-10 max-w-xl">
-            <p class="font-display text-sm font-semibold uppercase tracking-[0.22em] text-sky-700 dark:text-sky-300">{{ $platform }}</p>
+            <p class="font-display text-sm font-semibold uppercase tracking-[0.22em] text-sky-700 dark:text-sky-300">{{ $landing['hero_eyebrow'] }}</p>
             <h1 class="mt-5 font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-slate-950 sm:text-5xl dark:text-white">
-                Provision servers. Deploy sites. Stay in control.
+                {{ $landing['hero_headline'] }}
             </h1>
             <p class="mt-5 max-w-md text-lg leading-relaxed text-slate-600 dark:text-slate-300">
-                {{ $platform }} is the SaaS panel for auto-provisioning your VPS, deploying Laravel and WordPress, and running day-to-day ops — your cloud bill stays with your provider.
+                {{ $landing['hero_subcopy'] }}
             </p>
             <div class="mt-8 flex flex-wrap items-center gap-3">
-                <a href="{{ route('register') }}" class="button-primary !px-7 !py-3.5">Create free account</a>
-                <a href="#how-it-works" class="button-secondary !bg-white/90 !text-sky-700 hover:!bg-white dark:!bg-white/10 dark:!text-sky-200">See how it works</a>
+                <a href="{{ route('register') }}" class="button-primary !px-7 !py-3.5">{{ $landing['hero_cta_primary'] }}</a>
+                <a href="#how-it-works" class="button-secondary !bg-white/90 !text-sky-700 hover:!bg-white dark:!bg-white/10 dark:!text-sky-200">{{ $landing['hero_cta_secondary'] }}</a>
             </div>
-            <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">Works with your VPS · no server lock-in</p>
+            <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">{{ $landing['hero_microcopy'] }}</p>
         </div>
 
         <div class="landing-fade-up landing-fade-up-delay relative z-10 mx-auto w-full max-w-[460px] md:-my-5 md:origin-right md:scale-[0.88] md:justify-self-end lg:-my-2 lg:scale-95" aria-hidden="true">
@@ -92,9 +93,9 @@
 {{-- Steps --}}
 <section id="how-it-works" class="mx-auto max-w-7xl px-5 py-20 lg:py-28">
     <div class="max-w-2xl">
-        <p class="text-sm font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-sky-300">Getting started</p>
-        <h2 class="mt-3 font-display text-3xl font-bold tracking-tight heading sm:text-4xl">Three simple steps.</h2>
-        <p class="mt-4 text-lg muted">You do not need to write server scripts by hand. {{ $platform }} sets up the common pieces for you.</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-sky-300">{{ $landing['steps_eyebrow'] }}</p>
+        <h2 class="mt-3 font-display text-3xl font-bold tracking-tight heading sm:text-4xl">{{ $landing['steps_headline'] }}</h2>
+        <p class="mt-4 text-lg muted">{{ $landing['steps_subcopy'] }}</p>
     </div>
 
     <ol class="mt-14 grid gap-10 lg:grid-cols-3">
@@ -328,10 +329,10 @@
     <div class="landing-cta-wash absolute inset-0" aria-hidden="true"></div>
     <div class="relative mx-auto max-w-3xl px-5 py-24 text-center">
         <p class="font-display text-sm font-semibold uppercase tracking-[0.22em] text-sky-800 dark:text-sky-200">{{ $platform }}</p>
-        <h2 class="mt-4 font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl dark:text-white">Ready to try it?</h2>
-        <p class="mx-auto mt-4 max-w-xl text-lg text-slate-600 dark:text-slate-300">Make an account, connect a server, and deploy your next site with {{ $platform }}.</p>
+        <h2 class="mt-4 font-display text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl dark:text-white">{{ $landing['cta_headline'] }}</h2>
+        <p class="mx-auto mt-4 max-w-xl text-lg text-slate-600 dark:text-slate-300">{{ $landing['cta_subcopy'] }}</p>
         <div class="mt-8 flex flex-wrap justify-center gap-3">
-            <a href="{{ route('register') }}" class="button-primary !px-7 !py-3.5">Create free account</a>
+            <a href="{{ route('register') }}" class="button-primary !px-7 !py-3.5">{{ $landing['cta_button'] }}</a>
             <a href="{{ route('features') }}" class="button-secondary !bg-white/90 !text-sky-700 dark:!bg-white/10 dark:!text-sky-200">Browse features</a>
         </div>
     </div>

@@ -27,7 +27,9 @@ class PageController extends Controller
                 ->orderBy('sort_order')
                 ->orderBy('monthly_price')
                 ->get(),
+            'landing' => app(SystemSettings::class)->landing(),
             'title' => $platform,
+            'metaDescription' => app(SystemSettings::class)->seo()['description'],
         ]);
     }
 

@@ -41,6 +41,17 @@ Staging is off until a superadmin enables **Staging sites** under Admin → Sett
 
 Staging is a separate site on the same server (own nginx vhost, release root, and environment). Laravel staging seeds `APP_ENV=staging`. **Promote to production** copies the staging repository, branch, script, and PHP version onto the linked production site and queues a production deployment. Create and promote routes return 404 while the platform toggle is off.
 
+## Landing page, SEO, AI guide, and insert code
+
+Dedicated admin sections (sidebar): **Pages**, **SEO**, **Analytics**, **Webmaster**, **Insert code**, **AI guide**. A superadmin can:
+
+- Edit homepage hero, steps intro, and closing CTA copy (blank fields keep built-in defaults).
+- Set default meta description, keywords, Open Graph image URL, robots, Google Analytics (GA4 measurement ID), and Google Search Console verification token. Tags are injected in the shared layout head.
+- Paste custom HTML/JS (**Insert code**) for chat widgets and similar embeds into head/body. Defaults to marketing/public pages; console injection is optional. Raw markup is intentional for trusted operators only.
+- Enable an **AI platform guide** with an encrypted OpenAI API key and optional system prompt. When enabled, signed-in users see a floating chat helper that answers how-to questions about the console (throttled at `/guide/chat`).
+
+Stripe API keys and the webhook signing secret are configured under **Admin → Payments** (see `docs/stripe-billing.md`).
+
 ## Production checklist
 
 - Create a separate super-admin account; the seeder intentionally does not grant administrator access.
@@ -49,3 +60,4 @@ Staging is a separate site on the same server (own nginx vhost, release root, an
 - Set a secure `APP_KEY`, HTTPS cookies, trusted proxies, mail transport, and a persistent sessions table.
 - Apply feature middleware to paid or staged surfaces according to the product policy.
 - Back up subscription, audit, and team tables and define retention requirements before launch.
+- Configure landing/SEO/analytics/insert-code and, if desired, the OpenAI guide key before launch.

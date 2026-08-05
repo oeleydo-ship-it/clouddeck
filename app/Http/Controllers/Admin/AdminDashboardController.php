@@ -62,12 +62,45 @@ class AdminDashboardController extends Controller
 
     public function payments(): View
     {
-        return view('admin.payments', ['plans' => Plan::orderBy('sort_order')->get()]);
+        return view('admin.payments', [
+            'plans' => Plan::orderBy('sort_order')->get(),
+            'settings' => SystemSetting::all()->keyBy('key'),
+        ]);
     }
 
     public function settings(): View
     {
         return view('admin.settings', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function pages(): View
+    {
+        return view('admin.pages', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function seo(): View
+    {
+        return view('admin.seo', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function analytics(): View
+    {
+        return view('admin.analytics', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function webmaster(): View
+    {
+        return view('admin.webmaster', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function ai(): View
+    {
+        return view('admin.ai', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function insertCode(): View
+    {
+        return view('admin.insert-code', ['settings' => SystemSetting::all()->keyBy('key')]);
     }
 
     public function audit(): View

@@ -9,7 +9,6 @@ use App\Events\DeploymentFinished;
 use App\Listeners\SendDeploymentNotification;
 use App\Models\AlertIncident;
 use App\Models\Deployment;
-use App\Models\SystemSetting;
 use App\Services\SystemSettings;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -54,6 +53,10 @@ class AppServiceProvider extends ServiceProvider
             $view->with('dnsEnabled', $settings->dnsEnabled());
             $view->with('publicSiteEnabled', $settings->publicSiteEnabled());
             $view->with('shellAlerts', $this->shellAlerts());
+            $view->with('seo', $settings->seo());
+            $view->with('analytics', $settings->analytics());
+            $view->with('aiGuideEnabled', $settings->aiGuideEnabled());
+            $view->with('insertCode', $settings->insertCode());
         });
     }
 
@@ -144,27 +147,25 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Stripe credentials entered in the installer live in system_settings, encrypted at rest,
-     * so an operator can set up billing without editing .env on the server. Overriding the
-     * config here means every existing config('services.stripe.*') caller picks them up
-     * unchanged, with .env still winning when no setting has been saved.
+     * Stripe credentials from Admin → Payments (or the installer) live in system_settings,
+     * encrypted at rest. Overriding config here means every config('services.stripe.*')
+     * caller picks them up; .env still wins when no setting has been saved.
      */
     private function applyStripeCredentialsFromSettings(): void
     {
-        // Runs on every boot, including `migrate` against an empty database and any command
-        // executed before the tables exist, so a missing table must never be fatal.
         try {
-            if (! Schema::hasTable('system_settings')) {
-                return;
-            }
+            $settings = app(SystemSettings::class);
 
-            SystemSetting::whereIn('key', ['stripe_secret', 'stripe_webhook_secret'])
-                ->get()
-                ->each(function (SystemSetting $setting): void {
-                    if (filled($setting->value)) {
-                        config(['services.stripe.'.Str::after($setting->key, 'stripe_') => $setting->value]);
-                    }
-                });
+            foreach ([
+                'stripe_key' => 'key',
+                'stripe_secret' => 'secret',
+                'stripe_webhook_secret' => 'webhook_secret',
+            ] as $settingKey => $configKey) {
+                $value = $settings->get($settingKey);
+                if (filled($value)) {
+                    config(["services.stripe.{$configKey}" => $value]);
+                }
+            }
         } catch (Throwable $e) {
             Log::warning('Could not load Stripe credentials from settings: '.$e->getMessage());
         }

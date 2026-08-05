@@ -23,6 +23,12 @@ class AdminNavigationTest extends TestCase
             ['/admin/feature-flags', 'Feature flags'],
             ['/admin/billing-review', 'Billing review'],
             ['/admin/payments', 'Payments'],
+            ['/admin/pages', 'Pages'],
+            ['/admin/seo', 'SEO'],
+            ['/admin/analytics', 'Analytics'],
+            ['/admin/webmaster', 'Webmaster'],
+            ['/admin/insert-code', 'Insert code'],
+            ['/admin/ai', 'AI guide'],
             ['/admin/settings', 'Settings'],
             ['/admin/audit', 'Audit'],
         ];
@@ -53,6 +59,12 @@ class AdminNavigationTest extends TestCase
             ->assertSee('aria-current="page"', false)
             // Every section stays reachable from wherever the operator happens to be.
             ->assertSee(route('admin.users'), false)
+            ->assertSee(route('admin.pages'), false)
+            ->assertSee(route('admin.seo'), false)
+            ->assertSee(route('admin.analytics'), false)
+            ->assertSee(route('admin.webmaster'), false)
+            ->assertSee(route('admin.insert-code'), false)
+            ->assertSee(route('admin.ai'), false)
             ->assertSee(route('admin.audit'), false);
     }
 

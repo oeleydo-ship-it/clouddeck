@@ -4,7 +4,41 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? ($branding['name'] ?? config('app.name', 'Uplary')) }}</title>
+    @php
+        $seo = $seo ?? ['description' => null, 'keywords' => null, 'og_image' => null, 'robots' => 'index,follow'];
+        $analytics = $analytics ?? ['ga_measurement_id' => null, 'gsc_verification' => null];
+        $pageTitle = $title ?? ($branding['name'] ?? config('app.name', 'Uplary'));
+        $pageDescription = $metaDescription ?? ($seo['description'] ?? null);
+    @endphp
+    <title>{{ $pageTitle }}</title>
+    @if($pageDescription)
+        <meta name="description" content="{{ $pageDescription }}">
+        <meta property="og:description" content="{{ $pageDescription }}">
+    @endif
+    @if(! empty($seo['keywords']))
+        <meta name="keywords" content="{{ $seo['keywords'] }}">
+    @endif
+    @if(! empty($seo['robots']))
+        <meta name="robots" content="{{ $seo['robots'] }}">
+    @endif
+    <meta property="og:title" content="{{ $pageTitle }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    @if(! empty($seo['og_image']))
+        <meta property="og:image" content="{{ $seo['og_image'] }}">
+    @endif
+    @if(! empty($analytics['gsc_verification']))
+        <meta name="google-site-verification" content="{{ $analytics['gsc_verification'] }}">
+    @endif
+    @if(! empty($analytics['ga_measurement_id']))
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ $analytics['ga_measurement_id'] }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', @js($analytics['ga_measurement_id']));
+        </script>
+    @endif
     <script>
         try {
             if (localStorage.theme === 'dark') {
@@ -17,13 +51,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css','resources/js/app.js'])
     @livewireStyles
+    @php
+        $insertCode = $insertCode ?? ['head' => null, 'body' => null, 'on_marketing' => true, 'on_console' => false];
+        // Same marketing route list as the chrome below — duplicated here so head snippets
+        // can decide before the body opens.
+        $onMarketing = request()->routeIs('home', 'about', 'features', 'use-cases', 'blog', 'blog.show', 'contact');
+        $inConsole = auth()->check() && ! $onMarketing;
+        $injectInsertCode = $inConsole
+            ? ($insertCode['on_console'] ?? false)
+            : ($insertCode['on_marketing'] ?? true);
+    @endphp
+    @if($injectInsertCode && ! empty($insertCode['head']))
+        {!! $insertCode['head'] !!}
+    @endif
 </head>
 <body class="min-h-screen antialiased">
 @php
     $branding = $branding ?? ['name' => config('app.name', 'Uplary'), 'logo_url' => null];
     // Public marketing pages keep the landing chrome for everyone — including signed-in
     // admins — so the console sidebar never appears on /, /about, /blog, etc.
-    $onMarketing = request()->routeIs('home', 'about', 'features', 'use-cases', 'blog', 'blog.show', 'contact');
 @endphp
 
 @if(auth()->check() && ! $onMarketing)
@@ -302,6 +348,10 @@
         </main>
     </div>
 @endif
+@include('partials.ai-guide')
 @livewireScripts
+@if($injectInsertCode && ! empty($insertCode['body']))
+    {!! $insertCode['body'] !!}
+@endif
 </body>
 </html>

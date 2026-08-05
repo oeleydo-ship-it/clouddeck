@@ -107,6 +107,129 @@ final class SystemSettings
         ];
     }
 
+    /**
+     * Editable homepage copy. Empty settings fall back to the built-in landing text so
+     * a fresh install still looks finished before an admin opens Settings.
+     *
+     * @return array{
+     *     hero_eyebrow: string,
+     *     hero_headline: string,
+     *     hero_subcopy: string,
+     *     hero_cta_primary: string,
+     *     hero_cta_secondary: string,
+     *     hero_microcopy: string,
+     *     steps_eyebrow: string,
+     *     steps_headline: string,
+     *     steps_subcopy: string,
+     *     cta_headline: string,
+     *     cta_subcopy: string,
+     *     cta_button: string
+     * }
+     */
+    public function landing(): array
+    {
+        $name = $this->branding()['name'];
+
+        return [
+            'hero_eyebrow' => $this->get('landing_hero_eyebrow') ?: $name,
+            'hero_headline' => $this->get('landing_hero_headline') ?: 'Provision servers. Deploy sites. Stay in control.',
+            'hero_subcopy' => $this->get('landing_hero_subcopy') ?: "{$name} is the SaaS panel for auto-provisioning your VPS, deploying Laravel and WordPress, and running day-to-day ops — your cloud bill stays with your provider.",
+            'hero_cta_primary' => $this->get('landing_hero_cta_primary') ?: 'Create free account',
+            'hero_cta_secondary' => $this->get('landing_hero_cta_secondary') ?: 'See how it works',
+            'hero_microcopy' => $this->get('landing_hero_microcopy') ?: 'Works with your VPS · no server lock-in',
+            'steps_eyebrow' => $this->get('landing_steps_eyebrow') ?: 'Getting started',
+            'steps_headline' => $this->get('landing_steps_headline') ?: 'Three simple steps.',
+            'steps_subcopy' => $this->get('landing_steps_subcopy') ?: "You do not need to write server scripts by hand. {$name} sets up the common pieces for you.",
+            'cta_headline' => $this->get('landing_cta_headline') ?: 'Ready to try it?',
+            'cta_subcopy' => $this->get('landing_cta_subcopy') ?: "Make an account, connect a server, and deploy your next site with {$name}.",
+            'cta_button' => $this->get('landing_cta_button') ?: 'Create free account',
+        ];
+    }
+
+    /**
+     * @return array{description: string, keywords: ?string, og_image: ?string, robots: string}
+     */
+    public function seo(): array
+    {
+        $name = $this->branding()['name'];
+
+        return [
+            'description' => $this->get('seo_default_description') ?: "{$name} helps you provision servers, deploy Laravel and WordPress, and run day-to-day ops on infrastructure you own.",
+            'keywords' => $this->get('seo_keywords'),
+            'og_image' => $this->get('seo_og_image'),
+            'robots' => $this->get('seo_robots') ?: 'index,follow',
+        ];
+    }
+
+    /**
+     * @return array{ga_measurement_id: ?string, gsc_verification: ?string}
+     */
+    public function analytics(): array
+    {
+        return [
+            'ga_measurement_id' => $this->get('ga_measurement_id'),
+            'gsc_verification' => $this->get('gsc_verification'),
+        ];
+    }
+
+    public function aiGuideEnabled(): bool
+    {
+        return $this->boolean('ai_guide_enabled', false) && filled($this->openaiApiKey());
+    }
+
+    public function openaiApiKey(): ?string
+    {
+        return $this->get('openai_api_key');
+    }
+
+    public function openaiModel(): string
+    {
+        return $this->get('openai_model') ?: 'gpt-4o-mini';
+    }
+
+    public function aiGuideSystemPrompt(): string
+    {
+        $name = $this->branding()['name'];
+
+        return $this->get('ai_guide_system_prompt') ?: <<<PROMPT
+You are the in-app guide for {$name}, a SaaS control plane for provisioning VPS servers and deploying Laravel and WordPress sites. Help signed-in users with clear, step-by-step answers about providers, SSH keys, provisioning, sites, deployments, SSL, databases, workers, monitoring, backups, staging, DNS, teams, and billing. Prefer linking them to console areas by name (Dashboard, Servers, Sites, Providers, Documentation). Do not invent billing charges or claim you can change server state yourself. If unsure, say so and suggest Documentation or Contact support. Keep answers concise.
+PROMPT;
+    }
+
+    /**
+     * Publishable Stripe key when saved in admin (or installer). Prefer this over env when set.
+     */
+    public function stripeKey(): ?string
+    {
+        return $this->get('stripe_key');
+    }
+
+    public function stripeSecret(): ?string
+    {
+        return $this->get('stripe_secret');
+    }
+
+    public function stripeWebhookSecret(): ?string
+    {
+        return $this->get('stripe_webhook_secret');
+    }
+
+    /**
+     * Custom HTML/JS snippets for chat widgets and similar third-party embeds.
+     * Values are admin-controlled raw markup — never expose to non-admins for editing.
+     *
+     * @return array{head: ?string, body: ?string, on_marketing: bool, on_console: bool}
+     */
+    public function insertCode(): array
+    {
+        return [
+            'head' => $this->get('insert_code_head'),
+            'body' => $this->get('insert_code_body'),
+            'on_marketing' => $this->boolean('insert_code_on_marketing', true),
+            'on_console' => $this->boolean('insert_code_on_console', false),
+        ];
+    }
+
     public function forget(string $key): void
     {
         Cache::forget("system-setting:{$key}");

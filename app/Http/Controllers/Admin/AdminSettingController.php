@@ -148,4 +148,165 @@ class AdminSettingController extends Controller
 
         return back()->with('status', 'Test message sent to '.$data['test_email'].'.');
     }
+
+    public function landing(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'landing_hero_eyebrow' => ['nullable', 'string', 'max:80'],
+            'landing_hero_headline' => ['nullable', 'string', 'max:160'],
+            'landing_hero_subcopy' => ['nullable', 'string', 'max:600'],
+            'landing_hero_cta_primary' => ['nullable', 'string', 'max:60'],
+            'landing_hero_cta_secondary' => ['nullable', 'string', 'max:60'],
+            'landing_hero_microcopy' => ['nullable', 'string', 'max:120'],
+            'landing_steps_eyebrow' => ['nullable', 'string', 'max:80'],
+            'landing_steps_headline' => ['nullable', 'string', 'max:160'],
+            'landing_steps_subcopy' => ['nullable', 'string', 'max:400'],
+            'landing_cta_headline' => ['nullable', 'string', 'max:160'],
+            'landing_cta_subcopy' => ['nullable', 'string', 'max:400'],
+            'landing_cta_button' => ['nullable', 'string', 'max:60'],
+        ]);
+
+        foreach ($data as $key => $value) {
+            $settings->put($key, (string) ($value ?? ''), 'string', true);
+        }
+
+        $audit->record($request, 'settings.landing_updated', null, [], ['keys' => array_keys($data)]);
+
+        return back()->with('status', 'Landing page copy saved.');
+    }
+
+    public function seo(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'seo_default_description' => ['nullable', 'string', 'max:320'],
+            'seo_keywords' => ['nullable', 'string', 'max:255'],
+            'seo_og_image' => ['nullable', 'url', 'max:500'],
+            'seo_robots' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        foreach ($data as $key => $value) {
+            $settings->put($key, (string) ($value ?? ''), 'string', true);
+        }
+
+        $audit->record($request, 'settings.seo_updated', null, [], ['keys' => array_keys($data)]);
+
+        return back()->with('status', 'SEO settings saved.');
+    }
+
+    public function analytics(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'ga_measurement_id' => ['nullable', 'string', 'max:40', 'regex:/^(G-|UA-)?[A-Za-z0-9-]*$/'],
+        ]);
+
+        $settings->put('ga_measurement_id', (string) ($data['ga_measurement_id'] ?? ''), 'string', true);
+        $audit->record($request, 'settings.analytics_updated', null, [], ['ga_measurement_id' => $data['ga_measurement_id'] ?? null]);
+
+        return back()->with('status', 'Analytics settings saved.');
+    }
+
+    public function webmaster(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'gsc_verification' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9_-]*$/'],
+        ]);
+
+        $settings->put('gsc_verification', (string) ($data['gsc_verification'] ?? ''), 'string', true);
+        $audit->record($request, 'settings.webmaster_updated', null, [], []);
+
+        return back()->with('status', 'Webmaster verification saved.');
+    }
+
+    public function ai(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'ai_guide_enabled' => ['sometimes', 'boolean'],
+            'openai_api_key' => ['nullable', 'string', 'max:255'],
+            'openai_model' => ['nullable', 'string', 'max:80'],
+            'ai_guide_system_prompt' => ['nullable', 'string', 'max:4000'],
+        ]);
+
+        $settings->put('ai_guide_enabled', $request->boolean('ai_guide_enabled') ? '1' : '0', 'boolean', true);
+
+        if (filled($data['openai_api_key'] ?? null)) {
+            $settings->put('openai_api_key', (string) $data['openai_api_key'], 'string', false);
+        }
+
+        $settings->put('openai_model', (string) ($data['openai_model'] ?? 'gpt-4o-mini'), 'string', true);
+        $settings->put('ai_guide_system_prompt', (string) ($data['ai_guide_system_prompt'] ?? ''), 'string', false);
+
+        $audit->record($request, 'settings.ai_updated', null, [], [
+            'enabled' => $request->boolean('ai_guide_enabled'),
+            'model' => $data['openai_model'] ?? null,
+            'key_updated' => filled($data['openai_api_key'] ?? null),
+        ]);
+
+        return back()->with('status', 'AI guide settings saved.');
+    }
+
+    public function stripe(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'stripe_key' => ['nullable', 'string', 'max:255', 'starts_with:pk_'],
+            'stripe_secret' => ['nullable', 'string', 'max:255', 'starts_with:sk_,rk_'],
+            'stripe_webhook_secret' => ['nullable', 'string', 'max:255', 'starts_with:whsec_'],
+        ]);
+
+        // Blank secret fields mean "keep the stored value" — same pattern as mail/AI keys.
+        if (filled($data['stripe_key'] ?? null)) {
+            $settings->put('stripe_key', (string) $data['stripe_key'], 'string', false);
+        }
+
+        if (filled($data['stripe_secret'] ?? null)) {
+            $settings->put('stripe_secret', (string) $data['stripe_secret'], 'string', false);
+        }
+
+        if (filled($data['stripe_webhook_secret'] ?? null)) {
+            $settings->put('stripe_webhook_secret', (string) $data['stripe_webhook_secret'], 'string', false);
+        }
+
+        // Apply immediately so this request's follow-up status page sees the new config.
+        foreach ([
+            'stripe_key' => 'key',
+            'stripe_secret' => 'secret',
+            'stripe_webhook_secret' => 'webhook_secret',
+        ] as $settingKey => $configKey) {
+            if ($value = $settings->get($settingKey)) {
+                config(["services.stripe.{$configKey}" => $value]);
+            }
+        }
+
+        $audit->record($request, 'settings.stripe_updated', null, [], [
+            'key_updated' => filled($data['stripe_key'] ?? null),
+            'secret_updated' => filled($data['stripe_secret'] ?? null),
+            'webhook_secret_updated' => filled($data['stripe_webhook_secret'] ?? null),
+        ]);
+
+        return back()->with('status', 'Stripe credentials saved.');
+    }
+
+    public function insertCode(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'insert_code_head' => ['nullable', 'string', 'max:50000'],
+            'insert_code_body' => ['nullable', 'string', 'max:50000'],
+            'insert_code_on_marketing' => ['sometimes', 'boolean'],
+            'insert_code_on_console' => ['sometimes', 'boolean'],
+        ]);
+
+        // Intentionally stored and later rendered as raw HTML/JS for trusted super-admins only.
+        $settings->put('insert_code_head', (string) ($data['insert_code_head'] ?? ''), 'string', false);
+        $settings->put('insert_code_body', (string) ($data['insert_code_body'] ?? ''), 'string', false);
+        $settings->put('insert_code_on_marketing', $request->boolean('insert_code_on_marketing') ? '1' : '0', 'boolean', true);
+        $settings->put('insert_code_on_console', $request->boolean('insert_code_on_console') ? '1' : '0', 'boolean', true);
+
+        $audit->record($request, 'settings.insert_code_updated', null, [], [
+            'on_marketing' => $request->boolean('insert_code_on_marketing'),
+            'on_console' => $request->boolean('insert_code_on_console'),
+            'head_bytes' => strlen((string) ($data['insert_code_head'] ?? '')),
+            'body_bytes' => strlen((string) ($data['insert_code_body'] ?? '')),
+        ]);
+
+        return back()->with('status', 'Insert code saved.');
+    }
 }
