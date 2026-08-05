@@ -2,13 +2,14 @@
 
 namespace App\Notifications;
 
+use App\Services\SystemSettings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Every operational event CloudDeck raises that has no notification of its own: a server
+ * Every operational event the platform raises that has no notification of its own: a server
  * finishing provisioning, a site being added, a certificate issued or approaching expiry, a
  * queue that has started failing. All of them reduce to a title, a sentence, and somewhere to
  * go and look, so one notification carries them rather than nine near-identical classes.
@@ -37,11 +38,12 @@ class OperationalEventNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
+        $platform = app(SystemSettings::class)->branding()['name'];
         $mail = (new MailMessage)
             ->subject($this->title)
             ->line($this->body);
 
-        return $this->url ? $mail->action('Open CloudDeck', $this->url) : $mail;
+        return $this->url ? $mail->action('Open '.$platform, $this->url) : $mail;
     }
 
     public function toArray(object $notifiable): array

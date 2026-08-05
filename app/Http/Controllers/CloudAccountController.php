@@ -27,7 +27,7 @@ class CloudAccountController extends Controller
         ]);
         $drivesApi = (bool) config('clouddeck.providers.'.$request->input('provider').'.api');
 
-        // Each provider is asked only for what it actually needs. CloudDeck drives some
+        // Each provider is asked only for what it actually needs. Uplary drives some
         // through an API, where a token can be proved here and then used to create and
         // destroy servers. For the rest it connects to a machine the operator already
         // runs, so an address is the useful thing and a token would be decoration.
@@ -62,7 +62,7 @@ class CloudAccountController extends Controller
         } catch (CloudCredentialException $exception) {
             return back()->withErrors(['token' => $exception->getMessage()])->onlyInput('name');
         } catch (ConnectionException) {
-            return back()->withErrors(['token' => 'CloudDeck could not reach DigitalOcean. Check this server\'s outbound HTTPS connection and try again.'])->onlyInput('name');
+            return back()->withErrors(['token' => 'Uplary could not reach DigitalOcean. Check this server\'s outbound HTTPS connection and try again.'])->onlyInput('name');
         }
 
         $account->validated_at = now();

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\ContactMessageReceived;
 use App\Models\ContactMessage;
+use App\Models\Plan;
 use App\Models\Post;
 use App\Services\SystemSettings;
 use Illuminate\Http\RedirectResponse;
@@ -16,27 +17,38 @@ class PageController extends Controller
 {
     public function home(): View
     {
-        return view('marketing.home', ['posts' => Post::published()->latest('published_at')->limit(3)->get()]);
+        $platform = app(SystemSettings::class)->branding()['name'];
+
+        return view('marketing.home', [
+            'posts' => Post::published()->latest('published_at')->limit(3)->get(),
+            'plans' => Plan::query()
+                ->where('active', true)
+                ->where('public', true)
+                ->orderBy('sort_order')
+                ->orderBy('monthly_price')
+                ->get(),
+            'title' => $platform,
+        ]);
     }
 
     public function about(): View
     {
-        return view('marketing.about');
+        return view('marketing.about', ['title' => 'About · '.app(SystemSettings::class)->branding()['name']]);
     }
 
     public function features(): View
     {
-        return view('marketing.features');
+        return view('marketing.features', ['title' => 'Features · '.app(SystemSettings::class)->branding()['name']]);
     }
 
     public function useCases(): View
     {
-        return view('marketing.use-cases');
+        return view('marketing.use-cases', ['title' => 'Use cases · '.app(SystemSettings::class)->branding()['name']]);
     }
 
     public function contact(): View
     {
-        return view('marketing.contact');
+        return view('marketing.contact', ['title' => 'Contact · '.app(SystemSettings::class)->branding()['name']]);
     }
 
     public function submitContact(Request $request, SystemSettings $settings): RedirectResponse

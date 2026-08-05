@@ -88,7 +88,7 @@ class LogViewerTest extends TestCase
         $this->assertSame('completed', $snapshot->status);
         $this->assertSame('/var/log/nginx/app.example.com.error.log', $snapshot->path);
         $this->assertStringContainsString('upstream timed out', $snapshot->output);
-        // The marker is CloudDeck's own and has no business in what the operator reads.
+        // The marker is Uplary's own and has no business in what the operator reads.
         $this->assertStringNotContainsString('CLOUDDECK_LOG_PATH', $snapshot->output);
     }
 

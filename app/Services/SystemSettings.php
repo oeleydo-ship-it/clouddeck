@@ -6,6 +6,7 @@ use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class SystemSettings
@@ -67,6 +68,23 @@ final class SystemSettings
     }
 
     /**
+     * Whether customers may create staging sites linked to production. Off until a
+     * superadmin enables it and configures the platform staging domain.
+     */
+    public function stagingSitesEnabled(): bool
+    {
+        return $this->boolean('staging_sites_enabled', false);
+    }
+
+    /**
+     * Apex used for platform-hosted staging hostnames: {slug}.staging.{domain}.
+     */
+    public function stagingPlatformDomain(): string
+    {
+        return Str::lower($this->get('staging_platform_domain', 'uplary.com') ?: 'uplary.com');
+    }
+
+    /**
      * Where someone who is not signed in should land. With the marketing pages turned off
      * the site starts at the sign-in form.
      */
@@ -84,7 +102,7 @@ final class SystemSettings
         $logo = $this->get('logo_path');
 
         return [
-            'name' => $this->get('platform_name', config('app.name', 'CloudDeck')),
+            'name' => $this->get('platform_name', config('app.name', 'Uplary')),
             'logo_url' => $logo && Storage::disk('public')->exists($logo) ? Storage::disk('public')->url($logo) : null,
         ];
     }

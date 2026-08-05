@@ -60,7 +60,7 @@ class DeploymentEngineTest extends TestCase
         Queue::fake();
         [$user, $server] = $this->infrastructure();
         $site = $this->site($user, $server);
-        // Exactly the state CloudDeck leaves a new site in: cache, queue, session, and Redis
+        // Exactly the state Uplary leaves a new site in: cache, queue, session, and Redis
         // variables, but nothing describing a database.
         $site->environmentVariables()->where('key', 'DB_CONNECTION')->delete();
 

@@ -2,12 +2,14 @@
 
 use App\Jobs\Backups\DispatchDueBackupsJob;
 use App\Jobs\Monitoring\CheckOfflineServersJob;
+use App\Jobs\Monitoring\DispatchSiteChecksJob;
 use App\Jobs\Monitoring\NotifyExpiringCertificatesJob;
 use App\Jobs\Operations\InstallSslCertificateJob;
 use App\Models\AlertIncident;
 use App\Models\DatabaseBackup;
 use App\Models\FileOperation;
 use App\Models\ServerMetric;
+use App\Models\SiteMonitorIncident;
 use App\Models\SslCertificate;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -20,10 +22,12 @@ Artisan::command('inspire', function () {
 
 Schedule::command('horizon:snapshot')->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new CheckOfflineServersJob, 'monitoring')->everyMinute()->withoutOverlapping();
+Schedule::job(new DispatchSiteChecksJob, 'monitoring')->everyMinute()->name('dispatch-site-checks')->withoutOverlapping();
 Schedule::job(new DispatchDueBackupsJob, 'operations')->everyMinute()->name('dispatch-due-backups')->withoutOverlapping();
 Schedule::call(function () {
     ServerMetric::where('recorded_at', '<', now()->subDays(config('monitoring.metric_retention_days')))->delete();
     AlertIncident::where('status', 'resolved')->where('resolved_at', '<', now()->subDays(config('monitoring.incident_retention_days')))->delete();
+    SiteMonitorIncident::where('status', 'resolved')->where('resolved_at', '<', now()->subDays(config('monitoring.incident_retention_days')))->delete();
 })->dailyAt('03:10')->name('prune-monitoring-history')->withoutOverlapping();
 Schedule::call(function () {
     FileOperation::whereNotNull('storage_path')->where('created_at', '<', now()->subHours(config('remote_management.transfer_retention_hours')))->each(function (FileOperation $operation): void {

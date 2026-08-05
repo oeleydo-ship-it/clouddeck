@@ -51,7 +51,7 @@ class DnsVisibilityTest extends TestCase
         $admin = User::factory()->create(['role' => 'super_admin']);
 
         $this->actingAs($admin)->put('/admin/settings', [
-            'platform_name' => 'CloudDeck',
+            'platform_name' => 'Uplary',
             'dns_enabled' => '1',
             'registration_enabled' => '1',
             'public_site_enabled' => '1',

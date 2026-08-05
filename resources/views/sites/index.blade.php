@@ -21,11 +21,16 @@
     <div class="mt-8 space-y-3">
         @forelse($sites as $site)
             @php $tint = $statusTints[$site->status] ?? 'slate'; @endphp
-            <a href="{{ route('sites.show',$site) }}" class="panel panel-interactive flex items-center gap-4">
-                <div class="min-w-0 grow">
+            <div class="panel flex items-center gap-4">
+                <a href="{{ route('sites.show',$site) }}" class="min-w-0 grow transition hover:opacity-90">
                     <div class="flex flex-wrap items-center gap-3">
                         <h2 class="truncate font-display text-lg font-semibold heading">{{ $site->domain }}</h2>
                         <span class="badge {{ $badgeClasses[$tint] }} capitalize"><span class="badge-dot bg-{{ $tint === 'slate' ? 'slate-400' : $tint.'-500' }}"></span>{{ $site->status }}</span>
+                        @if($site->isStaging())
+                            <span class="badge bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">Staging</span>
+                        @else
+                            <span class="badge bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">Production</span>
+                        @endif
                     </div>
                     <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm muted">
                         <span class="inline-flex items-center gap-1.5"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5"><path d="M4 17V7a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>PHP {{ $site->php_version }}</span>
@@ -37,9 +42,16 @@
                     @if($site->repository_url)
                         <p class="mt-1 flex items-center gap-1.5 truncate text-xs muted"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5 shrink-0"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg><span class="truncate">{{ $site->repository_url }}</span></p>
                     @endif
+                </a>
+                <div class="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
+                    @if(($stagingSitesEnabled ?? false) && $site->isProduction() && $site->status === 'active' && ! $site->stagingSite)
+                        <a href="{{ route('sites.show', $site) }}#staging-setup" class="button-secondary !px-3 !py-1.5 text-xs whitespace-nowrap">Create staging</a>
+                    @elseif(($stagingSitesEnabled ?? false) && $site->isProduction() && $site->stagingSite)
+                        <a href="{{ route('sites.show', $site->stagingSite) }}" class="button-secondary !px-3 !py-1.5 text-xs whitespace-nowrap">Open staging</a>
+                    @endif
+                    <a href="{{ route('sites.show',$site) }}" class="grid size-9 place-items-center rounded-full border border-slate-200 muted dark:border-white/10"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="m9 18 6-6-6-6"/></svg></a>
                 </div>
-                <span class="grid size-9 shrink-0 place-items-center rounded-full border border-slate-200 muted dark:border-white/10"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="m9 18 6-6-6-6"/></svg></span>
-            </a>
+            </div>
         @empty
         @endforelse
 

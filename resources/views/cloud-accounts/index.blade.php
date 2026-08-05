@@ -25,7 +25,7 @@
                 </label>
                 <label class="mt-4 block text-sm heading">Connection name<input class="field" name="name" value="{{ old('name') }}" placeholder="Production"></label>
 
-                {{-- Only what the chosen provider actually needs: a token CloudDeck will
+                {{-- Only what the chosen provider actually needs: a token {{ $branding['name'] }} will
                      never call is not worth asking for, and an address is. --}}
                 <template x-if="api[provider]">
                     <div>
@@ -40,7 +40,7 @@
                             <label class="text-sm heading">Server IP address<input class="field font-mono text-sm" name="public_ip" value="{{ old('public_ip') }}" placeholder="203.0.113.10"></label>
                             <label class="text-sm heading">SSH port<input class="field" type="number" name="ssh_port" value="{{ old('ssh_port', 22) }}" min="1" max="65535"></label>
                         </div>
-                        <p class="mt-2 text-xs muted">CloudDeck cannot create servers at <span x-text="provider"></span>, so it connects to one you already run. Next you will authorise its SSH key on the server as root.</p>
+                        <p class="mt-2 text-xs muted">{{ $branding['name'] }} cannot create servers at <span x-text="provider"></span>, so it connects to one you already run. Next you will authorise its SSH key on the server as root.</p>
                     </div>
                 </template>
 
@@ -73,7 +73,7 @@
                         <form method="POST" action="/cloud-accounts/{{ $account->id }}" onsubmit="return confirm('Disconnect {{ $account->name }}? Servers must be removed first.')">@csrf @method('DELETE')<button class="text-sm font-medium text-rose-600 hover:underline dark:text-rose-300">Disconnect</button></form>
                     </div>
                     {{-- Discovery calls the provider API, which only exists for the providers
-                         CloudDeck drives. Offering it elsewhere would fail on the click. --}}
+                         {{ $branding['name'] }} drives. Offering it elsewhere would fail on the click. --}}
                     @if($drivesApi)
                         <a class="button-primary mt-5 inline-flex w-full" href="{{ route('cloud-accounts.servers',$account) }}">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>

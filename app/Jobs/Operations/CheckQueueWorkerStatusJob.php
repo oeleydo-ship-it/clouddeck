@@ -25,7 +25,7 @@ class CheckQueueWorkerStatusJob implements ShouldQueue
     public function handle(SshClient $ssh): void
     {
         $worker = QueueWorker::withTrashed()->with('site.server.sshKey')->findOrFail($this->workerId);
-        $output = $ssh->run($worker->site->server, 'supervisorctl status '.escapeshellarg('clouddeck-'.$worker->id.':*').' 2>&1 || true');
+        $output = $ssh->run($worker->site->server, 'supervisorctl status '.escapeshellarg('Uplary-'.$worker->id.':*').' 2>&1 || true');
         preg_match('/\b(RUNNING|STARTING|BACKOFF|STOPPING|STOPPED|EXITED|FATAL)\b/', $output, $match);
         $worker->update(['runtime_status' => $match[1] ?? 'unknown', 'runtime_output' => trim($output), 'runtime_checked_at' => now()]);
     }

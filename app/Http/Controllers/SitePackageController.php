@@ -33,7 +33,7 @@ class SitePackageController extends Controller
             $note = ' Reverb credentials were written to this site\'s environment — redeploy to apply them to the release .env. Add a Reverb worker on port '.$port.' from the server\'s Workers tab to start the server and publish it through Nginx.';
         }
 
-        return redirect()->route('sites.remote', ['site' => $site, 'tab' => 'terminal'])->with('status', 'Installing '.$data['package'].'. CloudDeck will keep it installed on every future deployment.'.$note.' Output appears in the terminal tab.');
+        return redirect()->route('sites.remote', ['site' => $site, 'tab' => 'terminal'])->with('status', 'Installing '.$data['package'].'. Uplary will keep it installed on every future deployment.'.$note.' Output appears in the terminal tab.');
     }
 
     public function destroy(Request $request, Site $site): RedirectResponse
@@ -42,7 +42,7 @@ class SitePackageController extends Controller
         $data = $request->validate(['package' => ['required', Rule::in(array_keys(self::PACKAGES))]]);
         $site->update(['managed_packages' => collect($site->managed_packages ?? [])->reject(fn ($p) => $p === $data['package'])->values()->all()]);
 
-        return back()->with('status', 'CloudDeck will no longer reinstall '.$data['package'].' on future deployments. It remains in the current release until removed manually.');
+        return back()->with('status', 'Uplary will no longer reinstall '.$data['package'].' on future deployments. It remains in the current release until removed manually.');
     }
 
     public function check(Request $request, Site $site): RedirectResponse

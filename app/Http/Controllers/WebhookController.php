@@ -31,7 +31,10 @@ class WebhookController extends Controller
     private function verifySignature(Request $request, string $secret): void
     {
         $sha256 = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
-        $provided = $request->header('X-Hub-Signature-256') ?? $request->header('X-Hub-Signature') ?? $request->header('X-CloudDeck-Signature');
+        $provided = $request->header('X-Hub-Signature-256')
+            ?? $request->header('X-Hub-Signature')
+            ?? $request->header('X-Uplary-Signature')
+            ?? $request->header('X-CloudDeck-Signature');
         $valid = ($provided && hash_equals($sha256, $provided)) || ($request->header('X-Gitlab-Token') && hash_equals($secret, $request->header('X-Gitlab-Token')));
         abort_unless($valid, 403, 'Invalid webhook signature.');
     }

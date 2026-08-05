@@ -60,7 +60,7 @@
             </div>
         @empty
             <p class="py-6 text-center text-sm muted">
-                @if($site->wordpress_inventory_error) Nothing could be read — see above. @elseif($site->wordpress_inventory_at) No {{ $plural }} installed. @else CloudDeck is reading the list from the server — refresh the page in a moment. @endif
+                @if($site->wordpress_inventory_error) Nothing could be read — see above. @elseif($site->wordpress_inventory_at) No {{ $plural }} installed. @else {{ $branding['name'] }} is reading the list from the server — refresh the page in a moment. @endif
             </p>
         @endforelse
     </div>

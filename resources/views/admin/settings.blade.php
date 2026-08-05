@@ -11,10 +11,10 @@
     <div class="space-y-6">
         <section class="panel">
             <h2 class="font-semibold heading">General information</h2>
-            <p class="mt-1 text-sm muted">Shown to customers across the platform and in outgoing email.</p>
+            <p class="mt-1 text-sm muted">Platform name and logo are shown to customers across the console, marketing pages, and outgoing email. Change the name anytime — it updates everywhere branding is used.</p>
             <form method="POST" action="{{ route('admin.settings.update') }}" class="mt-5 max-w-2xl">@csrf @method('PUT')
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <label class="text-sm heading">Platform name<input class="field" name="platform_name" value="{{ $value('platform_name', config('app.name')) }}" maxlength="60"></label>
+                    <label class="text-sm heading">Platform name<input class="field" name="platform_name" value="{{ $value('platform_name', config('app.name', 'Uplary')) }}" maxlength="60" placeholder="Uplary"></label>
                     <label class="text-sm heading">Support email<input class="field" type="email" name="support_email" value="{{ $value('support_email') }}" placeholder="support@example.com"></label>
                 </div>
                 <label class="mt-4 block text-sm heading">Maintenance banner<textarea class="field" name="maintenance_banner" rows="2" placeholder="Shown to every signed-in customer while set.">{{ $value('maintenance_banner') }}</textarea></label>
@@ -25,6 +25,10 @@
                 <p class="mt-2 text-xs muted">Serves the home, about, features, use cases, blog, and contact pages. Turn this off when the install is only the application — on a subdomain, say — and every visitor lands on the sign-in form instead. Blog posts stay editable here either way.</p>
                 <label class="mt-4 flex gap-2 text-sm heading"><input type="checkbox" name="dns_enabled" value="1" @checked(($settings->get('dns_enabled')?->value ?? '1') === '1')>DNS management enabled</label>
                 <p class="mt-2 text-xs muted">Shows the DNS section, where a Cloudflare token can be connected and zone records edited. Turn it off when DNS is handled elsewhere: the nav entry disappears and every DNS URL returns a 404, so a kept link cannot reach it. Connections already saved are left untouched and come back if it is turned on again.</p>
+                <label class="mt-4 flex gap-2 text-sm heading"><input type="checkbox" name="staging_sites_enabled" value="1" @checked(($settings->get('staging_sites_enabled')?->value ?? '0') === '1')>Staging sites enabled</label>
+                <p class="mt-2 text-xs muted">Lets customers create a staging environment linked to a production site, then promote staging settings and deploy to production. When off, create and promote routes return 404.</p>
+                <label class="mt-4 block text-sm heading">Platform staging domain<input class="field" name="staging_platform_domain" value="{{ $value('staging_platform_domain', 'uplary.com') }}" placeholder="uplary.com"></label>
+                <p class="mt-2 text-xs muted">Used when a customer chooses a platform subdomain: <code>{slug}.staging.{{ $value('staging_platform_domain', 'uplary.com') }}</code>. Point wildcard DNS for <code>*.staging.{{ $value('staging_platform_domain', 'uplary.com') }}</code> at customer servers, or document per-subdomain A records.</p>
                 <button class="button-primary mt-5">Save general settings</button>
             </form>
         </section>
@@ -37,7 +41,7 @@
                     @if($branding['logo_url'])
                         <img src="{{ $branding['logo_url'] }}" alt="Current logo" class="size-14 rounded-xl object-contain">
                     @else
-                        <span class="grid size-14 place-items-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 text-xl font-bold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
+                        <span class="grid size-14 place-items-center rounded-xl bg-sky-500 text-xl font-bold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
                     @endif
                 </div>
                 <form method="POST" action="{{ route('admin.settings.logo') }}" enctype="multipart/form-data" class="flex flex-wrap items-center gap-3">@csrf

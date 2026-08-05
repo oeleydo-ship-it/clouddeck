@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ServerMetricResource;
+use App\Jobs\Monitoring\AutoHealServicesJob;
 use App\Jobs\Monitoring\EvaluateMetricAlertsJob;
 use App\Models\Server;
 use Illuminate\Http\JsonResponse;
@@ -57,6 +58,7 @@ class MetricIngestionController extends Controller
         $metric = $server->metrics()->create([...$data, 'recorded_at' => now()]);
         $server->update(['last_seen_at' => now()]);
         EvaluateMetricAlertsJob::dispatch($metric->id)->onQueue('monitoring');
+        AutoHealServicesJob::dispatch($metric->id)->onQueue('monitoring');
 
         return (new ServerMetricResource($metric))->response()->setStatusCode(202);
     }

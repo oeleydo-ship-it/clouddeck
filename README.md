@@ -1,6 +1,6 @@
-# CloudDeck
+# Uplary
 
-CloudDeck is a Laravel 12 control plane for provisioning cloud servers, deploying Laravel applications, and operating their supporting services.
+Uplary is a SaaS control plane (uplary.com) where developers connect their own cloud accounts or VPS, auto-provision Ubuntu servers, deploy Laravel and WordPress sites, and operate supporting services — without self-hosting the panel.
 
 ## Implemented
 
@@ -36,6 +36,8 @@ CloudDeck is a Laravel 12 control plane for provisioning cloud servers, deployin
 - CPU, memory, disk, load, network, process, and service telemetry with 30-day retention
 - Resource-history charts, dashboard aggregates, agent heartbeats, and tenant-scoped metric REST API
 - Consecutive-sample and offline alert rules with cooldowns, incidents, and automatic recovery
+- Opt-in auto-heal that restarts down Nginx, PHP-FPM, MySQL, Redis, and Supervisor services with consecutive-sample and cooldown guards
+- Opt-in site monitoring for website-down HTTP probes, DNS mismatch checks, recovery notifications, and scheduled Laravel queue health
 - Queued database/email, Slack, Discord, and Telegram alert delivery with encrypted channel configuration
 - Versioned PHP-FPM pool and generated Nginx configuration with validation, backup, rollback, and service reload
 - Queued site-root file manager for browsing, editing, upload/download, rename, permissions, ZIP, extraction, and deletion
@@ -43,6 +45,7 @@ CloudDeck is a Laravel 12 control plane for provisioning cloud servers, deployin
 - Streaming database exports and private remote transfers on local or S3-compatible filesystem disks
 - Automatic expiration for prepared downloads and retained database exports
 - Super-admin control center for customers, plan limits, feature flags, settings, billing reviews, and encrypted audit history
+- Superadmin-gated staging sites on platform (`{slug}.staging.uplary.com`) or client domains, with promote-to-production deploy
 - Subscription entitlement and quota enforcement across servers, sites, databases, API tokens, teams, and team members
 - Provider-neutral billing activation contract with a transactional manual approval adapter
 - Stable feature rollouts with plan/user override support and reusable route middleware
@@ -55,7 +58,9 @@ CloudDeck is a Laravel 12 control plane for provisioning cloud servers, deployin
 - Stripe-hosted subscription Checkout and Customer Portal with recurring plan Price mappings
 - Signed, replay-safe queued Stripe webhooks that synchronize entitlements, invoices, tax totals, cancellations, and payment-failure notifications
 
-## Local installation
+## Local development
+
+The product itself is hosted SaaS. Use this section only when developing or contributing to the control plane codebase.
 
 Requirements: PHP 8.2+ (8.4 recommended), Composer 2, Node 20+, SQLite/MySQL, and Redis. Horizon runs on Linux because it requires `pcntl` and `posix`.
 

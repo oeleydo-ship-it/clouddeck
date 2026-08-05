@@ -3,8 +3,8 @@
 return [
     'email_verification_required' => (bool) env('EMAIL_VERIFICATION_REQUIRED', env('APP_ENV', 'production') !== 'local'),
     'development_admin' => [
-        'email' => env('DEV_SUPER_ADMIN_EMAIL', 'admin@clouddeck.test'),
-        'password' => env('DEV_SUPER_ADMIN_PASSWORD', 'CloudDeck!Dev2026'),
+        'email' => env('DEV_SUPER_ADMIN_EMAIL', 'admin@uplary.test'),
+        'password' => env('DEV_SUPER_ADMIN_PASSWORD', 'Uplary!Dev2026'),
     ],
 
     /*
@@ -16,7 +16,7 @@ return [
     'ssh_ready_timeout' => (int) env('CLOUDDECK_SSH_READY_TIMEOUT', 180),
 
     /*
-     * Providers an account can be connected for. "api" marks the ones CloudDeck can drive
+     * Providers an account can be connected for. "api" marks the ones Uplary can drive
      * directly — creating and destroying servers through their API. The rest are recorded
      * so an operator can keep their credentials and infrastructure organised here, but
      * their servers are attached with the custom-server flow, by IP over SSH. Marking that
@@ -30,5 +30,6 @@ return [
         'linode' => ['label' => 'Linode', 'api' => false],
         'oracle' => ['label' => 'Oracle Cloud Infrastructure', 'api' => false],
         'upcloud' => ['label' => 'UpCloud', 'api' => false],
+        'contabo' => ['label' => 'Contabo', 'api' => false],
     ],
 ];

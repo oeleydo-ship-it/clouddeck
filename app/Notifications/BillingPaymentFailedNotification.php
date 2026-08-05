@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\BillingInvoice;
+use App\Services\SystemSettings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -25,8 +26,14 @@ class BillingPaymentFailedNotification extends Notification implements ShouldQue
     public function toMail(object $notifiable): MailMessage
     {
         $invoice = BillingInvoice::find($this->invoiceId);
+        $platform = app(SystemSettings::class)->branding()['name'];
 
-        return (new MailMessage)->subject('CloudDeck payment failed')->error()->line('Stripe could not collect payment for your CloudDeck subscription.')->line($invoice ? "Invoice {$invoice->number}: {$invoice->currency} ".number_format($invoice->total / 100, 2) : 'Open your billing portal to review the invoice.')->action('Manage billing', route('billing.index'));
+        return (new MailMessage)
+            ->subject($platform.' payment failed')
+            ->error()
+            ->line('Stripe could not collect payment for your '.$platform.' subscription.')
+            ->line($invoice ? "Invoice {$invoice->number}: {$invoice->currency} ".number_format($invoice->total / 100, 2) : 'Open your billing portal to review the invoice.')
+            ->action('Manage billing', route('billing.index'));
     }
 
     public function toArray(object $notifiable): array

@@ -2,7 +2,7 @@
 @section('content')
 <div class="mx-auto max-w-2xl px-5 py-16">
     <div class="text-center">
-        <h1 class="text-3xl font-semibold heading">Install CloudDeck</h1>
+        <h1 class="text-3xl font-semibold heading">Install {{ $branding['name'] }}</h1>
         <p class="mt-2 text-sm muted">One-time setup. Creates your administrator account, the default plans, and your system settings.</p>
     </div>
 
@@ -28,6 +28,8 @@
         <section class="panel">
             <h2 class="font-semibold heading">Settings</h2>
             <div class="mt-5 space-y-4">
+                <label class="block text-sm heading">Platform name<input class="field" name="platform_name" value="{{ old('platform_name', $branding['name']) }}" maxlength="60" placeholder="Uplary"></label>
+                <p class="text-xs muted">Shown in the header, emails, and customer-facing pages. Change anytime from Admin → Settings.</p>
                 <label class="block text-sm heading">Support email<input class="field" type="email" name="support_email" value="{{ old('support_email') }}" placeholder="support@example.com"></label>
                 <label class="flex gap-2 text-sm heading"><input type="checkbox" name="registration_enabled" value="1" @checked(old('registration_enabled', true))>Allow public registration</label>
                 <label class="flex gap-2 text-sm heading"><input type="checkbox" name="email_verification_required" value="1" @checked(old('email_verification_required', true))>Require email verification</label>
@@ -44,7 +46,7 @@
             </div>
         </section>
 
-        <button class="button-primary w-full">Install CloudDeck</button>
+        <button class="button-primary w-full">Install {{ $branding['name'] }}</button>
     </form>
 </div>
 @endsection

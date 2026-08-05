@@ -24,7 +24,7 @@ final class StartDeployment
         // two minutes in with "could not find driver" because the provisioned PHP carries
         // only the mysql and pgsql drivers. Say so up front instead. Setting DB_CONNECTION
         // by hand is the escape hatch for an application that genuinely has no database.
-        // WordPress reads its credentials from wp-config.php, which CloudDeck generates from
+        // WordPress reads its credentials from wp-config.php, which Uplary generates from
         // DB_DATABASE and friends, so it needs a database just as much — it simply never has
         // a DB_CONNECTION to check for.
         $databaseKey = $site->isWordPress() ? 'DB_DATABASE' : 'DB_CONNECTION';

@@ -29,7 +29,7 @@ final class CloudServerImportController extends Controller
         try {
             $droplets = collect($providers->for($cloudAccount)->servers());
         } catch (ConnectionException) {
-            return back()->withErrors(['provider' => 'CloudDeck could not reach DigitalOcean while loading Droplets.']);
+            return back()->withErrors(['provider' => 'Uplary could not reach DigitalOcean while loading Droplets.']);
         } catch (Throwable) {
             return back()->withErrors(['provider' => 'DigitalOcean could not return the Droplet list. Revalidate the provider token and try again.']);
         }
@@ -52,7 +52,7 @@ final class CloudServerImportController extends Controller
             'ssh_key_id' => ['required', 'uuid', Rule::exists('ssh_keys', 'id')->where('user_id', $request->user()->id)->whereNotNull('private_key')],
         ]);
         if ($cloudAccount->servers()->where('provider_id', $data['provider_id'])->exists()) {
-            return back()->withErrors(['provider_id' => 'This Droplet is already connected to CloudDeck.']);
+            return back()->withErrors(['provider_id' => 'This Droplet is already connected to Uplary.']);
         }
         $quotas->assertCanCreate($request->user(), 'servers');
 
@@ -99,7 +99,7 @@ final class CloudServerImportController extends Controller
         Bus::chain([new BootstrapServerJob($server->id), new FinalizeProvisioningJob($server->id)])->onQueue('provisioning')->dispatch();
         $audit->record($request, 'server.imported', $server, [], ['provider_id' => $server->provider_id, 'cloud_account_id' => $cloudAccount->id]);
 
-        return redirect()->route('dashboard')->with('status', 'Droplet connected. CloudDeck is bootstrapping it now.');
+        return redirect()->route('dashboard')->with('status', 'Droplet connected. Uplary is bootstrapping it now.');
     }
 
     private function authorizeAccount(Request $request, CloudAccount $cloudAccount): void

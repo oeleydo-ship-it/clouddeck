@@ -48,7 +48,7 @@ class SshKeyController extends Controller
         $private = $sshKey->private_key;
         $sshKey->update(['private_key_downloaded_at' => now()]);
 
-        return response($private)->header('Content-Type', 'application/x-pem-file')->header('Content-Disposition', 'attachment; filename="clouddeck-'.$sshKey->id.'.pem"')->header('Cache-Control', 'no-store');
+        return response($private)->header('Content-Type', 'application/x-pem-file')->header('Content-Disposition', 'attachment; filename="Uplary-'.$sshKey->id.'.pem"')->header('Cache-Control', 'no-store');
     }
 
     public function destroy(Request $request, SshKey $sshKey): RedirectResponse

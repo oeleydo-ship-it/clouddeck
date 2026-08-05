@@ -14,7 +14,7 @@ use Throwable;
 
 /**
  * Reads a log off the server so it can be looked at without an SSH session. The source is a
- * name from a fixed list, never a path, so this can only ever read the logs CloudDeck knows
+ * name from a fixed list, never a path, so this can only ever read the logs Uplary knows
  * about.
  */
 class FetchLogJob implements ShouldQueue

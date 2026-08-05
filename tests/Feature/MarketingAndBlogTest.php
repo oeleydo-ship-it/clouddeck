@@ -38,11 +38,11 @@ class MarketingAndBlogTest extends TestCase
     public static function pages(): array
     {
         return [
-            ['/', 'Ship Laravel'],
-            ['/about', 'About us'],
+            ['/', 'Provision servers. Deploy sites.'],
+            ['/about', 'About'],
             ['/features', 'Features'],
             ['/use-cases', 'Use cases'],
-            ['/contact', 'Contact us'],
+            ['/contact', 'Send us a message.'],
             ['/blog', 'Blog'],
         ];
     }

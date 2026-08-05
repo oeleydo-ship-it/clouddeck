@@ -90,7 +90,7 @@ class CredentialManagementTest extends TestCase
 
     public function test_existing_provider_key_is_reused_despite_a_different_fingerprint_format(): void
     {
-        $publicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIexample clouddeck';
+        $publicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIexample Uplary';
         Http::fake([
             'https://api.digitalocean.com/v2/account/keys*' => Http::response(['ssh_keys' => [
                 ['id' => 555, 'fingerprint' => '3b:16:bf:e4:aa:bb:cc:dd', 'public_key' => $publicKey],
@@ -106,7 +106,7 @@ class CredentialManagementTest extends TestCase
 
     public function test_provider_key_collision_resolves_to_the_existing_key(): void
     {
-        $publicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIexample clouddeck';
+        $publicKey = 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIexample Uplary';
         $listed = false;
         Http::fake(function ($request) use ($publicKey, &$listed) {
             if ($request->method() === 'POST') {

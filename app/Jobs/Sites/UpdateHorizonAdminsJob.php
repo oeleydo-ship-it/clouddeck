@@ -27,6 +27,6 @@ class UpdateHorizonAdminsJob implements ShouldQueue
         $root = '/var/www/'.$site->domain.'/current';
         $contents = implode("\n", $site->horizon_admin_emails ?? [])."\n";
         $encoded = base64_encode($contents);
-        $ssh->run($site->server, 'cd '.escapeshellarg($root)." && printf '%s' ".escapeshellarg($encoded).' | base64 -d | sudo -u www-data tee storage/app/clouddeck-horizon-admins.txt > /dev/null');
+        $ssh->run($site->server, 'cd '.escapeshellarg($root)." && printf '%s' ".escapeshellarg($encoded).' | base64 -d | sudo -u www-data tee storage/app/Uplary-horizon-admins.txt > /dev/null');
     }
 }

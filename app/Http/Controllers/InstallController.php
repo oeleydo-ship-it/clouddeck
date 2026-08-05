@@ -23,6 +23,7 @@ class InstallController extends Controller
      * secret and webhook secret must never leave the server.
      */
     private const SETTINGS = [
+        'platform_name' => ['type' => 'string', 'public' => true],
         'support_email' => ['type' => 'string', 'public' => true],
         'registration_enabled' => ['type' => 'boolean', 'public' => true],
         'email_verification_required' => ['type' => 'boolean', 'public' => true],
@@ -43,12 +44,13 @@ class InstallController extends Controller
     {
         // Re-checked here and not only in show(): without it, two people opening the wizard
         // at once could both submit and the second would silently take over the instance.
-        abort_if($installation->isInstalled(), 403, 'CloudDeck is already installed.');
+        abort_if($installation->isInstalled(), 403, 'Uplary is already installed.');
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', Password::min(12)->letters()->numbers()],
+            'platform_name' => ['nullable', 'string', 'max:60'],
             'support_email' => ['nullable', 'email', 'max:255'],
             'registration_enabled' => ['sometimes', 'boolean'],
             'email_verification_required' => ['sometimes', 'boolean'],
@@ -68,6 +70,9 @@ class InstallController extends Controller
             ]);
             $user->subscriptions()->create(['plan_id' => $defaults->freePlan()->id, 'provider' => 'system', 'status' => 'active']);
 
+            // Default brand when the wizard omits it — still editable later in Admin → Settings.
+            $data['platform_name'] = trim((string) ($data['platform_name'] ?? '')) ?: 'Uplary';
+
             foreach (self::SETTINGS as $key => $meta) {
                 $value = $meta['type'] === 'boolean'
                     ? ($request->boolean($key) ? '1' : '0')
@@ -86,6 +91,8 @@ class InstallController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('admin.dashboard')->with('status', 'CloudDeck is installed. You are signed in as the administrator.');
+        $platform = $settings->branding()['name'];
+
+        return redirect()->route('admin.dashboard')->with('status', $platform.' is installed. You are signed in as the administrator.');
     }
 }

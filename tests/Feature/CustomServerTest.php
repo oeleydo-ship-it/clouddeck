@@ -40,7 +40,7 @@ class CustomServerTest extends TestCase
 
         $key = $user->sshKeys()->sole();
         $response->assertSee('authorized_keys', false)->assertSee(trim($key->public_key), false);
-        // The private half is what CloudDeck authenticates with; it must never be rendered.
+        // The private half is what Uplary authenticates with; it must never be rendered.
         $response->assertDontSee($key->private_key, false);
     }
 

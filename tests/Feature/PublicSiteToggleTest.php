@@ -80,10 +80,10 @@ class PublicSiteToggleTest extends TestCase
     {
         $admin = User::factory()->create(['email_verified_at' => now(), 'role' => 'super_admin']);
 
-        $this->actingAs($admin)->put(route('admin.settings.update'), ['platform_name' => 'CloudDeck'])->assertRedirect();
+        $this->actingAs($admin)->put(route('admin.settings.update'), ['platform_name' => 'Uplary'])->assertRedirect();
         $this->assertFalse(app(SystemSettings::class)->publicSiteEnabled());
 
-        $this->actingAs($admin)->put(route('admin.settings.update'), ['platform_name' => 'CloudDeck', 'public_site_enabled' => '1'])->assertRedirect();
+        $this->actingAs($admin)->put(route('admin.settings.update'), ['platform_name' => 'Uplary', 'public_site_enabled' => '1'])->assertRedirect();
         $this->assertTrue(app(SystemSettings::class)->publicSiteEnabled());
     }
 

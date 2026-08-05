@@ -27,11 +27,44 @@ class MonitoringController extends Controller
     public function disable(Request $request, Server $server): RedirectResponse
     {
         $this->authorize('update', $server);
-        $server->update(['monitoring_secret' => null, 'monitoring_enabled' => false, 'last_seen_at' => null]);
+        $server->update([
+            'monitoring_secret' => null,
+            'monitoring_enabled' => false,
+            'last_seen_at' => null,
+            'auto_heal_enabled' => false,
+            'auto_heal_last_actions' => null,
+        ]);
         $operation = $server->operations()->create(['user_id' => $request->user()->id, 'type' => 'monitoring:remove', 'status' => 'pending']);
         ManageMonitoringAgentJob::dispatch($operation->id);
 
         return back()->with('status', 'Monitoring disabled, its secret revoked, and agent removal queued.');
+    }
+
+    public function enableAutoHeal(Request $request, Server $server): RedirectResponse
+    {
+        $this->authorize('update', $server);
+        abort_unless($server->monitoring_enabled, 422, 'Enable monitoring before turning on auto-heal.');
+
+        $data = $request->validate([
+            'auto_heal_cooldown_minutes' => ['sometimes', 'integer', 'between:5,1440'],
+            'auto_heal_consecutive_samples' => ['sometimes', 'integer', 'between:1,12'],
+        ]);
+
+        $server->update([
+            'auto_heal_enabled' => true,
+            'auto_heal_cooldown_minutes' => $data['auto_heal_cooldown_minutes'] ?? $server->auto_heal_cooldown_minutes ?: config('monitoring.auto_heal_cooldown_minutes'),
+            'auto_heal_consecutive_samples' => $data['auto_heal_consecutive_samples'] ?? $server->auto_heal_consecutive_samples ?: config('monitoring.auto_heal_consecutive_samples'),
+        ]);
+
+        return back()->with('status', 'Auto-heal enabled. Down services will be restarted after consecutive failed samples.');
+    }
+
+    public function disableAutoHeal(Request $request, Server $server): RedirectResponse
+    {
+        $this->authorize('update', $server);
+        $server->update(['auto_heal_enabled' => false, 'auto_heal_last_actions' => null]);
+
+        return back()->with('status', 'Auto-heal disabled.');
     }
 
     public function storeRule(Request $request, Server $server): RedirectResponse

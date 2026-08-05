@@ -19,6 +19,7 @@ use App\Http\Controllers\CustomServerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\DnsController;
+use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\FileManagerController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\LogController;
@@ -47,6 +48,7 @@ use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\WordPressController;
 use App\Http\Middleware\EnsureDnsEnabled;
 use App\Http\Middleware\EnsurePublicSiteEnabled;
+use App\Http\Middleware\EnsureStagingSitesEnabled;
 use App\Livewire\ServerProvisionWizard;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -101,6 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/team-invitations/{teamInvitation}/{token}', [TeamController::class, 'accept'])->name('team-invitations.accept');
     Route::delete('/teams/{team}/members/{member}', [TeamController::class, 'remove'])->name('teams.members.remove');
     Route::patch('/teams/{team}/members/{member}/role', [TeamController::class, 'role'])->name('teams.members.role');
+    Route::get('/docs', DocumentationController::class)->name('docs');
     Route::get('/account', [AccountController::class, 'show'])->name('account');
     Route::patch('/account/profile', [AccountController::class, 'profile']);
     Route::put('/account/password', [AccountController::class, 'password']);
@@ -156,6 +159,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/servers/{server}/phpmyadmin', [PhpMyAdminController::class, 'destroy'])->name('phpmyadmin.destroy');
     Route::post('/servers/{server}/monitoring/rotate', [MonitoringController::class, 'rotate'])->name('monitoring.rotate');
     Route::delete('/servers/{server}/monitoring', [MonitoringController::class, 'disable'])->name('monitoring.disable');
+    Route::post('/servers/{server}/auto-heal', [MonitoringController::class, 'enableAutoHeal'])->name('auto-heal.enable');
+    Route::delete('/servers/{server}/auto-heal', [MonitoringController::class, 'disableAutoHeal'])->name('auto-heal.disable');
     Route::get('/servers/{server}/monitoring/agent', MonitoringAgentController::class)->name('monitoring.agent');
     Route::post('/servers/{server}/alert-rules', [MonitoringController::class, 'storeRule'])->name('alert-rules.store');
     Route::delete('/alert-rules/{alertRule}', [MonitoringController::class, 'destroyRule'])->name('alert-rules.destroy');
@@ -184,6 +189,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/sites/create', [SiteController::class, 'create'])->name('sites.create');
     Route::post('/sites', [SiteController::class, 'store'])->name('sites.store');
     Route::get('/sites/{site}', [SiteController::class, 'show'])->name('sites.show');
+    Route::middleware(EnsureStagingSitesEnabled::class)->group(function () {
+        Route::post('/sites/{site}/staging', [SiteController::class, 'storeStaging'])->name('sites.staging.store');
+        Route::post('/sites/{site}/promote', [SiteController::class, 'promote'])->name('sites.promote');
+    });
+    Route::post('/sites/{site}/monitoring', [SiteController::class, 'enableMonitoring'])->name('sites.monitoring.enable');
+    Route::delete('/sites/{site}/monitoring', [SiteController::class, 'disableMonitoring'])->name('sites.monitoring.disable');
+    Route::post('/sites/{site}/monitoring/check', [SiteController::class, 'checkMonitoring'])->name('sites.monitoring.check');
     Route::get('/sites/{site}/remote', RemoteManagementController::class)->name('sites.remote');
     Route::post('/sites/{site}/configurations', [SiteConfigurationController::class, 'store'])->name('site-configurations.store');
     Route::post('/site-configurations/{siteConfiguration}/rollback', [SiteConfigurationController::class, 'rollback'])->name('site-configurations.rollback');

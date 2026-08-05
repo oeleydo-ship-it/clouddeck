@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
+use App\Services\SystemSettings;
 use Illuminate\View\View;
 
 class BlogController extends Controller
 {
     public function index(): View
     {
-        return view('blog.index', ['posts' => Post::published()->with('author')->latest('published_at')->paginate(9)]);
+        return view('blog.index', [
+            'posts' => Post::published()->with('author')->latest('published_at')->paginate(9),
+            'title' => 'Blog · '.app(SystemSettings::class)->branding()['name'],
+        ]);
     }
 
     public function show(string $slug): View
@@ -21,6 +25,7 @@ class BlogController extends Controller
         return view('blog.show', [
             'post' => $post,
             'related' => Post::published()->whereKeyNot($post->id)->latest('published_at')->limit(3)->get(),
+            'title' => $post->title.' · '.app(SystemSettings::class)->branding()['name'],
         ]);
     }
 }

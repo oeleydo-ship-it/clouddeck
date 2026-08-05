@@ -1,16 +1,23 @@
 @extends('layouts.marketing')
 @section('marketing')
-<section class="mx-auto max-w-7xl px-5 py-20">
-    <h1 class="text-4xl font-semibold heading">Blog</h1>
-    <p class="mt-5 text-lg muted">Notes on deploying and operating Laravel in production.</p>
+<section class="relative overflow-hidden border-b border-slate-200 dark:border-white/10">
+    <div class="landing-hero-wash opacity-60" aria-hidden="true"></div>
+    <div class="relative mx-auto max-w-7xl px-5 py-20 lg:py-28">
+        <p class="text-sm font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-sky-300">Blog</p>
+        <h1 class="mt-4 max-w-3xl font-display text-4xl font-extrabold tracking-tight heading sm:text-5xl">Tips, updates, and how-tos.</h1>
+        <p class="mt-6 max-w-2xl text-lg muted">Short posts about deploying, running servers, and using {{ $branding['name'] ?? 'Uplary' }}.</p>
+    </div>
+</section>
 
+<section class="mx-auto max-w-7xl px-5 py-16 lg:py-20">
     @if($posts->isEmpty())
-        <div class="panel mt-12 text-center">
-            <p class="font-medium heading">Nothing published yet</p>
-            <p class="mt-1 text-sm muted">Check back shortly.</p>
+        <div class="rounded-2xl border border-dashed border-slate-200 px-6 py-16 text-center dark:border-white/10">
+            <p class="font-display text-lg font-semibold heading">No posts yet</p>
+            <p class="mt-2 text-sm muted">Check back soon — or explore the product while you wait.</p>
+            <a href="{{ route('features') }}" class="button-primary mt-6 inline-flex">See features</a>
         </div>
     @else
-        <div class="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             @foreach($posts as $post)
                 @include('blog.partials.card', ['post' => $post])
             @endforeach

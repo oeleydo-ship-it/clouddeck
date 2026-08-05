@@ -1,10 +1,17 @@
 <!doctype html>
-<html lang="en" x-data="{dark: localStorage.theme === 'dark'}" x-init="$watch('dark', v => localStorage.theme = v ? 'dark' : 'light')" :class="dark && 'dark'">
+<html lang="en" x-data="{dark: localStorage.theme === 'dark', marketingMenu: false}" x-init="$watch('dark', v => localStorage.theme = v ? 'dark' : 'light')" :class="dark && 'dark'">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'CloudDeck' }}</title>
+    <title>{{ $title ?? ($branding['name'] ?? config('app.name', 'Uplary')) }}</title>
+    <script>
+        try {
+            if (localStorage.theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+        } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,7 +20,7 @@
 </head>
 <body class="min-h-screen antialiased">
 @php
-    $branding = $branding ?? ['name' => config('app.name', 'CloudDeck'), 'logo_url' => null];
+    $branding = $branding ?? ['name' => config('app.name', 'Uplary'), 'logo_url' => null];
 @endphp
 
 @auth
@@ -50,7 +57,7 @@
         $crumb ??= $title ?? 'Overview';
     @endphp
 
-    <div class="app-shell" x-data="{ nav: false, palette: false }" @keydown.escape.window="nav = false; palette = false">
+    <div class="app-shell" x-data="{ nav: false }" @keydown.escape.window="nav = false">
         <!-- Mobile scrim -->
         <div x-cloak x-show="nav" x-transition.opacity @click="nav = false" class="fixed inset-0 z-50 bg-slate-900/50 lg:hidden"></div>
 
@@ -60,7 +67,7 @@
                     @if($branding['logo_url'])
                         <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="size-10 rounded-xl object-contain">
                     @else
-                        <span class="grid size-10 place-items-center rounded-xl bg-[#0058bc] font-display text-lg font-extrabold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
+                        <span class="grid size-10 place-items-center rounded-xl bg-sky-500 font-display text-lg font-extrabold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
                     @endif
                     <span class="min-w-0">
                         <span class="block truncate font-display text-lg font-extrabold text-white">{{ $branding['name'] }}</span>
@@ -87,14 +94,16 @@
                      carry that action where the servers themselves are, and a second copy
                      pinned to the nav competed with them from every unrelated page. --}}
                 <div class="space-y-1 border-t border-white/10 pt-4">
-                    <a href="{{ route('contact') }}" class="side-mini-link !px-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>
-                        Support
-                    </a>
-                    <a href="{{ route('features') }}" class="side-mini-link !px-2">
+                    <a href="{{ route('docs') }}" @class(['side-mini-link !px-2', 'bg-white/10 text-white' => request()->is('docs*')])>
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M9 15h6M9 11h3"/></svg>
-                        Docs
+                        Documentation
                     </a>
+                    @if($publicSiteEnabled ?? true)
+                        <a href="{{ route('contact') }}" class="side-mini-link !px-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>
+                            Contact
+                        </a>
+                    @endif
                 </div>
 
                 <div class="relative border-t border-white/10 pt-4" x-data="{ open: false }">
@@ -124,7 +133,7 @@
             </div>
         </aside>
 
-        <div class="flex min-h-screen w-full min-w-0 flex-1 flex-col lg:ml-64">
+        <div class="app-content">
             <main class="relative flex-1">
                 <!-- Ambient brand wash: keeps the expansive feel without competing with data. -->
                 <div class="pointer-events-none absolute right-0 top-0 -z-10 size-[500px] rounded-full bg-[linear-gradient(135deg,#00d2fd_0%,#0058bc_100%)] opacity-10 blur-[120px]"></div>
@@ -148,14 +157,16 @@
                         <div class="relative hidden md:block" x-data="{
                                 q: '',
                                 items: @js(collect($sections)->map(fn ($s) => ['label' => $s['label'], 'href' => $s['href']])
-                                    ->merge([
+                                    ->merge(array_filter([
                                         ['label' => 'Provision server', 'href' => route('servers.create')],
                                         ['label' => 'Add existing server', 'href' => route('servers.custom')],
                                         ['label' => 'Add site', 'href' => route('sites.create')],
                                         ['label' => 'Account settings', 'href' => '/account'],
                                         ['label' => 'Teams', 'href' => '/teams'],
                                         ['label' => 'Billing', 'href' => '/billing'],
-                                    ])->values()),
+                                        ['label' => 'Documentation', 'href' => route('docs')],
+                                        ($publicSiteEnabled ?? true) ? ['label' => 'Contact support', 'href' => route('contact')] : null,
+                                    ]))->values()),
                                 get results() { return this.q === '' ? [] : this.items.filter(i => i.label.toLowerCase().includes(this.q.toLowerCase())) },
                             }" @click.outside="q = ''">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 muted"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -191,13 +202,16 @@
                         </div>
     
                         <button type="button" @click="dark = !dark" class="icon-button" title="Toggle dark mode" aria-label="Toggle dark mode">
-                            <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+                            <svg x-cloak x-show="!dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
                             <svg x-cloak x-show="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
                         </button>
                     </div>
                 </div>
 
-                @if(session('status'))
+                @php
+                    $onMarketing = request()->routeIs('home', 'about', 'features', 'use-cases', 'blog', 'blog.show', 'contact');
+                @endphp
+                @if(session('status') && ! $onMarketing)
                     <div class="mx-auto w-full max-w-[1440px] px-5 pt-6 lg:px-10">
                         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">{{ session('status') }}</div>
                     </div>
@@ -207,28 +221,74 @@
         </div>
     </div>
 @else
+    @php
+        $marketingNav = [
+            ['label' => 'Home', 'route' => 'home'],
+            ['label' => 'About', 'route' => 'about'],
+            ['label' => 'Features', 'route' => 'features'],
+            ['label' => 'Pricing', 'href' => route('home').'#pricing'],
+            ['label' => 'Use cases', 'route' => 'use-cases'],
+            ['label' => 'Blog', 'route' => 'blog'],
+            ['label' => 'Contact', 'route' => 'contact'],
+        ];
+        $onMarketing = request()->routeIs('home', 'about', 'features', 'use-cases', 'blog', 'blog.show', 'contact');
+    @endphp
     <div class="min-h-screen">
-        <header class="app-topbar">
-            <a href="/" class="flex items-center gap-3 font-display font-bold heading">
-                @if($branding['logo_url'])
-                    <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="size-9 rounded-xl object-contain">
-                @else
-                    <span class="grid size-9 place-items-center rounded-xl bg-[#0058bc] font-extrabold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
-                @endif
-                {{ $branding['name'] }}
-            </a>
-            <nav class="flex items-center gap-2">
-                <button type="button" @click="dark = !dark" class="icon-button" title="Toggle dark mode" aria-label="Toggle dark mode">
-                    <svg x-show="!dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
-                    <svg x-cloak x-show="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-                </button>
-                <a href="/login" class="nav-link">Sign in</a>
-                <a href="/register" class="button-primary">Get started</a>
-            </nav>
+        <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/90">
+            <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5">
+                <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-3 font-display font-bold heading">
+                    @if($branding['logo_url'])
+                        <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="size-9 rounded-xl object-contain">
+                    @else
+                        <span class="grid size-9 place-items-center rounded-xl bg-sky-500 font-extrabold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
+                    @endif
+                    {{ $branding['name'] }}
+                </a>
+
+                <nav class="hidden items-center gap-0.5 md:flex" aria-label="Primary">
+                    @foreach($marketingNav as $item)
+                        @php
+                            $itemRoute = $item['route'] ?? null;
+                            $current = $itemRoute && (request()->routeIs($itemRoute) || ($itemRoute === 'blog' && request()->routeIs('blog.show')));
+                        @endphp
+                        <a href="{{ $item['href'] ?? route($itemRoute) }}"
+                           @class([
+                               'rounded-lg px-2.5 py-1.5 text-sm transition lg:px-3',
+                               'bg-sky-50 font-semibold text-sky-700 dark:bg-sky-400/10 dark:text-sky-200' => $current,
+                               'font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5' => ! $current,
+                           ])
+                           @if($current) aria-current="page" @endif>{{ $item['label'] }}</a>
+                    @endforeach
+                </nav>
+
+                <div class="flex items-center gap-1.5 sm:gap-2">
+                    <button type="button" @click="dark = !dark" class="icon-button" title="Toggle dark mode" aria-label="Toggle dark mode">
+                        <svg x-cloak x-show="!dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+                        <svg x-cloak x-show="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    </button>
+                    <button type="button" @click="marketingMenu = ! marketingMenu" class="icon-button md:hidden" aria-label="Open menu" :aria-expanded="marketingMenu">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="size-5"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+                    </button>
+                    <a href="{{ route('login') }}" class="nav-link hidden sm:inline-flex">Sign in</a>
+                    <a href="{{ route('register') }}" class="button-primary !px-4 !py-2 text-xs sm:text-sm">Get started</a>
+                </div>
+            </div>
+            <div x-cloak x-show="marketingMenu" x-transition class="border-t border-slate-200 px-5 py-3 md:hidden dark:border-white/10">
+                <div class="flex flex-col gap-1">
+                    @foreach($marketingNav as $item)
+                        @php
+                            $itemRoute = $item['route'] ?? null;
+                            $current = $itemRoute && (request()->routeIs($itemRoute) || ($itemRoute === 'blog' && request()->routeIs('blog.show')));
+                        @endphp
+                        <a href="{{ $item['href'] ?? route($itemRoute) }}" @click="marketingMenu = false"
+                           @class(['rounded-lg px-3 py-2.5 text-sm', 'bg-sky-50 font-semibold text-sky-700 dark:bg-sky-400/10 dark:text-sky-200' => $current, 'text-slate-600 dark:text-slate-300' => ! $current])>{{ $item['label'] }}</a>
+                    @endforeach
+                    <a href="{{ route('login') }}" class="rounded-lg px-3 py-2.5 text-sm text-slate-600 sm:hidden dark:text-slate-300">Sign in</a>
+                </div>
+            </div>
         </header>
         <main class="relative">
-            <div class="pointer-events-none absolute right-0 top-0 -z-10 size-[500px] rounded-full bg-[linear-gradient(135deg,#00d2fd_0%,#0058bc_100%)] opacity-10 blur-[120px]"></div>
-            @if(session('status'))
+            @if(session('status') && ! $onMarketing)
                 <div class="mx-auto mt-5 max-w-2xl px-5"><div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">{{ session('status') }}</div></div>
             @endif
             {{ $slot ?? '' }}@yield('content')

@@ -30,7 +30,7 @@ final class CloudAccountValidationController extends Controller
                 'provider_status' => $exception->providerStatus,
             ], $exception->httpStatus);
         } catch (ConnectionException) {
-            return response()->json(['valid' => false, 'message' => 'CloudDeck could not reach DigitalOcean over HTTPS.'], 503);
+            return response()->json(['valid' => false, 'message' => 'Uplary could not reach DigitalOcean over HTTPS.'], 503);
         }
 
         return response()->json([

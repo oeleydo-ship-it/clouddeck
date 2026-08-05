@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Actions\Deployments\StartDeployment;
 use App\Actions\Deployments\StartRollback;
+use App\Actions\Sites\CreateStagingSite;
+use App\Actions\Sites\PromoteStagingSite;
 use App\Enums\DeploymentStatus;
 use App\Enums\ServerStatus;
 use App\Http\Requests\StoreSiteRequest;
@@ -12,12 +14,16 @@ use App\Jobs\Sites\CheckWordPressInstallJob;
 use App\Jobs\Sites\ConfigureSiteJob;
 use App\Jobs\Sites\DeleteSiteJob;
 use App\Jobs\Sites\RefreshWordPressInventoryJob;
+use App\Jobs\Monitoring\CheckSiteDnsJob;
+use App\Jobs\Monitoring\CheckSiteUptimeJob;
 use App\Models\Deployment;
 use App\Models\Site;
+use App\Models\SiteMonitorIncident;
 use App\Notifications\OperationalEventNotification;
 use App\Services\AuditLogger;
 use App\Services\EnvironmentFile;
 use App\Services\QuotaManager;
+use App\Services\SystemSettings;
 use App\Services\WordPressConfig;
 use App\Services\WordPressDirectory;
 use Illuminate\Http\RedirectResponse;
@@ -34,7 +40,8 @@ class SiteController extends Controller
         $sites = $request->user()->sites();
 
         return view('sites.index', [
-            'sites' => (clone $sites)->with(['server', 'latestDeployment'])->latest()->paginate(15),
+            'sites' => (clone $sites)->with(['server', 'latestDeployment', 'stagingSite'])->latest()->paginate(15),
+            'stagingSitesEnabled' => app(SystemSettings::class)->stagingSitesEnabled(),
             // Counted over every site the user owns, not just the current page, so the
             // strip keeps meaning once the list paginates.
             'summary' => [
@@ -55,7 +62,14 @@ class SiteController extends Controller
     {
         $quotas->assertCanCreate($request->user(), 'sites');
         $site = DB::transaction(function () use ($request) {
-            $site = $request->user()->sites()->create([...$request->validated(), 'auto_deploy' => $request->boolean('auto_deploy'), 'zero_downtime' => $request->boolean('zero_downtime', true), 'webhook_secret' => Str::random(64), 'status' => 'configuring']);
+            $site = $request->user()->sites()->create([
+                ...$request->validated(),
+                'auto_deploy' => $request->boolean('auto_deploy'),
+                'zero_downtime' => $request->boolean('zero_downtime', true),
+                'webhook_secret' => Str::random(64),
+                'status' => 'configuring',
+                'environment' => 'production',
+            ]);
 
             // A WordPress install is configured by a generated wp-config.php, not by a
             // Laravel environment file, so seeding APP_KEY and a queue connection into it
@@ -90,17 +104,110 @@ class SiteController extends Controller
         $this->authorize('view', $site);
 
         // Read on first arrival rather than leaving the operator to press a button for
-        // something CloudDeck could simply have asked the server for.
+        // something Uplary could simply have asked the server for.
         if ($site->wordpressIsInstalled() && ! $site->wordpress_inventory_at) {
             RefreshWordPressInventoryJob::dispatch($site->id)->onQueue('operations');
         }
 
-        return view('sites.show', ['site' => $site->load(['server', 'environmentVariables', 'queueWorkers', 'sslCertificates', 'cronJobs', 'backups.user']),
+        return view('sites.show', [
+            'site' => $site->load([
+                'server',
+                'environmentVariables',
+                'queueWorkers',
+                'sslCertificates',
+                'cronJobs',
+                'backups.user',
+                'stagingSite',
+                'productionSite',
+                'monitorIncidents' => fn ($query) => $query->limit(20),
+            ]),
+            'stagingSitesEnabled' => app(SystemSettings::class)->stagingSitesEnabled(),
+            'stagingPlatformDomain' => app(SystemSettings::class)->stagingPlatformDomain(),
             // Only fetched for the platform that can use it, and cached, so the directory
             // being slow or down never holds up a Laravel site's page.
             'directoryThemes' => $site->isWordPress() ? app(WordPressDirectory::class)->themes($request->query('theme_search')) : [],
             'directoryPlugins' => $site->isWordPress() ? app(WordPressDirectory::class)->plugins($request->query('plugin_search')) : [],
-            'deployments' => $site->deployments()->with('user')->latest()->paginate(20), 'environment' => $environment->render($site->environmentVariables), 'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all()]);
+            'deployments' => $site->deployments()->with('user')->latest()->paginate(20),
+            'environment' => $environment->render($site->environmentVariables),
+            'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all(),
+        ]);
+    }
+
+    public function storeStaging(Request $request, Site $site, CreateStagingSite $create): RedirectResponse
+    {
+        $this->authorize('update', $site);
+
+        $data = $request->validate([
+            'domain_source' => ['required', Rule::in(['platform', 'custom'])],
+            'staging_slug' => ['required_if:domain_source,platform', 'nullable', 'string', 'max:63', 'regex:/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/'],
+            'domain' => ['required_if:domain_source,custom', 'nullable', 'lowercase', 'max:253', 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/'],
+            'branch' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
+        ]);
+
+        $staging = $create->execute($site, $data);
+
+        return redirect()->route('sites.show', $staging)->with('status', 'Staging site configuration has been queued.');
+    }
+
+    public function promote(Request $request, Site $site, PromoteStagingSite $promote): RedirectResponse
+    {
+        $this->authorize('deploy', $site);
+        $deployment = $promote->execute($site, $request->user());
+
+        return redirect()->route('deployments.show', $deployment)->with('status', 'Staging settings were copied to production and a deployment was queued.');
+    }
+
+    public function enableMonitoring(Request $request, Site $site): RedirectResponse
+    {
+        $this->authorize('update', $site);
+        abort_unless($site->status === 'active', 422, 'The site must be active before enabling monitoring.');
+
+        $data = $request->validate([
+            'monitor_path' => ['sometimes', 'string', 'max:200', 'regex:/^\/[A-Za-z0-9._~\-\/]*$/'],
+            'monitor_consecutive_failures' => ['sometimes', 'integer', 'between:1,12'],
+            'monitor_cooldown_minutes' => ['sometimes', 'integer', 'between:5,1440'],
+        ]);
+
+        $site->update([
+            'site_monitoring_enabled' => true,
+            'monitor_path' => $data['monitor_path'] ?? $site->monitor_path ?: '/',
+            'monitor_consecutive_failures' => $data['monitor_consecutive_failures'] ?? $site->monitor_consecutive_failures ?: 3,
+            'monitor_cooldown_minutes' => $data['monitor_cooldown_minutes'] ?? $site->monitor_cooldown_minutes ?: 30,
+        ]);
+
+        CheckSiteUptimeJob::dispatch($site->id)->onQueue('monitoring');
+        CheckSiteDnsJob::dispatch($site->id)->onQueue('monitoring');
+
+        return back()->with('status', 'Site monitoring enabled. Uptime and DNS checks have been queued.');
+    }
+
+    public function disableMonitoring(Request $request, Site $site): RedirectResponse
+    {
+        $this->authorize('update', $site);
+        $site->update([
+            'site_monitoring_enabled' => false,
+            'monitor_consecutive_down' => 0,
+            'monitor_last_error' => null,
+            'dns_last_error' => null,
+        ]);
+        SiteMonitorIncident::where('site_id', $site->id)->where('status', 'open')->update([
+            'status' => 'resolved',
+            'resolved_at' => now(),
+        ]);
+
+        return back()->with('status', 'Site monitoring disabled.');
+    }
+
+    public function checkMonitoring(Request $request, Site $site): RedirectResponse
+    {
+        $this->authorize('update', $site);
+        abort_unless($site->site_monitoring_enabled, 422, 'Enable site monitoring before running a check.');
+        abort_unless($site->status === 'active', 422, 'The site must be active.');
+
+        CheckSiteUptimeJob::dispatch($site->id)->onQueue('monitoring');
+        CheckSiteDnsJob::dispatch($site->id)->onQueue('monitoring');
+
+        return back()->with('status', 'Uptime and DNS checks queued.');
     }
 
     public function wordpressStatus(Request $request, Site $site): RedirectResponse

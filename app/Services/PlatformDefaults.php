@@ -8,7 +8,7 @@ use App\Models\Plan;
 final class PlatformDefaults
 {
     /**
-     * The plans and feature flags a CloudDeck instance cannot function without: signups have
+     * The plans and feature flags a Uplary instance cannot function without: signups have
      * nowhere to land and every quota check reads an empty table. Deployments only run
      * migrations, never seeders, so a freshly deployed instance had neither until the
      * installer or an operator created them by hand. Everything here is updateOrCreate, so

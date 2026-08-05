@@ -4,7 +4,7 @@ The server management screen is the operational control plane for databases, ser
 
 ## Databases
 
-CloudDeck provisions isolated MySQL or PostgreSQL databases and users through the server's privileged SSH connection. Generated passwords are encrypted in the control-plane database and shown to the customer only in the response that creates the database. When a database is attached to a site, its `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` environment entries are synchronized after remote creation succeeds.
+Uplary provisions isolated MySQL or PostgreSQL databases and users through the server's privileged SSH connection. Generated passwords are encrypted in the control-plane database and shown to the customer only in the response that creates the database. When a database is attached to a site, its `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, and `DB_PASSWORD` environment entries are synchronized after remote creation succeeds.
 
 Exports use `mysqldump` or `pg_dump` and are stored on the configured private filesystem disk. Downloads enforce database ownership. Imports accept SQL files up to 10 MB, store them privately, and stream their content to the remote command over SSH standard input. Larger production backups should use a future object-storage and streaming workflow instead of the current in-memory SSH transport.
 
@@ -18,7 +18,7 @@ The domain must already resolve to the server and ports 80 and 443 must be reach
 
 Cron entries are created either from a site's Cron tab, where they are bound to that site and its server, or from the server's Cron tab for entries that belong to no site. Cron expressions are validated as five fields and commands reject line breaks and shell-control characters before they are written to `/etc/cron.d`. Supervisor workers are generated from structured settings such as connection, queue, process count, retry count, timeout, and memory; customers cannot submit an arbitrary Supervisor configuration.
 
-A Reverb worker binds to `127.0.0.1` on its allocated port and is published by Nginx on the site's own domain under `/app` and `/apps`, so the WebSocket reuses the site's certificate on port 443 and no high port is exposed. The proxy is written to `/etc/nginx/clouddeck/<domain>-reverb.conf` and pulled in by a glob `include`, which survives both Certbot and the Nginx settings screen rewriting the vhost. The site's `REVERB_SCHEME` and `REVERB_PORT` follow whether the site has an active certificate, and are refreshed when one is issued; the compiled `VITE_REVERB_*` values reach the browser on the next deployment.
+A Reverb worker binds to `127.0.0.1` on its allocated port and is published by Nginx on the site's own domain under `/app` and `/apps`, so the WebSocket reuses the site's certificate on port 443 and no high port is exposed. The proxy is written to `/etc/nginx/Uplary/<domain>-reverb.conf` and pulled in by a glob `include`, which survives both Certbot and the Nginx settings screen rewriting the vhost. The site's `REVERB_SCHEME` and `REVERB_PORT` follow whether the site has an active certificate, and are refreshed when one is issued; the compiled `VITE_REVERB_*` values reach the browser on the next deployment.
 
 Deleting a cron entry or worker queues removal of its remote configuration. The UI status reflects the last synchronization job rather than assuming the remote action succeeded.
 

@@ -12,7 +12,7 @@ class EnsureInstalled
     public function __construct(private readonly Installation $installation) {}
 
     /**
-     * A CloudDeck instance with no administrator is unusable, so send every browser request
+     * A Uplary instance with no administrator is unusable, so send every browser request
      * to the wizard until one exists. Webhooks are exempt: they are machine callers that
      * would follow a redirect into an HTML page and record a delivery as successful.
      */
@@ -24,7 +24,7 @@ class EnsureInstalled
 
         if (! $this->installation->isInstalled()) {
             return $request->expectsJson()
-                ? response()->json(['message' => 'CloudDeck is not installed yet.'], 503)
+                ? response()->json(['message' => 'Uplary is not installed yet.'], 503)
                 : redirect()->route('install');
         }
 

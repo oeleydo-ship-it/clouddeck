@@ -44,7 +44,7 @@ final class WordPressConfig
         $env = $site->environmentVariables()->pluck('value', 'key');
 
         $lines = ['<?php', ''];
-        $lines[] = "/* Written by CloudDeck. Edit the site's environment rather than this file: */";
+        $lines[] = "/* Written by Uplary. Edit the site's environment rather than this file: */";
         $lines[] = '/* it is regenerated on every deployment. */';
         $lines[] = '';
 

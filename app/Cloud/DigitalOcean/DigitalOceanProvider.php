@@ -81,7 +81,7 @@ final class DigitalOceanProvider implements CloudProvider
         $response = $this->client()->post('/account/keys', ['name' => $name, 'public_key' => $publicKey]);
 
         // DigitalOcean rejects a re-upload of a key it already stores. Its listing reports MD5
-        // fingerprints while CloudDeck records SHA256, so resolve the collision by key material.
+        // fingerprints while Uplary records SHA256, so resolve the collision by key material.
         if ($response->status() === 422 && $existing = $this->findSshKey($publicKey, $fingerprint)) {
             return $existing;
         }
@@ -107,7 +107,7 @@ final class DigitalOceanProvider implements CloudProvider
 
     public function createServer(CreateServerData $data): array
     {
-        return $this->client()->post('/droplets', ['name' => $data->name, 'region' => $data->region, 'size' => $data->size, 'image' => $data->image, 'ssh_keys' => $data->sshKeyIds, 'backups' => false, 'monitoring' => true, 'tags' => ['managed-by-clouddeck']])->throw()->json('droplet');
+        return $this->client()->post('/droplets', ['name' => $data->name, 'region' => $data->region, 'size' => $data->size, 'image' => $data->image, 'ssh_keys' => $data->sshKeyIds, 'backups' => false, 'monitoring' => true, 'tags' => ['managed-by-Uplary']])->throw()->json('droplet');
     }
 
     public function server(string $providerId): array
@@ -138,7 +138,7 @@ final class DigitalOceanProvider implements CloudProvider
     public function deleteServer(string $providerId): void
     {
         $response = $this->client()->delete("/droplets/{$providerId}");
-        // A Droplet already removed at the provider (deleted manually, or by another CloudDeck
+        // A Droplet already removed at the provider (deleted manually, or by another Uplary
         // record that happened to point at the same one) is not a failure to delete it: there
         // is nothing left to delete, so treat 404 the same as a successful DELETE.
         if ($response->status() === 404) {

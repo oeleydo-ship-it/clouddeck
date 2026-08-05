@@ -20,7 +20,7 @@ class NotificationChannel extends Model
     }
 
     /**
-     * Every event CloudDeck can raise. A recipient that names none of them is subscribed to
+     * Every event Uplary can raise. A recipient that names none of them is subscribed to
      * all, so one created before events existed keeps behaving as it did.
      */
     public const EVENTS = [
@@ -28,11 +28,15 @@ class NotificationChannel extends Model
         'server_down' => 'Server down',
         'disk_full' => 'Disk full',
         'site_added' => 'Site added',
+        'site_down' => 'Website down',
+        'site_recovered' => 'Website recovered',
+        'dns_mismatch' => 'DNS mismatch',
         'deploy_complete' => 'Deploy complete',
         'ssl_installed' => 'SSL certificate issued',
         'ssl_expiring' => 'SSL certificate expiring',
         'queue_failed' => 'Queue failed',
         'backup_failed' => 'Backup failed',
+        'auto_heal' => 'Auto-heal action',
     ];
 
     public function wantsEvent(string $event): bool

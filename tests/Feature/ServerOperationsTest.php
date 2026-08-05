@@ -336,7 +336,7 @@ class ServerOperationsTest extends TestCase
         $this->actingAs($user)->post("/workers/{$worker->id}/status")->assertSessionHas('status');
         Queue::assertPushedOn('operations', CheckQueueWorkerStatusJob::class);
 
-        Process::fake(['*' => Process::result(output: "clouddeck-{$worker->id}:clouddeck-{$worker->id}_00   BACKOFF   Exited too quickly", exitCode: 0)]);
+        Process::fake(['*' => Process::result(output: "Uplary-{$worker->id}:Uplary-{$worker->id}_00   BACKOFF   Exited too quickly", exitCode: 0)]);
         (new CheckQueueWorkerStatusJob($worker->id))->handle(app(SshClient::class));
 
         $this->assertSame('BACKOFF', $worker->fresh()->runtime_status);

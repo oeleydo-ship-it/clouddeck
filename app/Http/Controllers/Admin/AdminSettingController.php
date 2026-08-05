@@ -38,11 +38,27 @@ class AdminSettingController extends Controller
             'email_verification_required' => ['sometimes', 'boolean'],
             'public_site_enabled' => ['sometimes', 'boolean'],
             'dns_enabled' => ['sometimes', 'boolean'],
+            'staging_sites_enabled' => ['sometimes', 'boolean'],
+            'staging_platform_domain' => ['nullable', 'string', 'max:253', 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i'],
             'maintenance_banner' => ['nullable', 'string', 'max:500'],
         ]);
 
-        foreach (['platform_name' => 'string', 'support_email' => 'string', 'registration_enabled' => 'boolean', 'email_verification_required' => 'boolean', 'public_site_enabled' => 'boolean', 'dns_enabled' => 'boolean', 'maintenance_banner' => 'string'] as $key => $type) {
-            $value = $type === 'boolean' ? ($request->boolean($key) ? '1' : '0') : ($data[$key] ?? '');
+        foreach ([
+            'platform_name' => 'string',
+            'support_email' => 'string',
+            'registration_enabled' => 'boolean',
+            'email_verification_required' => 'boolean',
+            'public_site_enabled' => 'boolean',
+            'dns_enabled' => 'boolean',
+            'staging_sites_enabled' => 'boolean',
+            'staging_platform_domain' => 'string',
+            'maintenance_banner' => 'string',
+        ] as $key => $type) {
+            if ($key === 'staging_platform_domain') {
+                $value = strtolower((string) ($data[$key] ?? $settings->stagingPlatformDomain()));
+            } else {
+                $value = $type === 'boolean' ? ($request->boolean($key) ? '1' : '0') : ($data[$key] ?? '');
+            }
             $settings->put($key, $value, $type, true);
         }
 

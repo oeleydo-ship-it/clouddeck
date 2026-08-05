@@ -7,6 +7,7 @@ use App\Enums\ServerStatus;
 use App\Models\Deployment;
 use App\Models\Plan;
 use App\Models\ServerMetric;
+use App\Models\Site;
 use App\Models\Subscription;
 use App\Services\EntitlementService;
 use App\Services\QuotaManager;
@@ -27,10 +28,18 @@ class DashboardController extends Controller
             'stats' => [
                 'servers' => (clone $servers)->count(),
                 'active' => (clone $servers)->whereIn('status', [ServerStatus::Active, ServerStatus::Ready])->count(),
+                'sites' => Site::query()->whereHas('server', fn ($query) => $query->accessibleTo($request->user()))->count(),
                 'deployments' => Deployment::whereHas('site.server', fn ($query) => $query->accessibleTo($request->user()))->whereDate('created_at', today())->count(),
                 'failed' => Deployment::whereHas('site.server', fn ($query) => $query->accessibleTo($request->user()))->where('status', DeploymentStatus::Failed)->count(),
                 'offline' => $offline,
             ],
+            'recentServers' => (clone $servers)->with('cloudAccount')->latest()->limit(5)->get(),
+            'recentDeployments' => Deployment::query()
+                ->with(['site.server'])
+                ->whereHas('site.server', fn ($query) => $query->accessibleTo($request->user()))
+                ->latest()
+                ->limit(5)
+                ->get(),
             'health' => $this->health($monitoredServers->pluck('id')->all(), $monitoredServers->count(), $offline),
             'plan' => $this->plan($request, $entitlements, $quotas),
         ]);

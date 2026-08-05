@@ -2,7 +2,7 @@
 @section('content')
 <div class="app-main !max-w-6xl">
     <a class="page-eyebrow" href="{{ route('cloud-accounts') }}">&larr; Provider connections</a>
-    <div class="mt-3 flex flex-wrap items-end justify-between gap-4"><div><p class="page-eyebrow">DigitalOcean discovery</p><h1 class="page-title">Connect a Droplet</h1><p class="mt-2 text-slate-500 dark:text-slate-400">Active Droplets from {{ $account->name }}. Importing queues the CloudDeck bootstrap before sites can be created.</p></div><a class="button-secondary" href="{{ route('ssh-keys') }}">Manage SSH keys</a></div>
+    <div class="mt-3 flex flex-wrap items-end justify-between gap-4"><div><p class="page-eyebrow">DigitalOcean discovery</p><h1 class="page-title">Connect a Droplet</h1><p class="mt-2 text-slate-500 dark:text-slate-400">Active Droplets from {{ $account->name }}. Importing queues the {{ $branding['name'] }} bootstrap before sites can be created.</p></div><a class="button-secondary" href="{{ route('ssh-keys') }}">Manage SSH keys</a></div>
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 dark:border-rose-400/20 bg-rose-50 dark:bg-rose-400/10 p-4 text-sm text-rose-700 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     @if($keys->isEmpty())<div class="mt-6 rounded-xl border border-amber-200 dark:border-amber-400/20 bg-amber-50 dark:bg-amber-400/10 p-4 text-sm text-amber-700 dark:text-amber-200">Generate a managed SSH key, then install its public key for the Droplet's root user before importing.</div>@endif
     <div class="mt-8 grid gap-4 lg:grid-cols-2">

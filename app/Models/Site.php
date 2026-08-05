@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DeploymentStatus;
 use App\Events\SiteStatusUpdated;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Model;
@@ -37,7 +38,48 @@ class Site extends Model
 
     protected function casts(): array
     {
-        return ['auto_deploy' => 'boolean', 'zero_downtime' => 'boolean', 'webhook_secret' => 'encrypted', 'last_deployed_at' => 'datetime', 'queue_checked_at' => 'datetime', 'wordpress_installed_at' => 'datetime', 'wordpress_checked_at' => 'datetime', 'wordpress_inventory' => 'array', 'wordpress_inventory_at' => 'datetime', 'managed_packages' => 'array', 'installed_packages' => 'array', 'horizon_admin_emails' => 'array'];
+        return [
+            'auto_deploy' => 'boolean',
+            'zero_downtime' => 'boolean',
+            'webhook_secret' => 'encrypted',
+            'last_deployed_at' => 'datetime',
+            'queue_checked_at' => 'datetime',
+            'wordpress_installed_at' => 'datetime',
+            'wordpress_checked_at' => 'datetime',
+            'wordpress_inventory' => 'array',
+            'wordpress_inventory_at' => 'datetime',
+            'managed_packages' => 'array',
+            'installed_packages' => 'array',
+            'horizon_admin_emails' => 'array',
+            'site_monitoring_enabled' => 'boolean',
+            'monitor_last_checked_at' => 'datetime',
+            'dns_last_checked_at' => 'datetime',
+        ];
+    }
+
+    public function isProduction(): bool
+    {
+        return ($this->environment ?? 'production') === 'production';
+    }
+
+    public function isStaging(): bool
+    {
+        return ($this->environment ?? 'production') === 'staging';
+    }
+
+    public function productionSite()
+    {
+        return $this->belongsTo(self::class, 'production_site_id');
+    }
+
+    public function stagingSites()
+    {
+        return $this->hasMany(self::class, 'production_site_id');
+    }
+
+    public function stagingSite()
+    {
+        return $this->hasOne(self::class, 'production_site_id');
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -133,5 +175,34 @@ class Site extends Model
     public function terminalCommands()
     {
         return $this->hasMany(TerminalCommand::class);
+    }
+
+    public function monitorIncidents()
+    {
+        return $this->hasMany(SiteMonitorIncident::class)->latest('started_at');
+    }
+
+    public function hasActiveSsl(): bool
+    {
+        return $this->sslCertificates->contains(fn (SslCertificate $certificate) => $certificate->status === 'active')
+            || $this->sslCertificates()->where('status', 'active')->exists();
+    }
+
+    public function monitorUrl(): string
+    {
+        $scheme = $this->hasActiveSsl() ? 'https' : 'http';
+        $path = $this->monitor_path ?: '/';
+        if (! str_starts_with($path, '/')) {
+            $path = '/'.$path;
+        }
+
+        return $scheme.'://'.$this->domain.$path;
+    }
+
+    public function isDeploying(): bool
+    {
+        return $this->deployments()
+            ->whereIn('status', [DeploymentStatus::Pending, DeploymentStatus::Running])
+            ->exists();
     }
 }

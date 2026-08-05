@@ -1,6 +1,6 @@
 # Stripe subscription billing
 
-CloudDeck supports Stripe-hosted subscription Checkout and Customer Portal sessions. Card and payment-method details never pass through or persist in CloudDeck.
+Uplary supports Stripe-hosted subscription Checkout and Customer Portal sessions. Card and payment-method details never pass through or persist in Uplary.
 
 ## Configuration
 
@@ -20,7 +20,7 @@ Register `POST /api/billing/stripe/webhook` as a Stripe webhook endpoint. Subscr
 
 The endpoint verifies the `Stripe-Signature` against the unmodified request body and rejects timestamps outside a five-minute tolerance. Provider event IDs are unique, payloads are encrypted at rest, and newly accepted events are dispatched to the dedicated `billing` Horizon queue. Replayed events are acknowledged without being processed twice.
 
-Checkout metadata binds the CloudDeck user and plan to the provider session and subscription. Entitlements become active only from Stripe subscription lifecycle state, not from the success redirect. Webhook ordering is tolerated: a late Checkout event cannot downgrade an already-active subscription.
+Checkout metadata binds the Uplary user and plan to the provider session and subscription. Entitlements become active only from Stripe subscription lifecycle state, not from the success redirect. Webhook ordering is tolerated: a late Checkout event cannot downgrade an already-active subscription.
 
 ## Subscription and invoice lifecycle
 

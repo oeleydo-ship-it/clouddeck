@@ -17,7 +17,7 @@ use Illuminate\View\View;
 
 /**
  * Attaching a server the operator already runs, anywhere — another provider, a bare metal
- * box, a VM under a desk. CloudDeck never creates it, so there is no provider API and no
+ * box, a VM under a desk. Uplary never creates it, so there is no provider API and no
  * token: the operator authorises our public key on their root account and gives us an
  * address to reach it at.
  */
@@ -27,7 +27,7 @@ class CustomServerController extends Controller
     {
         return view('servers.custom', [
             'key' => $this->managedKey($request, $generator),
-            // Carried over when the operator arrived from connecting a provider CloudDeck
+            // Carried over when the operator arrived from connecting a provider Uplary
             // cannot drive, so they do not retype the address they just gave us.
             'account' => $request->user()->cloudAccounts()->find($request->query('cloud_account')),
         ]);
@@ -75,14 +75,23 @@ class CustomServerController extends Controller
      */
     private function managedKey(Request $request, SshKeyGenerator $generator): SshKey
     {
-        $existing = $request->user()->sshKeys()->where('name', 'CloudDeck managed')->first();
+        $platform = app(\App\Services\SystemSettings::class)->branding()['name'];
+        $keyName = $platform.' managed';
+        $existing = $request->user()->sshKeys()->where('name', $keyName)->first();
 
         if ($existing) {
             return $existing;
         }
 
-        $pair = $generator->generate('clouddeck@'.parse_url(config('app.url'), PHP_URL_HOST));
+        // Fall back to the previous default name so re-provisioning after a rebrand
+        // does not mint a second key the operator already authorised on their servers.
+        $existing = $request->user()->sshKeys()->whereIn('name', ['Uplary managed', 'CloudDeck managed'])->whereNotNull('private_key')->first();
+        if ($existing) {
+            return $existing;
+        }
 
-        return $request->user()->sshKeys()->create(['name' => 'CloudDeck managed', ...$pair]);
+        $pair = $generator->generate($platform.'@'.(parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost'));
+
+        return $request->user()->sshKeys()->create(['name' => $keyName, ...$pair]);
     }
 }

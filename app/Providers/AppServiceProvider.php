@@ -42,10 +42,17 @@ class AppServiceProvider extends ServiceProvider
 
         // Resolved per render rather than shared once, so a logo or name saved on the
         // settings page shows up on the next request instead of after a deploy.
+        // Branding is shared with every view (not only the layout): child pages that
+        // @extends layouts.app render before the layout, so a layout-only composer
+        // leaves $branding undefined in their content.
+        View::composer('*', function ($view): void {
+            $view->with('branding', app(SystemSettings::class)->branding());
+        });
+
         View::composer('layouts.app', function ($view): void {
             $settings = app(SystemSettings::class);
-            $view->with('branding', $settings->branding());
             $view->with('dnsEnabled', $settings->dnsEnabled());
+            $view->with('publicSiteEnabled', $settings->publicSiteEnabled());
             $view->with('shellAlerts', $this->shellAlerts());
         });
     }

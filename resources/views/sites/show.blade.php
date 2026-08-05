@@ -1,12 +1,23 @@
 @extends('layouts.app')
 @section('content')
-<div class="app-main" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','themes','plugins','backups','environment','ssl','cron','logs'] : ['overview','environment','deploy','ssl','cron','queue','webhook','logs']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
+<div class="app-main" x-data="{ tab: 'overview', keys: @js($site->isWordPress() ? ['overview','themes','plugins','backups','environment','ssl','cron','logs','monitoring'] : ['overview','environment','deploy','ssl','cron','queue','webhook','logs','monitoring']), init() { const h = location.hash.replace('#',''); if (this.keys.includes(h)) { this.tab = h } this.$watch('tab', v => history.replaceState(null, '', '#' + v)) } }">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <a class="link-action" href="{{ route('sites.index') }}">← Sites</a>
             <div class="mt-2 flex flex-wrap items-center gap-3"><h1 class="text-3xl font-semibold heading">{{ $site->domain }}</h1>
                 @livewire('site-status-badge', ['site' => $site])
                 <span class="badge bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300">{{ $site->isWordPress() ? 'WordPress' : 'Laravel' }}</span>
+                @if($site->isStaging())
+                    <span class="badge bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300">Staging</span>
+                    @if($site->productionSite)
+                        <a class="text-xs text-cyan-600 dark:text-cyan-300" href="{{ route('sites.show', $site->productionSite) }}">Production: {{ $site->productionSite->domain }}</a>
+                    @endif
+                @else
+                    <span class="badge bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300">Production</span>
+                    @if($site->stagingSite)
+                        <a class="text-xs text-cyan-600 dark:text-cyan-300" href="{{ route('sites.show', $site->stagingSite) }}">Staging: {{ $site->stagingSite->domain }}</a>
+                    @endif
+                @endif
                 @php
                     // http until a certificate is actually active: linking to https before then
                     // lands on a browser warning rather than the site.
@@ -37,6 +48,11 @@
         @endphp
         <div class="flex gap-3">
             @unless($site->isWordPress())<button @click="tab='deploy'" class="button-secondary">Edit site</button>@endunless
+            @if($site->isStaging() && $stagingSitesEnabled)
+                <form method="POST" action="{{ route('sites.promote', $site) }}" onsubmit="return confirm('Copy staging branch and settings to production and deploy {{ $site->productionSite?->domain }}?')">
+                    @csrf<button class="button-secondary !text-amber-700 dark:!text-amber-300" @disabled($site->status !== 'active' || $site->productionSite?->status !== 'active')>Promote to production</button>
+                </form>
+            @endif
             <form method="POST" action="{{ route('sites.deploy',$site) }}"
                   @if($wordpressInstalled) onsubmit="return confirm('Replace the WordPress core files with the latest release? Your database, uploads, plugins, and themes are kept.')" @endif>
                 @csrf<button class="button-primary" @disabled($site->status !== 'active' || ! $hasDatabase)>{{ $action }}</button>
@@ -48,11 +64,11 @@
             <p class="text-sm font-medium text-amber-800 dark:text-amber-200">Create a database before {{ $site->isWordPress() ? 'installing' : 'deploying' }}</p>
             <p class="mt-1 text-sm text-amber-700 dark:text-amber-200/80">
                 @if($site->isWordPress())
-                    WordPress cannot run without one, and CloudDeck writes its credentials into <code>wp-config.php</code> when it installs.
+                    WordPress cannot run without one, and {{ $branding['name'] }} writes its credentials into <code>wp-config.php</code> when it installs.
                     Create a database on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}#databases">{{ $site->server->name }}</a> and attach it to this site, then come back and install.
                 @else
                     This site has no <code>DB_CONNECTION</code> in its environment, so Laravel would fall back to SQLite and the deployment would fail during migrations — the provisioned PHP only carries the MySQL and PostgreSQL drivers.
-                    Create one on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}#databases">{{ $site->server->name }}</a> and attach it to this site; CloudDeck writes the <code>DB_*</code> connection details into the environment for you.
+                    Create one on <a class="font-medium underline" href="{{ route('servers.manage',$site->server) }}#databases">{{ $site->server->name }}</a> and attach it to this site; {{ $branding['name'] }} writes the <code>DB_*</code> connection details into the environment for you.
                     If this application genuinely has no database, set <code>DB_CONNECTION</code> yourself on the Environment tab.
                 @endif
             </p>
@@ -76,12 +92,12 @@
     @if($errors->any())<div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>@endif
     <div class="mt-5"><a href="{{ route('sites.remote',$site) }}" class="button-secondary inline-block">Open PHP, Nginx, files, and console</a></div>
     @can('delete', $site)
-        <details id="danger-zone" class="panel mt-5 !border-rose-200 dark:!border-rose-400/20"><summary class="cursor-pointer font-medium text-rose-600 dark:text-rose-300">Danger zone</summary><p class="mt-3 text-sm muted">Permanently removes this site from CloudDeck and deletes its Nginx configuration, PHP-FPM pool, SSL certificate, and files from the server. This cannot be undone.</p><form method="POST" action="{{ route('sites.destroy',$site) }}" class="mt-4 flex flex-wrap gap-3" onsubmit="return confirm('Permanently delete {{ $site->domain }} and all its files on the server?')">@csrf @method('DELETE')<input class="field mt-0" name="confirmation" placeholder="Type {{ $site->domain }} to confirm"><button class="button-secondary !text-rose-600 dark:!text-rose-300">Delete site</button></form></details>
+        <details id="danger-zone" class="panel mt-5 !border-rose-200 dark:!border-rose-400/20"><summary class="cursor-pointer font-medium text-rose-600 dark:text-rose-300">Danger zone</summary><p class="mt-3 text-sm muted">Permanently removes this site from {{ $branding['name'] }} and deletes its Nginx configuration, PHP-FPM pool, SSL certificate, and files from the server. This cannot be undone.</p><form method="POST" action="{{ route('sites.destroy',$site) }}" class="mt-4 flex flex-wrap gap-3" onsubmit="return confirm('Permanently delete {{ $site->domain }} and all its files on the server?')">@csrf @method('DELETE')<input class="field mt-0" name="confirmation" placeholder="Type {{ $site->domain }} to confirm"><button class="button-secondary !text-rose-600 dark:!text-rose-300">Delete site</button></form></details>
     @endcan
     <div class="mt-8 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-white/10">@php
         $tabs = $site->isWordPress()
-            ? ['overview'=>'Overview','themes'=>'Themes','plugins'=>'Plugins','backups'=>'Backups','environment'=>'Environment','ssl'=>'SSL','cron'=>'Cron','logs'=>'Logs']
-            : ['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook','logs'=>'Logs'];
+            ? ['overview'=>'Overview','themes'=>'Themes','plugins'=>'Plugins','backups'=>'Backups','environment'=>'Environment','ssl'=>'SSL','cron'=>'Cron','logs'=>'Logs','monitoring'=>'Monitoring']
+            : ['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook','logs'=>'Logs','monitoring'=>'Monitoring'];
     @endphp
     @foreach($tabs as $key=>$label)<button @click="tab='{{ $key }}'" :class="tab==='{{ $key }}' ? 'border-cyan-500 text-slate-900 dark:border-cyan-400 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400'" class="border-b-2 px-4 py-3 text-sm font-medium">{{ $label }}</button>@endforeach</div>
     <div x-show="tab==='overview'" class="mt-6"><div class="grid gap-4 sm:grid-cols-3">
@@ -97,6 +113,47 @@
             <div class="panel"><p class="text-xs uppercase tracking-wide muted">Last deployed</p><p class="mt-2 text-sm heading">{{ $site->last_deployed_at?->diffForHumans() ?? 'Never' }}</p></div>
         </div>
         <section class="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm shadow-slate-200/60 dark:border-white/10 dark:bg-white/[.03] dark:shadow-none"><div class="border-b border-slate-200 px-6 py-4 dark:border-white/10"><h2 class="font-semibold heading">Deployment history</h2></div>@forelse($deployments as $deployment)<div class="data-row grid items-center gap-4 sm:grid-cols-[1fr_150px_120px_auto]"><a href="{{ route('deployments.show',$deployment) }}"><p class="font-mono text-sm heading">{{ $deployment->release ?? Str::limit($deployment->id,14) }}</p><p class="mt-1 text-xs muted">{{ $deployment->trigger }} by {{ $deployment->user?->name ?? 'webhook' }} · {{ $deployment->created_at->diffForHumans() }}</p></a><span class="text-sm font-medium capitalize {{ $deployment->status->value === 'failed' ? 'text-rose-600 dark:text-rose-300' : ($deployment->status->value === 'successful' ? 'text-emerald-600 dark:text-emerald-300' : 'text-cyan-600 dark:text-cyan-300') }}">{{ str_replace('_',' ',$deployment->status->value) }}</span><span class="text-xs muted">{{ $deployment->duration_for_humans ?? '—' }}</span>@if($deployment->release && in_array($deployment->status,[\App\Enums\DeploymentStatus::Successful,\App\Enums\DeploymentStatus::RolledBack],true))<form method="POST" action="{{ route('sites.rollback',[$site,$deployment]) }}">@csrf<button class="button-secondary !px-3 !py-1.5 text-xs !text-amber-600 dark:!text-amber-300">Rollback</button></form>@else<span></span>@endif</div>@empty<div class="px-6 py-10 text-center muted">No deployments yet.</div>@endforelse</section><div class="mt-5">{{ $deployments->links() }}</div>
+
+        @if($site->isProduction() && $stagingSitesEnabled)
+            <section id="staging-setup" class="panel mt-6">
+                <h2 class="font-semibold heading">Staging environment</h2>
+                @if($site->stagingSite)
+                    <p class="mt-2 text-sm muted">Staging is live at <a class="text-cyan-600 dark:text-cyan-300" href="{{ route('sites.show', $site->stagingSite) }}">{{ $site->stagingSite->domain }}</a>.</p>
+                @else
+                    <p class="mt-2 text-sm muted">Create a linked staging site on the same server. Choose a {{ $branding['name'] }} subdomain or your own client domain, then promote when ready.</p>
+                    <form method="POST" action="{{ route('sites.staging.store', $site) }}" class="mt-5 space-y-4" x-data="{ source: 'platform' }">@csrf
+                        <fieldset>
+                            <legend class="text-sm font-medium heading">Staging hostname</legend>
+                            <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                                <label class="flex cursor-pointer gap-3 rounded-xl border p-4" :class="source === 'platform' ? 'border-cyan-400 bg-cyan-50/50 dark:border-cyan-400/40 dark:bg-cyan-400/5' : 'border-slate-200 dark:border-white/10'">
+                                    <input type="radio" name="domain_source" value="platform" x-model="source" class="mt-0.5">
+                                    <span><span class="block text-sm font-medium heading">{{ $branding['name'] }} subdomain</span><span class="mt-1 block text-xs muted">{slug}.staging.{{ $stagingPlatformDomain }}</span></span>
+                                </label>
+                                <label class="flex cursor-pointer gap-3 rounded-xl border p-4" :class="source === 'custom' ? 'border-cyan-400 bg-cyan-50/50 dark:border-cyan-400/40 dark:bg-cyan-400/5' : 'border-slate-200 dark:border-white/10'">
+                                    <input type="radio" name="domain_source" value="custom" x-model="source" class="mt-0.5">
+                                    <span><span class="block text-sm font-medium heading">Client domain</span><span class="mt-1 block text-xs muted">e.g. staging.yourclient.com</span></span>
+                                </label>
+                            </div>
+                        </fieldset>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="text-sm heading" x-show="source === 'platform'" x-cloak>Subdomain slug
+                                <div class="mt-1 flex items-center gap-2">
+                                    <input class="field mt-0" name="staging_slug" value="{{ old('staging_slug', Str::slug(Str::before($site->domain, '.'))) }}" placeholder="myapp">
+                                    <span class="shrink-0 text-xs muted">.staging.{{ $stagingPlatformDomain }}</span>
+                                </div>
+                            </label>
+                            <label class="text-sm heading" x-show="source === 'custom'" x-cloak>Client staging domain
+                                <input class="field" name="domain" value="{{ old('domain') }}" placeholder="staging.example.com">
+                            </label>
+                            @unless($site->isWordPress())
+                                <label class="text-sm heading">Git branch<input class="field" name="branch" value="{{ old('branch', $site->branch === 'main' ? 'staging' : $site->branch) }}"></label>
+                            @endunless
+                        </div>
+                        <button class="button-primary" @disabled($site->status !== 'active')>Create staging site</button>
+                    </form>
+                @endif
+            </section>
+        @endif
     </div>
     @if($site->isWordPress())
         @php $wordpressReady = $site->wordpressIsInstalled(); @endphp
@@ -220,5 +277,81 @@
         </section>
     </div>
     <div x-cloak x-show="tab==='webhook'" class="mt-6"><div class="panel"><h2 class="font-semibold heading">Automatic deployment webhook</h2><p class="mt-2 text-sm muted">Configure GitHub or Bitbucket with the endpoint and HMAC secret. GitLab may send the secret as <code>X-Gitlab-Token</code>.</p><label class="mt-5 block text-sm heading">Endpoint<code class="mt-2 block break-all rounded-xl bg-slate-100 p-3 text-cyan-700 dark:bg-black/30 dark:text-cyan-200">{{ route('webhooks.site',$site) }}</code></label><label class="mt-4 block text-sm heading">Secret<code class="mt-2 block break-all rounded-xl bg-slate-100 p-3 text-amber-700 dark:bg-black/30 dark:text-amber-200">{{ $site->webhook_secret }}</code></label><p class="mt-4 text-xs muted">Only pushes to <b>{{ $site->branch }}</b> are deployed. Duplicate commit hashes are ignored.</p></div></div>
+    <div x-cloak x-show="tab==='monitoring'" class="mt-6 space-y-6">
+        <section class="panel">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <h2 class="font-semibold heading">Website monitoring</h2>
+                    <p class="mt-1 text-sm muted">
+                        {{ $site->site_monitoring_enabled ? 'Enabled' : 'Disabled' }}.
+                        Probes HTTP availability and DNS against {{ $site->server->public_ip ?? 'the server IP' }} every minute when enabled.
+                        @unless($site->isWordPress()) Laravel failed-job checks also run every 15 minutes. @endunless
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    @if($site->site_monitoring_enabled)
+                        <form method="POST" action="{{ route('sites.monitoring.check', $site) }}">@csrf<button class="button-secondary" @disabled($site->status !== 'active')>Check now</button></form>
+                        <form method="POST" action="{{ route('sites.monitoring.disable', $site) }}">@csrf @method('DELETE')<button class="button-secondary text-rose-600 dark:text-rose-300">Disable</button></form>
+                    @else
+                        <form method="POST" action="{{ route('sites.monitoring.enable', $site) }}" class="flex flex-wrap items-end gap-3">@csrf
+                            <label class="text-sm heading">Path<input class="field mt-1 !w-36 font-mono text-xs" name="monitor_path" value="{{ $site->monitor_path ?: '/' }}" placeholder="/"></label>
+                            <button class="button-primary" @disabled($site->status !== 'active')>Enable monitoring</button>
+                        </form>
+                    @endif
+                </div>
+            </div>
+            @if($site->status !== 'active')
+                <p class="mt-3 text-xs muted">The site must be active before monitoring can run.</p>
+            @endif
+            <div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-xl border border-slate-200 p-4 dark:border-white/10">
+                    <p class="text-xs uppercase tracking-wide muted">HTTP status</p>
+                    <p class="mt-2 text-sm font-medium {{ $site->monitor_last_status === 'up' ? 'text-emerald-600 dark:text-emerald-300' : ($site->monitor_last_status === 'down' ? 'text-rose-600 dark:text-rose-300' : 'heading') }}">
+                        {{ $site->monitor_last_status ? ucfirst($site->monitor_last_status) : 'Not checked' }}
+                    </p>
+                    <p class="mt-1 text-xs muted">{{ $site->monitor_last_checked_at?->diffForHumans() ?? '—' }}</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 p-4 dark:border-white/10">
+                    <p class="text-xs uppercase tracking-wide muted">Latency</p>
+                    <p class="mt-2 text-sm font-medium heading">{{ $site->monitor_last_latency_ms !== null ? $site->monitor_last_latency_ms.' ms' : '—' }}</p>
+                    <p class="mt-1 text-xs muted truncate" title="{{ $site->monitorUrl() }}">{{ $site->monitorUrl() }}</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 p-4 dark:border-white/10">
+                    <p class="text-xs uppercase tracking-wide muted">DNS</p>
+                    <p class="mt-2 text-sm font-medium {{ $site->dns_last_status === 'ok' ? 'text-emerald-600 dark:text-emerald-300' : ($site->dns_last_status === 'mismatch' ? 'text-amber-600 dark:text-amber-300' : 'heading') }}">
+                        {{ $site->dns_last_status ? str_replace('_', ' ', ucfirst($site->dns_last_status)) : 'Not checked' }}
+                    </p>
+                    <p class="mt-1 text-xs muted">{{ $site->dns_last_checked_at?->diffForHumans() ?? '—' }}</p>
+                </div>
+                <div class="rounded-xl border border-slate-200 p-4 dark:border-white/10">
+                    <p class="text-xs uppercase tracking-wide muted">Consecutive failures</p>
+                    <p class="mt-2 text-sm font-medium heading">{{ $site->monitor_consecutive_down }} / {{ $site->monitor_consecutive_failures }}</p>
+                    <p class="mt-1 text-xs muted">Cooldown {{ $site->monitor_cooldown_minutes }} min</p>
+                </div>
+            </div>
+            @if($site->monitor_last_error || $site->dns_last_error)
+                <div class="mt-4 space-y-1 text-sm text-rose-600 dark:text-rose-300">
+                    @if($site->monitor_last_error)<p>HTTP: {{ $site->monitor_last_error }}</p>@endif
+                    @if($site->dns_last_error)<p>DNS: {{ $site->dns_last_error }}</p>@endif
+                </div>
+            @endif
+        </section>
+        <section class="panel">
+            <h2 class="font-semibold heading">Incidents</h2>
+            <div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">
+                @forelse($site->monitorIncidents as $incident)
+                    <div class="py-3">
+                        <div class="flex flex-wrap justify-between gap-3">
+                            <span class="text-sm heading">{{ $incident->message }}</span>
+                            <span class="text-xs uppercase {{ $incident->status === 'open' ? 'text-rose-600 dark:text-rose-300' : 'text-emerald-600 dark:text-emerald-300' }}">{{ $incident->status }}</span>
+                        </div>
+                        <p class="mt-1 text-xs muted">{{ str_replace('_', ' ', $incident->type) }} · started {{ $incident->started_at->diffForHumans() }}@if($incident->resolved_at) · resolved {{ $incident->resolved_at->diffForHumans() }}@endif</p>
+                    </div>
+                @empty
+                    <p class="py-5 text-sm muted">No monitoring incidents yet.</p>
+                @endforelse
+            </div>
+        </section>
+    </div>
 </div>
 @endsection

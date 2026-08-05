@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 class LogController extends Controller
 {
     /**
-     * Every log CloudDeck can show. A name rather than a path: the browser must never be able
+     * Every log Uplary can show. A name rather than a path: the browser must never be able
      * to choose which file is read.
      */
     public const SOURCES = [

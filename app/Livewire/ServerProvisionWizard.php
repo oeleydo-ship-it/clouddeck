@@ -130,6 +130,6 @@ class ServerProvisionWizard extends Component
         return view('livewire.server-provision-wizard', [
             'accounts' => Auth::user()->cloudAccounts()->whereNotNull('validated_at')->get(),
             'keys' => Auth::user()->sshKeys()->whereNotNull('private_key')->get(),
-        ])->title('Provision server · CloudDeck');
+        ])->title('Provision server · '.app(\App\Services\SystemSettings::class)->branding()['name']);
     }
 }

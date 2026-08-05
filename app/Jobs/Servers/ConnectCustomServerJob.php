@@ -34,11 +34,11 @@ class ConnectCustomServerJob implements ShouldQueue
         [$uid, $release] = array_pad(preg_split('/\R/', trim($identity)), 2, '');
 
         if (trim($uid) !== '0') {
-            throw new RuntimeException('Connected, but not as root. CloudDeck needs the key authorised on the root account to install and configure services.');
+            throw new RuntimeException('Connected, but not as root. Uplary needs the key authorised on the root account to install and configure services.');
         }
 
         if (! str_starts_with($release, 'ubuntu:')) {
-            throw new RuntimeException('This server is not running Ubuntu ('.($release ?: 'unknown').'). CloudDeck provisions Ubuntu 22.04 and 24.04.');
+            throw new RuntimeException('This server is not running Ubuntu ('.($release ?: 'unknown').'). Uplary provisions Ubuntu 22.04 and 24.04.');
         }
 
         $this->progress($server, 25, 'Connected to Ubuntu '.explode(':', $release)[1]);

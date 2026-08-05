@@ -21,7 +21,7 @@ class BillingLifecycleTest extends TestCase
 
     public function test_hosted_checkout_uses_mapped_price_and_customer_metadata(): void
     {
-        config(['services.stripe.secret' => 'sk_test_clouddeck', 'services.stripe.automatic_tax' => true]);
+        config(['services.stripe.secret' => 'sk_test_Uplary', 'services.stripe.automatic_tax' => true]);
         Http::fake(['https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_test_1', 'url' => 'https://checkout.stripe.com/c/pay/cs_test_1'])]);
         $user = User::factory()->create(['email_verified_at' => now()]);
         $plan = $this->plan();
@@ -88,7 +88,7 @@ class BillingLifecycleTest extends TestCase
 
     public function test_customer_portal_requires_and_uses_provider_customer(): void
     {
-        config(['services.stripe.secret' => 'sk_test_clouddeck']);
+        config(['services.stripe.secret' => 'sk_test_Uplary']);
         Http::fake(['https://api.stripe.com/v1/billing_portal/sessions' => Http::response(['url' => 'https://billing.stripe.com/p/session/test'])]);
         $user = User::factory()->create(['email_verified_at' => now(), 'stripe_customer_id' => 'cus_portal']);
 

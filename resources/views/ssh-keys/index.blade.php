@@ -25,8 +25,8 @@
                 <span class="stat-icon bg-blue-50 text-[#0058bc] dark:bg-blue-400/10 dark:text-blue-300"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5"><path d="m12 3 1.9 4.6L19 9.5l-4.6 1.9L12.5 16l-1.9-4.6L6 9.5l4.6-1.9ZM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9Z"/></svg></span>
                 Generate managed key
             </h2>
-            <p class="mt-3 text-sm muted">CloudDeck generates and encrypts a 4096-bit RSA key used by provisioning workers to reach your servers without manual setup.</p>
-            <label class="mt-auto block pt-6 text-sm heading">Key name<input class="field" name="name" value="{{ old('name') }}" placeholder="CloudDeck primary"></label>
+            <p class="mt-3 text-sm muted">{{ $branding['name'] }} generates and encrypts a 4096-bit RSA key used by provisioning workers to reach your servers without manual setup.</p>
+            <label class="mt-auto block pt-6 text-sm heading">Key name<input class="field" name="name" value="{{ old('name') }}" placeholder="{{ $branding['name'] }} primary"></label>
             <button class="button-primary mt-5 w-fit">
                 Generate key
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M15 7a5 5 0 1 1-4.9 6H7v3H4v-3H2v-3h8.1A5 5 0 0 1 15 7Zm2 4h.01"/></svg>
@@ -85,7 +85,7 @@
                 <span class="grid size-11 place-items-center rounded-full bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-300">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-5"><path d="M15 7a5 5 0 1 1-4.9 6H7v3H4v-3H2v-3h8.1A5 5 0 0 1 15 7Zm2 4h.01"/></svg>
                 </span>
-                <span class="text-sm muted">No SSH keys yet. Generate a managed key to let CloudDeck provision servers for you.</span>
+                <span class="text-sm muted">No SSH keys yet. Generate a managed key to let {{ $branding['name'] }} provision servers for you.</span>
             </div>
         @endforelse
     </div>

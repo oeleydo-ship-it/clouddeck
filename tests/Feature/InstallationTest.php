@@ -32,7 +32,7 @@ class InstallationTest extends TestCase
     {
         $this->get('/dashboard')->assertRedirect('/install');
         $this->get('/')->assertRedirect('/install');
-        $this->get('/install')->assertOk()->assertSee('Install CloudDeck');
+        $this->get('/install')->assertOk()->assertSee('Install Uplary');
     }
 
     public function test_installing_creates_the_administrator_plans_and_settings(): void
@@ -112,6 +112,6 @@ class InstallationTest extends TestCase
 
     public function test_api_clients_are_told_the_instance_is_not_installed_rather_than_redirected(): void
     {
-        $this->getJson('/dashboard')->assertStatus(503)->assertJson(['message' => 'CloudDeck is not installed yet.']);
+        $this->getJson('/dashboard')->assertStatus(503)->assertJson(['message' => 'Uplary is not installed yet.']);
     }
 }

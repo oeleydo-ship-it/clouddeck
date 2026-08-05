@@ -18,7 +18,17 @@ class Server extends Model
 
     protected function casts(): array
     {
-        return ['status' => ServerStatus::class, 'metadata' => 'array', 'provisioned_at' => 'datetime', 'monitoring_secret' => 'encrypted', 'monitoring_enabled' => 'boolean', 'last_seen_at' => 'datetime', 'phpmyadmin_enabled' => 'boolean'];
+        return [
+            'status' => ServerStatus::class,
+            'metadata' => 'array',
+            'provisioned_at' => 'datetime',
+            'monitoring_secret' => 'encrypted',
+            'monitoring_enabled' => 'boolean',
+            'auto_heal_enabled' => 'boolean',
+            'auto_heal_last_actions' => 'array',
+            'last_seen_at' => 'datetime',
+            'phpmyadmin_enabled' => 'boolean',
+        ];
     }
 
     public function user()

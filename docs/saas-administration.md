@@ -1,6 +1,6 @@
 # SaaS administration
 
-CloudDeck includes a super-administrator control center at `/admin` and customer billing and team workspaces at `/billing` and `/teams`.
+Uplary includes a super-administrator control center at `/admin` and customer billing and team workspaces at `/billing` and `/teams`.
 
 ## Plans and entitlements
 
@@ -10,7 +10,7 @@ The quota manager is enforced when customers create servers, sites, managed data
 
 ## Billing
 
-CloudDeck supports both manual approval and Stripe-hosted subscription billing. A customer can request a public plan for offline review, or use Stripe Checkout when the plan has a mapped recurring Price ID. Manual approval atomically ends the prior entitlement and creates the new subscription; Stripe access is synchronized only from signed asynchronous webhooks.
+Uplary supports both manual approval and Stripe-hosted subscription billing. A customer can request a public plan for offline review, or use Stripe Checkout when the plan has a mapped recurring Price ID. Manual approval atomically ends the prior entitlement and creates the new subscription; Stripe access is synchronized only from signed asynchronous webhooks.
 
 Manual activation is isolated behind `App\Billing\Contracts\BillingGateway`. Stripe integration separately provides hosted Checkout, Customer Portal sessions, invoice history, automatic-tax requests, payment-failure notifications, and subscription lifecycle synchronization. The manual adapter does not collect money or issue invoices.
 
@@ -31,6 +31,15 @@ This phase establishes membership and authorization-ready team context. Existing
 Suspending an account revokes Sanctum tokens and database sessions immediately. Suspended accounts are rejected during password login, second-factor completion, and authenticated requests. Administrative changes and team actions write an audit record with actor, subject, IP address, user agent, and encrypted before/after payloads.
 
 The control center can disable public registration and configure the support email and maintenance banner. Sensitive setting and audit payload values are encrypted at rest through Eloquent casts.
+
+## Staging sites
+
+Staging is off until a superadmin enables **Staging sites** under Admin → Settings and optionally sets the platform staging apex (default `uplary.com`). Customers then create a linked staging site from a production site's Overview tab:
+
+- **Platform subdomain** — `{slug}.staging.{platform_domain}` (for example `acme.staging.uplary.com`)
+- **Client domain** — any FQDN such as `staging.client.com`
+
+Staging is a separate site on the same server (own nginx vhost, release root, and environment). Laravel staging seeds `APP_ENV=staging`. **Promote to production** copies the staging repository, branch, script, and PHP version onto the linked production site and queues a production deployment. Create and promote routes return 404 while the platform toggle is off.
 
 ## Production checklist
 

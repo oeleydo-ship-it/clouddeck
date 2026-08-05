@@ -3,11 +3,11 @@
 use Illuminate\Support\Str;
 
 return [
-    'name' => env('HORIZON_NAME', 'CloudDeck'),
+    'name' => env('HORIZON_NAME', 'Uplary'),
     'domain' => env('HORIZON_DOMAIN'),
     'path' => env('HORIZON_PATH', 'horizon'),
     'use' => 'default',
-    'prefix' => env('HORIZON_PREFIX', Str::slug(env('APP_NAME', 'clouddeck'), '_').'_horizon:'),
+    'prefix' => env('HORIZON_PREFIX', Str::slug(env('APP_NAME', 'Uplary'), '_').'_horizon:'),
     'middleware' => ['web', 'auth', 'verified'],
     'waits' => ['redis:default' => 60, 'redis:deployments' => 120, 'redis:provisioning' => 120, 'redis:monitoring' => 60, 'redis:billing' => 30],
     'trim' => ['recent' => 60, 'pending' => 60, 'completed' => 60, 'recent_failed' => 10080, 'failed' => 10080, 'monitored' => 10080],

@@ -3,7 +3,7 @@
 <div class="app-main !max-w-3xl">
     <p class="page-eyebrow">New application</p>
     <h1 class="page-title">Create a site</h1>
-    <p class="mt-2 muted">CloudDeck configures Nginx and prepares the release directories in the background.</p>
+    <p class="mt-2 muted">{{ $branding['name'] }} configures Nginx and prepares the release directories in the background.</p>
 
     @if($errors->any())
         <div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">

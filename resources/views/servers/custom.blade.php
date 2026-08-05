@@ -6,7 +6,7 @@
 <div class="app-main !max-w-3xl">
     <a class="page-eyebrow" href="{{ route('servers.index') }}">← Servers</a>
     <h1 class="mt-2 text-3xl font-semibold heading">Attach an existing server</h1>
-    <p class="mt-2 muted">For a server you already run — another provider, bare metal, or a VM. CloudDeck connects over SSH by IP; no provider token is involved.</p>
+    <p class="mt-2 muted">For a server you already run — another provider, bare metal, or a VM. {{ $branding['name'] }} connects over SSH by IP; no provider token is involved.</p>
 
     @if($errors->any())
         <div class="mt-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">
@@ -15,8 +15,8 @@
     @endif
 
     <section class="panel mt-8">
-        <h2 class="font-semibold heading">1. Authorise CloudDeck on the server</h2>
-        <p class="mt-2 text-sm muted">The server must run <strong>Ubuntu 22.04 or 24.04</strong> and you must be able to SSH in as <code>root</code>. Use a freshly provisioned box where you can — CloudDeck installs and configures Nginx, PHP-FPM, Redis, and a database.</p>
+        <h2 class="font-semibold heading">1. Authorise {{ $branding['name'] }} on the server</h2>
+        <p class="mt-2 text-sm muted">The server must run <strong>Ubuntu 22.04 or 24.04</strong> and you must be able to SSH in as <code>root</code>. Use a freshly provisioned box where you can — {{ $branding['name'] }} installs and configures Nginx, PHP-FPM, Redis, and a database.</p>
         <p class="mt-4 text-sm heading">SSH into the server as root and run:</p>
         <div x-data="{ copied: false }" class="mt-2">
             <pre class="overflow-x-auto rounded-xl bg-slate-900 p-4 font-mono text-xs leading-6 text-slate-300" x-ref="cmd">{{ $command }}</pre>
@@ -24,11 +24,11 @@
                     @click="navigator.clipboard.writeText($refs.cmd.textContent); copied = true; setTimeout(() => copied = false, 2000)"
                     x-text="copied ? 'Copied' : 'Copy to clipboard'">Copy to clipboard</button>
         </div>
-        <p class="mt-3 text-xs muted">This appends CloudDeck's public key to root's authorised keys. The matching private key is encrypted at rest here and never leaves this instance.</p>
+        <p class="mt-3 text-xs muted">This appends {{ $branding['name'] }}'s public key to root's authorised keys. The matching private key is encrypted at rest here and never leaves this instance.</p>
     </section>
 
     <form method="POST" action="{{ route('servers.custom.store') }}" class="panel mt-6">@csrf
-        <h2 class="font-semibold heading">2. Tell CloudDeck where it is</h2>
+        <h2 class="font-semibold heading">2. Tell {{ $branding['name'] }} where it is</h2>
         @if($account)
             <input type="hidden" name="cloud_account_id" value="{{ $account->id }}">
             <p class="mt-2 text-sm muted">Filed under your <strong>{{ $account->name }}</strong> ({{ config('clouddeck.providers.'.$account->provider.'.label', $account->provider) }}) connection.</p>
@@ -43,7 +43,7 @@
             <label class="text-sm heading">SSH port<input class="field" type="number" name="ssh_port" value="{{ old('ssh_port', request('ssh_port', 22)) }}" min="1" max="65535" required></label>
         </div>
         <button class="button-primary mt-6">Verify and provision</button>
-        <p class="mt-3 text-xs muted">CloudDeck checks it can reach the server as root and that it is running Ubuntu before installing anything.</p>
+        <p class="mt-3 text-xs muted">{{ $branding['name'] }} checks it can reach the server as root and that it is running Ubuntu before installing anything.</p>
     </form>
 </div>
 @endsection

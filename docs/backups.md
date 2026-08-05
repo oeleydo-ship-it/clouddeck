@@ -1,10 +1,10 @@
 # Automated backups and recovery
 
-CloudDeck supports recurring SQL recovery points and DigitalOcean Droplet snapshots. Every provider or SSH operation runs on the `operations` queue; the scheduler only finds due policies and dispatches work.
+Uplary supports recurring SQL recovery points and DigitalOcean Droplet snapshots. Every provider or SSH operation runs on the `operations` queue; the scheduler only finds due policies and dispatches work.
 
 ## Policies
 
-A policy belongs to one server and creates either a database export or provider snapshot. Schedules can run daily, weekly, or monthly at a local wall-clock time in an IANA timezone. CloudDeck stores the next execution in UTC and advances it inside a row lock before dispatching, preventing duplicate recovery points when schedulers overlap.
+A policy belongs to one server and creates either a database export or provider snapshot. Schedules can run daily, weekly, or monthly at a local wall-clock time in an IANA timezone. Uplary stores the next execution in UTC and advances it inside a row lock before dispatching, preventing duplicate recovery points when schedulers overlap.
 
 Retention is count-based per policy. Completed SQL exports beyond the limit are deleted from their recorded filesystem disk and marked expired. Excess provider snapshots are deleted through the cloud API. Removing a policy preserves its existing recovery points.
 
@@ -18,7 +18,7 @@ Restores require the exact database name as confirmation and create a durable re
 
 ## Provider snapshots
 
-Snapshot creation records the DigitalOcean action, polls it asynchronously, then resolves the provider snapshot ID and size. A server restore requires the exact hostname as confirmation because it replaces the Droplet disk. CloudDeck polls the restore action and returns the server to `ready` only after the provider reports completion.
+Snapshot creation records the DigitalOcean action, polls it asynchronously, then resolves the provider snapshot ID and size. A server restore requires the exact hostname as confirmation because it replaces the Droplet disk. Uplary polls the restore action and returns the server to `ready` only after the provider reports completion.
 
 Snapshot restore is destructive and should be tested against non-production Droplets first. Application-level shared files, external object storage, managed databases, DNS, and provider resources outside the Droplet are not restored by a Droplet snapshot.
 

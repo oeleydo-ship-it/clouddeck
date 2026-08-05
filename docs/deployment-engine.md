@@ -34,7 +34,7 @@ The endpoint is displayed on the site's Webhook tab.
 
 - GitHub and Bitbucket: send `X-Hub-Signature-256: sha256=<HMAC>` over the exact raw request body.
 - GitLab: send the site's secret as `X-Gitlab-Token`.
-- Custom integrations may use `X-CloudDeck-Signature` with the same SHA-256 HMAC format.
+- Custom integrations may use `X-Uplary-Signature` with the same SHA-256 HMAC format.
 
 Only the configured branch is accepted. Previously queued, running, or successful commit hashes are ignored. Webhook endpoints are exempt from CSRF protection but remain signature-validated and rate-limited.
 

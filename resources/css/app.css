@@ -65,6 +65,10 @@
     .side-mini-link {
         @apply flex items-center gap-3.5 px-6 py-2 text-sm text-slate-400 transition hover:text-white;
     }
+    /* Fixed sidebar needs an explicit content offset; without this the page sits underneath. */
+    .app-content {
+        @apply flex min-h-screen w-full min-w-0 flex-1 flex-col lg:ml-64;
+    }
     .app-topbar {
         @apply sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-slate-200/70
         bg-[#f7f9fb]/80 px-5 backdrop-blur-md lg:px-10 dark:border-white/10 dark:bg-slate-950/80;
@@ -153,10 +157,10 @@
         dark:border-white/10 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-cyan-400/20;
     }
     .button-primary {
-        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#00d2fd_0%,#0058bc_100%)]
-        px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#0058bc]/20 transition-all
-        hover:shadow-xl hover:shadow-[#0058bc]/30 active:scale-95
-        disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+        @apply inline-flex items-center justify-center gap-2 rounded-xl bg-sky-500
+        px-6 py-3 text-sm font-semibold text-white transition
+        hover:bg-sky-600 active:scale-95
+        disabled:cursor-not-allowed disabled:opacity-50;
     }
     .button-secondary {
         @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm
@@ -166,7 +170,18 @@
     }
     .button-ghost {
         @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600
-        transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white;
+        transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white
+        disabled:cursor-not-allowed disabled:opacity-50;
+    }
+    /* Destructive actions keep rose when views override text color. */
+    .button-secondary.\!text-rose-600,
+    .button-secondary.\!text-rose-300,
+    .button-ghost.\!text-rose-600,
+    .button-ghost.\!text-rose-300,
+    .button-secondary.text-rose-600,
+    .button-secondary.text-rose-300 {
+        @apply !border-rose-200 !bg-rose-50 !text-rose-700 hover:!border-rose-300 hover:!bg-rose-100
+        dark:!border-rose-400/30 dark:!bg-rose-400/10 dark:!text-rose-300 dark:hover:!bg-rose-400/15;
     }
     .link-action {
         @apply text-sm font-medium text-[#0058bc] transition hover:underline dark:text-cyan-300;
@@ -221,4 +236,65 @@
     .heading {
         @apply text-slate-900 dark:text-white;
     }
+
+    /* ---- Marketing / landing --------------------------------------------- */
+    .landing-hero {
+        @apply bg-[#e8f4fc] dark:bg-slate-950;
+    }
+    .landing-hero-wash {
+        @apply pointer-events-none absolute inset-0;
+        background:
+            radial-gradient(90% 70% at 10% 0%, rgba(14, 165, 233, 0.35), transparent 55%),
+            radial-gradient(70% 60% at 90% 20%, rgba(56, 189, 248, 0.28), transparent 50%),
+            linear-gradient(180deg, #dbeafe 0%, #e8f4fc 45%, #f8fafc 100%);
+    }
+    .dark .landing-hero-wash {
+        background:
+            radial-gradient(90% 70% at 10% 0%, rgba(14, 165, 233, 0.22), transparent 55%),
+            radial-gradient(70% 60% at 90% 20%, rgba(2, 132, 199, 0.18), transparent 50%),
+            linear-gradient(180deg, #0b1220 0%, #0f172a 55%, #020617 100%);
+    }
+    .landing-hero-grid {
+        @apply pointer-events-none absolute inset-0 opacity-[0.35];
+        background-image:
+            linear-gradient(rgba(14, 165, 233, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(14, 165, 233, 0.08) 1px, transparent 1px);
+        background-size: 48px 48px;
+        mask-image: linear-gradient(180deg, black 0%, transparent 85%);
+    }
+    .landing-cta-wash {
+        background:
+            radial-gradient(80% 80% at 50% 0%, rgba(14, 165, 233, 0.28), transparent 60%),
+            linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 50%, #ffffff 100%);
+    }
+    .dark .landing-cta-wash {
+        background:
+            radial-gradient(80% 80% at 50% 0%, rgba(14, 165, 233, 0.2), transparent 60%),
+            linear-gradient(180deg, #0c1929 0%, #020617 100%);
+    }
+    .landing-fade-up {
+        animation: landing-rise 0.7s ease-out both;
+    }
+    .landing-fade-up-delay {
+        animation-delay: 0.12s;
+    }
+    .landing-terminal {
+        animation: landing-terminal 8s ease-in-out infinite;
+    }
+    .landing-product {
+        animation: landing-float 6s ease-in-out infinite;
+    }
+}
+
+@keyframes landing-rise {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes landing-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+@keyframes landing-terminal {
+    0%, 70%, 100% { opacity: 1; }
+    75%, 85% { opacity: 0.55; }
 }

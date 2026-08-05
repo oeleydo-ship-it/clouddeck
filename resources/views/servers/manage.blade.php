@@ -8,7 +8,7 @@
         <details class="panel mt-5"><summary class="cursor-pointer font-medium">Workspace ownership</summary><p class="mt-3 text-sm text-slate-500 dark:text-slate-400">{{ $server->team ? 'Shared with '.$server->team->name : 'Personal workspace' }}. Transferring changes who can view and operate this server.</p><form method="POST" action="{{ route('servers.team.update',$server) }}" class="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">@csrf @method('PATCH')<select class="field mt-0" name="team_id">@if($server->user_id===auth()->id())<option value="">Personal workspace</option>@endif @foreach($transferTeams as $team)<option value="{{ $team->id }}" @selected($server->team_id===$team->id)>{{ $team->name }}</option>@endforeach</select><input class="field mt-0" name="confirmation" placeholder="Type {{ $server->hostname }} to confirm"><button class="button-secondary">Transfer</button></form></details>
     @endcan
     @can('delete', $server)
-        <details id="danger-zone" class="panel mt-5 border-rose-200 dark:border-rose-400/20"><summary class="cursor-pointer font-medium text-rose-600 dark:text-rose-300">Danger zone</summary><p class="mt-3 text-sm text-slate-500 dark:text-slate-400">Permanently removes this server from CloudDeck{{ $server->provider_id ? ' and destroys its Droplet at the provider' : '' }}. Attached sites must be deleted first. This cannot be undone.</p><form method="POST" action="{{ route('servers.destroy',$server) }}" class="mt-4 flex flex-wrap gap-3" onsubmit="return confirm('Permanently delete {{ $server->hostname }}{{ $server->provider_id ? ' and destroy its Droplet' : '' }}?')">@csrf @method('DELETE')<input class="field mt-0" name="confirmation" placeholder="Type {{ $server->hostname }} to confirm"><button class="button-secondary text-rose-600 dark:text-rose-300">Delete server</button></form></details>
+        <details id="danger-zone" class="panel mt-5 border-rose-200 dark:border-rose-400/20"><summary class="cursor-pointer font-medium text-rose-600 dark:text-rose-300">Danger zone</summary><p class="mt-3 text-sm text-slate-500 dark:text-slate-400">Permanently removes this server from {{ $branding['name'] }}{{ $server->provider_id ? ' and destroys its Droplet at the provider' : '' }}. Attached sites must be deleted first. This cannot be undone.</p><form method="POST" action="{{ route('servers.destroy',$server) }}" class="mt-4 flex flex-wrap gap-3" onsubmit="return confirm('Permanently delete {{ $server->hostname }}{{ $server->provider_id ? ' and destroy its Droplet' : '' }}?')">@csrf @method('DELETE')<input class="field mt-0" name="confirmation" placeholder="Type {{ $server->hostname }} to confirm"><button class="button-secondary text-rose-600 dark:text-rose-300">Delete server</button></form></details>
     @endcan
     @if(session('database_password'))<div class="mt-5 rounded-xl border border-amber-200 dark:border-amber-400/20 bg-amber-50 dark:bg-amber-400/10 p-4"><p class="text-sm text-amber-700 dark:text-amber-200">Copy the database password now. It will not be shown again.</p><code class="mt-2 block break-all">{{ session('database_password') }}</code></div>@endif
     <div class="mt-8 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-white/10">@foreach(['monitoring'=>'Monitoring','databases'=>'Databases','backups'=>'Backups','cron'=>'Cron','workers'=>'Workers','services'=>'Services'] as $key=>$label)<button @click="tab='{{ $key }}'" :class="tab==='{{ $key }}'?'border-cyan-400 text-slate-900 dark:text-white':'border-transparent text-slate-500 dark:text-slate-400'" class="border-b-2 px-4 py-3 text-sm">{{ $label }}</button>@endforeach</div>
@@ -93,6 +93,36 @@ CLOUDDECK_SERVER_ID={{ $server->id }}
 CLOUDDECK_MONITORING_SECRET={{ session('monitoring_secret') }}</pre><p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Save as /etc/clouddeck-monitor.conf with mode 600, install the agent as /usr/local/bin/clouddeck-monitor, and run it every minute from root's cron.</p></div>@endif
             @if($latestMetric?->services)<div class="mt-5 flex flex-wrap gap-2">@foreach($latestMetric->services as $service=>$running)<span class="rounded-full px-3 py-1 text-xs {{ $running ? 'bg-emerald-50 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-300' : 'bg-rose-50 dark:bg-rose-400/10 text-rose-600 dark:text-rose-300' }}">{{ str_replace('_',' ',$service) }} {{ $running ? 'up' : 'down' }}</span>@endforeach</div>@endif
         </section>
+        @if($server->monitoring_enabled)
+        <section class="panel">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="font-semibold">Auto-heal</h2>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        {{ $server->auto_heal_enabled ? 'Enabled' : 'Disabled' }}.
+                        When enabled, Nginx, PHP-FPM, MySQL, Redis, and Supervisor are restarted after {{ $server->auto_heal_consecutive_samples }} consecutive down samples, with a {{ $server->auto_heal_cooldown_minutes }}-minute cooldown per service.
+                    </p>
+                </div>
+                <div class="flex gap-3">
+                    @if($server->auto_heal_enabled)
+                        <form method="POST" action="{{ route('auto-heal.disable', $server) }}">@csrf @method('DELETE')<button class="button-secondary text-rose-600 dark:text-rose-300">Disable auto-heal</button></form>
+                    @else
+                        <form method="POST" action="{{ route('auto-heal.enable', $server) }}">@csrf<button class="button-primary">Enable auto-heal</button></form>
+                    @endif
+                </div>
+            </div>
+            @if($server->auto_heal_enabled && $server->auto_heal_last_actions)
+                <div class="mt-5 divide-y divide-slate-100 dark:divide-white/5">
+                    @foreach($server->auto_heal_last_actions as $service => $queuedAt)
+                        <div class="flex justify-between gap-3 py-3 text-sm">
+                            <span class="capitalize">{{ str_replace('_', ' ', $service) }}</span>
+                            <span class="text-slate-500 dark:text-slate-400">Last queued {{ \Illuminate\Support\Carbon::parse($queuedAt)->diffForHumans() }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </section>
+        @endif
         <div class="grid gap-6 lg:grid-cols-[380px_1fr]">
             <form method="POST" action="{{ route('alert-rules.store',$server) }}" class="panel h-fit">@csrf<h2 class="font-semibold">Create alert rule</h2><label class="mt-4 block text-sm">Name<input class="field" name="name" placeholder="High memory"></label><label class="mt-4 block text-sm">Metric<select class="field" name="metric"><option value="cpu_percent">CPU percent</option><option value="memory_percent">Memory percent</option><option value="disk_percent">Disk percent</option><option value="load_average">Load average</option><option value="server_offline">Offline minutes</option></select></label><div class="grid grid-cols-2 gap-3"><label class="mt-4 block text-sm">Operator<select class="field" name="operator"><option value="gte">At least</option><option value="gt">Greater than</option><option value="lte">At most</option><option value="lt">Less than</option></select></label><label class="mt-4 block text-sm">Threshold<input class="field" type="number" step="0.01" name="threshold" value="90"></label></div><div class="grid grid-cols-2 gap-3"><label class="mt-4 block text-sm">Samples<input class="field" type="number" name="consecutive_samples" min="1" max="12" value="3"></label><label class="mt-4 block text-sm">Cooldown<input class="field" type="number" name="cooldown_minutes" min="5" value="30"></label></div><label class="mt-4 block text-sm">Severity<select class="field" name="severity"><option value="warning">Warning</option><option value="critical">Critical</option><option value="info">Info</option></select></label><button class="button-primary mt-5">Create rule</button></form>
             <div class="space-y-3">@forelse($server->alertRules as $rule)<article class="panel flex items-center justify-between gap-4"><div><h3 class="font-medium">{{ $rule->name }}</h3><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ $rule->metric }} {{ $rule->operator }} {{ $rule->threshold }} / {{ $rule->consecutive_samples }} samples / {{ $rule->severity }}</p></div><form method="POST" action="{{ route('alert-rules.destroy',$rule) }}">@csrf @method('DELETE')<button class="text-sm text-rose-600 dark:text-rose-300">Delete</button></form></article>@empty<div class="panel text-center text-slate-500 dark:text-slate-400">No alert rules.</div>@endforelse</div>
