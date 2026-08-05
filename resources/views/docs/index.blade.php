@@ -245,7 +245,7 @@
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
                     <li>Install <code>laravel/horizon</code> or <code>laravel/reverb</code> as managed packages (or ship them in the repo).</li>
                     <li>Start them as Supervisor workers once the package is detected in the release.</li>
-                    <li>Horizon dashboard access: list allowed app-user emails on the same tab — takes effect without a redeploy.</li>
+                    <li>Horizon dashboard access: list allowed app-user emails on the same tab — the allowlist file updates without a redeploy. App admins are also allowed once the site’s Horizon gate has been refreshed by a deploy.</li>
                 </ul>
             </section>
 

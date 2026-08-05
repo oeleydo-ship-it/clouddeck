@@ -238,7 +238,13 @@ class RemoteManagementTest extends TestCase
 
         (new UpdateHorizonAdminsJob($site->id))->handle(app(SshClient::class));
 
-        Process::assertRan(fn ($process) => str_contains(implode(' ', (array) $process->command), base64_encode("admin@example.com\n")));
+        Process::assertRan(function ($process) {
+            $command = implode(' ', (array) $process->command);
+
+            return str_contains($command, base64_encode("admin@example.com\n"))
+                && str_contains($command, 'uplary-horizon-admins.txt')
+                && str_contains($command, 'clouddeck-horizon-admins.txt');
+        });
     }
 
     public function test_deploy_reinstalls_managed_packages(): void

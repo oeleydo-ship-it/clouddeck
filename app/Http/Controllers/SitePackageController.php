@@ -68,6 +68,6 @@ class SitePackageController extends Controller
         $site->update(['horizon_admin_emails' => $emails]);
         UpdateHorizonAdminsJob::dispatch($site->id);
 
-        return back()->with('status', 'Horizon dashboard access updated. Takes effect immediately, no redeploy needed.');
+        return back()->with('status', 'Horizon dashboard access updated. The allowlist takes effect immediately (no redeploy). App-admin access still requires a deploy if the site is on an older Horizon gate.');
     }
 }

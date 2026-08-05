@@ -27,6 +27,12 @@ class UpdateHorizonAdminsJob implements ShouldQueue
         $root = '/var/www/'.$site->domain.'/current';
         $contents = implode("\n", $site->horizon_admin_emails ?? [])."\n";
         $encoded = base64_encode($contents);
-        $ssh->run($site->server, 'cd '.escapeshellarg($root)." && printf '%s' ".escapeshellarg($encoded).' | base64 -d | sudo -u www-data tee storage/app/Uplary-horizon-admins.txt > /dev/null');
+        // Canonical name plus legacy CloudDeck / mis-cased paths so currently deployed
+        // gates keep working until the next site deploy refreshes HorizonServiceProvider.
+        $targets = implode(' ', array_map(
+            fn (string $file) => escapeshellarg('storage/app/'.$file),
+            ['uplary-horizon-admins.txt', 'clouddeck-horizon-admins.txt', 'Uplary-horizon-admins.txt']
+        ));
+        $ssh->run($site->server, 'cd '.escapeshellarg($root)." && printf '%s' ".escapeshellarg($encoded).' | base64 -d | sudo -u www-data tee '.$targets.' > /dev/null');
     }
 }

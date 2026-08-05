@@ -11,7 +11,6 @@ use App\Models\AlertIncident;
 use App\Models\Deployment;
 use App\Services\SystemSettings;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
@@ -35,7 +34,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(DeploymentFinished::class, SendDeploymentNotification::class);
-        Gate::define('viewHorizon', fn ($user) => $user->isSuperAdmin());
         $this->applyStripeCredentialsFromSettings();
         $this->applyMailCredentialsFromSettings();
 

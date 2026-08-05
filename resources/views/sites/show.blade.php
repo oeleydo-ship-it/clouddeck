@@ -252,7 +252,7 @@
             </div>
             @if(isset($installed['laravel/horizon']))
                 <form method="POST" action="{{ route('site-horizon-admins.update',$site) }}" class="mt-5 border-t border-slate-100 pt-5 dark:border-white/5">@csrf
-                    <label class="block text-sm heading">Horizon dashboard access<span class="mt-1 block text-xs font-normal muted">Emails of your app's own users allowed to view <code>/horizon</code>. Comma or newline separated. Takes effect immediately — no redeploy needed.</span></label>
+                    <label class="block text-sm heading">Horizon dashboard access<span class="mt-1 block text-xs font-normal muted">Emails of your app's own users allowed to view <code>/horizon</code>. Comma or newline separated. Case-insensitive. Takes effect immediately on the allowlist file — no redeploy needed. App admins (<code>is_admin</code> / <code>isSuperAdmin</code>) are always allowed after the next deploy that refreshes Horizon's gate.</span></label>
                     <textarea class="field mt-2 min-h-20 font-mono text-xs" name="emails" placeholder="admin@example.com">{{ implode("\n", $site->horizon_admin_emails ?? []) }}</textarea>
                     <button class="button-secondary mt-3 text-xs">Save access list</button>
                 </form>

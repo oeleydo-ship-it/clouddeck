@@ -30,20 +30,53 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewHorizon', function ($user) {
-            $file = storage_path('app/clouddeck-horizon-admins.txt');
-            if (! is_file($file)) {
+            if (! $user) {
                 return false;
             }
 
-            $allowed = array_filter(array_map('trim', array_map('strtolower', file($file))));
+            if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+                return true;
+            }
 
-            return in_array(strtolower((string) ($user->email ?? '')), $allowed, true);
+            if (! empty($user->is_admin)) {
+                return true;
+            }
+
+            $candidates = [
+                storage_path('app/uplary-horizon-admins.txt'),
+                storage_path('app/Uplary-horizon-admins.txt'),
+                storage_path('app/clouddeck-horizon-admins.txt'),
+            ];
+
+            $file = null;
+            foreach ($candidates as $candidate) {
+                if (is_file($candidate)) {
+                    $file = $candidate;
+                    break;
+                }
+            }
+
+            if ($file === null) {
+                return false;
+            }
+
+            $allowed = array_values(array_filter(array_map(
+                static fn ($line) => strtolower(trim((string) $line)),
+                file($file) ?: []
+            )));
+
+            if ($allowed === []) {
+                return false;
+            }
+
+            return in_array(strtolower(trim((string) ($user->email ?? ''))), $allowed, true);
         });
     }
 }
 PHP
-    touch storage/app/clouddeck-horizon-admins.txt
-    chown www-data:www-data storage/app/clouddeck-horizon-admins.txt
+    touch storage/app/uplary-horizon-admins.txt
+    touch storage/app/clouddeck-horizon-admins.txt 2>/dev/null || true
+    chown www-data:www-data storage/app/uplary-horizon-admins.txt storage/app/clouddeck-horizon-admins.txt 2>/dev/null || true
 fi
 
 # A newly required package can register routes, config, or service providers that a stale cache
@@ -53,4 +86,4 @@ sudo -u www-data php artisan route:clear
 sudo -u www-data php artisan config:cache
 sudo -u www-data php artisan route:cache
 
-echo "Installed ${PACKAGE} into the current release. CloudDeck will keep it installed on every future deployment."
+echo "Installed ${PACKAGE} into the current release. Uplary will keep it installed on every future deployment."

@@ -87,19 +87,53 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     protected function gate(): void
     {
         Gate::define('viewHorizon', function ($user) {
-            $file = storage_path('app/clouddeck-horizon-admins.txt');
-            if (! is_file($file)) {
+            if (! $user) {
                 return false;
             }
 
-            $allowed = array_filter(array_map('trim', array_map('strtolower', file($file))));
+            if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
+                return true;
+            }
 
-            return in_array(strtolower((string) ($user->email ?? '')), $allowed, true);
+            if (! empty($user->is_admin)) {
+                return true;
+            }
+
+            $candidates = [
+                storage_path('app/uplary-horizon-admins.txt'),
+                storage_path('app/Uplary-horizon-admins.txt'),
+                storage_path('app/clouddeck-horizon-admins.txt'),
+            ];
+
+            $file = null;
+            foreach ($candidates as $candidate) {
+                if (is_file($candidate)) {
+                    $file = $candidate;
+                    break;
+                }
+            }
+
+            if ($file === null) {
+                return false;
+            }
+
+            $allowed = array_values(array_filter(array_map(
+                static fn ($line) => strtolower(trim((string) $line)),
+                file($file) ?: []
+            )));
+
+            if ($allowed === []) {
+                return false;
+            }
+
+            return in_array(strtolower(trim((string) ($user->email ?? ''))), $allowed, true);
         });
     }
 }
 PHP
-                    touch storage/app/clouddeck-horizon-admins.txt
+                    touch storage/app/uplary-horizon-admins.txt
+                    # Keep legacy filenames so an older allowlist written by the panel still applies.
+                    touch storage/app/clouddeck-horizon-admins.txt 2>/dev/null || true
                 fi
                 ;;
             laravel/reverb) php artisan reverb:install --no-interaction || true ;;

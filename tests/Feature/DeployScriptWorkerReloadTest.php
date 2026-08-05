@@ -39,4 +39,13 @@ class DeployScriptWorkerReloadTest extends TestCase
     {
         $this->assertStringContainsString('reverb:start', $this->script());
     }
+
+    public function test_horizon_gate_reads_the_same_allowlist_file_the_panel_writes(): void
+    {
+        $script = $this->script();
+
+        $this->assertStringContainsString('uplary-horizon-admins.txt', $script);
+        $this->assertStringContainsString('clouddeck-horizon-admins.txt', $script);
+        $this->assertStringContainsString('isSuperAdmin', $script);
+    }
 }

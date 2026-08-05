@@ -9,6 +9,16 @@ return [
     'use' => 'default',
     'prefix' => env('HORIZON_PREFIX', Str::slug(env('APP_NAME', 'Uplary'), '_').'_horizon:'),
     'middleware' => ['web', 'auth', 'verified'],
+    /*
+    | Extra emails allowed to open /horizon on this control plane. Super admins always
+    | have access; when this list is empty, only super admins may view the dashboard.
+    | Comma or whitespace separated in HORIZON_ALLOWED_EMAILS.
+    */
+    'allowed_emails' => array_values(array_filter(array_map(
+        static fn ($email) => strtolower(trim((string) $email)),
+        preg_split('/[\s,]+/', (string) env('HORIZON_ALLOWED_EMAILS', ''), -1, PREG_SPLIT_NO_EMPTY) ?: []
+    ))),
+
     'waits' => ['redis:default' => 60, 'redis:deployments' => 120, 'redis:provisioning' => 120, 'redis:monitoring' => 60, 'redis:billing' => 30],
     'trim' => ['recent' => 60, 'pending' => 60, 'completed' => 60, 'recent_failed' => 10080, 'failed' => 10080, 'monitored' => 10080],
     'silenced' => [],
