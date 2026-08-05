@@ -55,6 +55,28 @@ class MarketingAndBlogTest extends TestCase
         $this->get($path)->assertOk()->assertSee($heading);
     }
 
+    public function test_signed_in_users_see_marketing_chrome_without_the_console_sidebar(): void
+    {
+        $this->markInstalled();
+        $admin = $this->admin();
+
+        foreach (['/', '/about'] as $path) {
+            $this->actingAs($admin)
+                ->get($path)
+                ->assertOk()
+                ->assertDontSee('app-sidebar', false)
+                ->assertDontSee('app-shell', false)
+                ->assertSee('aria-label="Primary"', false)
+                ->assertSee('Open console');
+        }
+
+        // Console pages keep the sidebar for the same user.
+        $this->actingAs($admin)
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertSee('app-sidebar', false);
+    }
+
     public function test_the_blog_shows_published_posts_and_hides_drafts_and_future_ones(): void
     {
         $this->markInstalled();

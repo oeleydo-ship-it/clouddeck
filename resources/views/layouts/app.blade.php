@@ -21,9 +21,12 @@
 <body class="min-h-screen antialiased">
 @php
     $branding = $branding ?? ['name' => config('app.name', 'Uplary'), 'logo_url' => null];
+    // Public marketing pages keep the landing chrome for everyone — including signed-in
+    // admins — so the console sidebar never appears on /, /about, /blog, etc.
+    $onMarketing = request()->routeIs('home', 'about', 'features', 'use-cases', 'blog', 'blog.show', 'contact');
 @endphp
 
-@auth
+@if(auth()->check() && ! $onMarketing)
     @php
         $user = auth()->user();
         $sections = [
@@ -208,10 +211,7 @@
                     </div>
                 </div>
 
-                @php
-                    $onMarketing = request()->routeIs('home', 'about', 'features', 'use-cases', 'blog', 'blog.show', 'contact');
-                @endphp
-                @if(session('status') && ! $onMarketing)
+                @if(session('status'))
                     <div class="mx-auto w-full max-w-[1440px] px-5 pt-6 lg:px-10">
                         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">{{ session('status') }}</div>
                     </div>
@@ -231,7 +231,6 @@
             ['label' => 'Blog', 'route' => 'blog'],
             ['label' => 'Contact', 'route' => 'contact'],
         ];
-        $onMarketing = request()->routeIs('home', 'about', 'features', 'use-cases', 'blog', 'blog.show', 'contact');
     @endphp
     <div class="min-h-screen">
         <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/90">
@@ -269,8 +268,12 @@
                     <button type="button" @click="marketingMenu = ! marketingMenu" class="icon-button md:hidden" aria-label="Open menu" :aria-expanded="marketingMenu">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="size-5"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
                     </button>
-                    <a href="{{ route('login') }}" class="nav-link hidden sm:inline-flex">Sign in</a>
-                    <a href="{{ route('register') }}" class="button-primary !px-4 !py-2 text-xs sm:text-sm">Get started</a>
+                    @auth
+                        <a href="{{ route('dashboard') }}" class="button-primary !px-4 !py-2 text-xs sm:text-sm">Open console</a>
+                    @else
+                        <a href="{{ route('login') }}" class="nav-link hidden sm:inline-flex">Sign in</a>
+                        <a href="{{ route('register') }}" class="button-primary !px-4 !py-2 text-xs sm:text-sm">Get started</a>
+                    @endauth
                 </div>
             </div>
             <div x-cloak x-show="marketingMenu" x-transition class="border-t border-slate-200 px-5 py-3 md:hidden dark:border-white/10">
@@ -283,7 +286,11 @@
                         <a href="{{ $item['href'] ?? route($itemRoute) }}" @click="marketingMenu = false"
                            @class(['rounded-lg px-3 py-2.5 text-sm', 'bg-sky-50 font-semibold text-sky-700 dark:bg-sky-400/10 dark:text-sky-200' => $current, 'text-slate-600 dark:text-slate-300' => ! $current])>{{ $item['label'] }}</a>
                     @endforeach
-                    <a href="{{ route('login') }}" class="rounded-lg px-3 py-2.5 text-sm text-slate-600 sm:hidden dark:text-slate-300">Sign in</a>
+                    @auth
+                        <a href="{{ route('dashboard') }}" class="rounded-lg px-3 py-2.5 text-sm font-semibold text-sky-700 dark:text-sky-200">Open console</a>
+                    @else
+                        <a href="{{ route('login') }}" class="rounded-lg px-3 py-2.5 text-sm text-slate-600 sm:hidden dark:text-slate-300">Sign in</a>
+                    @endauth
                 </div>
             </div>
         </header>
@@ -294,7 +301,7 @@
             {{ $slot ?? '' }}@yield('content')
         </main>
     </div>
-@endauth
+@endif
 @livewireScripts
 </body>
 </html>

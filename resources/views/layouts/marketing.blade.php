@@ -14,27 +14,6 @@
     $isHome = request()->routeIs('home');
 @endphp
 
-{{-- Signed-in users still need marketing links (guest header is hidden behind the console shell). --}}
-@auth
-    <div class="relative z-10 border-b border-slate-200/80 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-slate-950/70">
-        <nav class="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-5 py-3 text-sm" aria-label="Marketing">
-            @foreach($nav as $item)
-                @php
-                    $itemRoute = $item['route'] ?? null;
-                    $current = $itemRoute && (request()->routeIs($itemRoute) || ($itemRoute === 'blog' && request()->routeIs('blog.show')));
-                @endphp
-                <a href="{{ $item['href'] ?? route($itemRoute) }}"
-                   @class([
-                       'shrink-0 rounded-lg px-3 py-1.5 transition',
-                       'bg-sky-50 font-semibold text-sky-700 dark:bg-sky-400/10 dark:text-sky-200' => $current,
-                       'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-white/5' => ! $current,
-                   ])
-                   @if($current) aria-current="page" @endif>{{ $item['label'] }}</a>
-            @endforeach
-        </nav>
-    </div>
-@endauth
-
 @if(session('status'))
     <div class="mx-auto mt-6 max-w-3xl px-5"><div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">{{ session('status') }}</div></div>
 @endif
