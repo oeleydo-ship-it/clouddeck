@@ -101,7 +101,7 @@
         line-height: 1.35;
     }
     .side-link-active {
-        @apply bg-[#0070eb] font-medium text-white hover:bg-[#0070eb] hover:text-white;
+        @apply bg-primary-container font-medium text-white hover:bg-primary-container hover:text-white;
     }
     .side-mini-link {
         @apply flex min-h-[34px] items-center gap-2.5 rounded px-2.5 py-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white;
@@ -228,9 +228,9 @@
         font-size: var(--text-body);
     }
     .button-primary {
-        @apply inline-flex min-h-8 items-center justify-center gap-1.5 rounded bg-sky-500
+        @apply inline-flex min-h-8 items-center justify-center gap-1.5 rounded bg-primary-container
         px-3 py-1.5 font-medium text-white transition
-        hover:bg-sky-600 active:scale-95
+        hover:bg-primary active:scale-95
         disabled:cursor-not-allowed disabled:opacity-50;
         font-size: var(--text-body-sm);
         line-height: 1.25;
