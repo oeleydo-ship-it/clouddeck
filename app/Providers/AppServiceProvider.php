@@ -9,6 +9,12 @@ use App\Events\DeploymentFinished;
 use App\Listeners\SendDeploymentNotification;
 use App\Models\AlertIncident;
 use App\Models\Deployment;
+use App\Services\PlatformRuntime\Contracts\PlatformProcessLauncher;
+use App\Services\PlatformRuntime\Contracts\PlatformSslProbe;
+use App\Services\PlatformRuntime\FakePlatformProcessLauncher;
+use App\Services\PlatformRuntime\FakePlatformSslProbe;
+use App\Services\PlatformRuntime\NativePlatformProcessLauncher;
+use App\Services\PlatformRuntime\NativePlatformSslProbe;
 use App\Services\SystemSettings;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
@@ -26,6 +32,22 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(BillingGateway::class, ManualBillingGateway::class);
+
+        // Feature tests must never spawn long-lived Horizon/queue/Reverb daemons.
+        $this->app->singleton(
+            PlatformProcessLauncher::class,
+            fn () => $this->app->runningUnitTests()
+                ? new FakePlatformProcessLauncher
+                : new NativePlatformProcessLauncher
+        );
+
+        // Feature tests must never open real TLS sockets for control-plane SSL status.
+        $this->app->singleton(
+            PlatformSslProbe::class,
+            fn () => $this->app->runningUnitTests()
+                ? new FakePlatformSslProbe
+                : new NativePlatformSslProbe
+        );
     }
 
     /**

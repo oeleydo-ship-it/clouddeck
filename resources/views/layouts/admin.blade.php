@@ -15,6 +15,7 @@
         ['route' => 'admin.webmaster', 'label' => 'Webmaster', 'icon' => 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9 12h6'],
         ['route' => 'admin.insert-code', 'label' => 'Insert code', 'icon' => 'M16 18l6-6-6-6M8 6l-6 6 6 6'],
         ['route' => 'admin.ai', 'label' => 'AI guide', 'icon' => 'M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z'],
+        ['route' => 'admin.platform-services', 'label' => 'Platform services', 'icon' => 'M5 12.55a8 8 0 0 1 14 0M1.42 9a14 14 0 0 1 21.16 0M8.53 16.11a4 4 0 0 1 6.95 0M12 20h.01'],
         ['route' => 'admin.settings', 'label' => 'Settings', 'icon' => 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3a7.4 7.4 0 0 0-.1-1.1l2-1.6-2-3.4-2.4 1a7.5 7.5 0 0 0-1.9-1.1l-.4-2.5h-4l-.4 2.5a7.5 7.5 0 0 0-1.9 1.1l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.2l-2 1.6 2 3.4 2.4-1c.6.5 1.2.8 1.9 1.1l.4 2.5h4l.4-2.5c.7-.3 1.3-.6 1.9-1.1l2.4 1 2-3.4-2-1.6c.1-.4.1-.7.1-1.1Z'],
         ['route' => 'admin.audit', 'label' => 'Audit', 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M9 15h6M9 11h3'],
     ];
@@ -27,7 +28,7 @@
         </div>
         <nav class="mt-3 flex gap-0.5 overflow-x-auto lg:flex-col lg:overflow-visible">
             @foreach($sections as $section)
-                @php $current = request()->routeIs($section['route']); @endphp
+                @php $current = request()->routeIs($section['route']) || request()->routeIs($section['route'].'.*'); @endphp
                 <a href="{{ route($section['route']) }}"
                    @class([
                        'flex min-h-7 shrink-0 items-center gap-2 rounded px-2 py-1 text-[11px] transition',

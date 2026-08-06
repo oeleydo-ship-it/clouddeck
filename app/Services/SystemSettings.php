@@ -44,6 +44,11 @@ final class SystemSettings
 
     public function emailVerificationRequired(): bool
     {
+        // Local console work should not be blocked by verification notices or mail delivery.
+        if (app()->environment('local')) {
+            return false;
+        }
+
         return $this->boolean('email_verification_required', config('clouddeck.email_verification_required', true));
     }
 

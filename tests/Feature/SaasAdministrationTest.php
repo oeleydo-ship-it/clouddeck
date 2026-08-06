@@ -196,6 +196,18 @@ class SaasAdministrationTest extends TestCase
         $this->actingAs($unverified)->get('/dashboard')->assertRedirect('/email/verify');
     }
 
+    public function test_email_verification_middleware_is_skipped_in_local_environment(): void
+    {
+        $this->app['env'] = 'local';
+        SystemSetting::updateOrCreate(
+            ['key' => 'email_verification_required'],
+            ['value' => '1', 'type' => 'boolean', 'is_public' => true],
+        );
+        $unverified = User::factory()->create(['email_verified_at' => null]);
+
+        $this->actingAs($unverified)->get('/dashboard')->assertOk();
+    }
+
     private function plan(array $limits = [], string $slug = 'test', array $features = []): Plan
     {
         return Plan::create(['name' => ucfirst($slug), 'slug' => $slug, 'monthly_price' => 0, 'yearly_price' => 0, 'limits' => array_merge(['servers' => 5, 'sites' => 5, 'databases' => 5, 'api_tokens' => 5, 'teams' => 2, 'team_members' => 5], $limits), 'features' => $features, 'active' => true, 'public' => true]);

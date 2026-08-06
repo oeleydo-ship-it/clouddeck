@@ -32,6 +32,21 @@ Suspending an account revokes Sanctum tokens and database sessions immediately. 
 
 The control center can disable public registration and configure the support email and maintenance banner. Sensitive setting and audit payload values are encrypted at rest through Eloquent casts.
 
+## Platform services (control-plane runtime)
+
+Super admins can open **Admin → Platform services** (`/admin/platform-services`) to monitor this install’s own Redis, Horizon, queue workers, Reverb, and HTTPS/TLS — not customer-site Supervisor programs or site SSL tabs.
+
+- Status is polled about every 7 seconds (`GET /admin/platform-services/status`).
+- Redis shows connectivity (`PING`) and optional Docker control for the container named `uplary-redis` (override with `PLATFORM_REDIS_CONTAINER`). The panel never kills an unrelated system Redis process.
+- Horizon start/stop uses `php artisan horizon` / `horizon:terminate` when `pcntl` and `posix` are available (Linux). On Windows the UI marks Horizon unavailable and recommends `queue:work`.
+- Queue workers start `php artisan queue:work` against the same queues as `config/horizon.php` (default, operations, deployments, provisioning, notifications, monitoring, billing). PIDs for processes started here are stored under `storage/app/platform-services/`.
+- Reverb start/stop uses `php artisan reverb:start` with port checks from `config/reverb.php`.
+- **SSL / TLS** probes the host from `APP_URL` (HTTPS reachability, issuer, expiry, days remaining). Status values: `valid`, `expiring_soon` (&lt;30 days), `expired`, `not_https`, `unreachable`.
+  - **Linux production-like hosts:** when `resources/scripts/renew-platform-ssl.sh` is present (override with `PLATFORM_SSL_RENEW_SCRIPT`), **Renew certificate** runs Certbot for the control-plane domain and reloads nginx (`POST /admin/platform-services/ssl/renew`). This is local-only — it does not SSH to customer servers or touch site certificates.
+  - **Windows / local `artisan serve`:** Start/Stop N/A for TLS. If `APP_URL` is still `http://localhost`, the card explains that local serve is HTTP-only. Pointing `APP_URL` at a remote `https://` origin still shows live certificate status.
+
+Horizon dashboard auth is unchanged: super admins always pass the gate; optional extra emails use `HORIZON_ALLOWED_EMAILS`.
+
 ## Staging sites
 
 Staging is off until a superadmin enables **Staging sites** under Admin → Settings and optionally sets the platform staging apex (default `uplary.com`). Customers then create a linked staging site from a production site's Overview tab:
