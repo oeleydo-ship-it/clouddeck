@@ -62,12 +62,12 @@ class PasswordResetTest extends TestCase
         $this->post('/reset-password', [
             'token' => $token,
             'email' => 'owner@example.com',
-            'password' => 'a-much-longer-password',
-            'password_confirmation' => 'a-much-longer-password',
+            'password' => 'a-much-longer-pass99',
+            'password_confirmation' => 'a-much-longer-pass99',
         ])->assertRedirect('/login')->assertSessionHas('status');
 
-        $this->assertTrue(Hash::check('a-much-longer-password', $user->fresh()->password));
-        $this->post('/login', ['email' => 'owner@example.com', 'password' => 'a-much-longer-password'])->assertRedirect();
+        $this->assertTrue(Hash::check('a-much-longer-pass99', $user->fresh()->password));
+        $this->post('/login', ['email' => 'owner@example.com', 'password' => 'a-much-longer-pass99'])->assertRedirect();
         $this->assertAuthenticatedAs($user);
     }
 
@@ -75,12 +75,12 @@ class PasswordResetTest extends TestCase
     {
         $user = User::factory()->create(['email' => 'owner@example.com']);
         $token = app('auth.password.broker')->createToken($user);
-        $payload = ['token' => $token, 'email' => 'owner@example.com', 'password' => 'a-much-longer-password', 'password_confirmation' => 'a-much-longer-password'];
+        $payload = ['token' => $token, 'email' => 'owner@example.com', 'password' => 'a-much-longer-pass99', 'password_confirmation' => 'a-much-longer-pass99'];
 
         $this->post('/reset-password', $payload)->assertRedirect('/login');
-        $this->post('/reset-password', [...$payload, 'password' => 'another-long-password', 'password_confirmation' => 'another-long-password'])->assertSessionHasErrors('email');
+        $this->post('/reset-password', [...$payload, 'password' => 'another-long-pass99', 'password_confirmation' => 'another-long-pass99'])->assertSessionHasErrors('email');
 
-        $this->assertTrue(Hash::check('a-much-longer-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('a-much-longer-pass99', $user->fresh()->password));
     }
 
     public function test_someone_elses_token_does_not_reset_this_account(): void
@@ -91,7 +91,7 @@ class PasswordResetTest extends TestCase
 
         $this->post('/reset-password', [
             'token' => $token, 'email' => 'victim@example.com',
-            'password' => 'a-much-longer-password', 'password_confirmation' => 'a-much-longer-password',
+            'password' => 'a-much-longer-pass99', 'password_confirmation' => 'a-much-longer-pass99',
         ])->assertSessionHasErrors('email');
 
         $this->assertTrue(Hash::check('the-old-password', $victim->fresh()->password));
@@ -103,7 +103,7 @@ class PasswordResetTest extends TestCase
         $token = app('auth.password.broker')->createToken($user);
 
         $this->post('/reset-password', ['token' => $token, 'email' => 'owner@example.com', 'password' => 'short', 'password_confirmation' => 'short'])->assertSessionHasErrors('password');
-        $this->post('/reset-password', ['token' => $token, 'email' => 'owner@example.com', 'password' => 'a-much-longer-password', 'password_confirmation' => 'a-different-password'])->assertSessionHasErrors('password');
+        $this->post('/reset-password', ['token' => $token, 'email' => 'owner@example.com', 'password' => 'a-much-longer-pass99', 'password_confirmation' => 'a-different-password'])->assertSessionHasErrors('password');
 
         $this->assertTrue(Hash::check('the-old-password', $user->fresh()->password));
     }

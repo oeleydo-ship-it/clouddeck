@@ -29,6 +29,7 @@ class AdminNavigationTest extends TestCase
             ['/admin/webmaster', 'Webmaster'],
             ['/admin/insert-code', 'Insert code'],
             ['/admin/ai', 'AI guide'],
+            ['/admin/google-auth', 'Google Auth'],
             ['/admin/settings', 'Settings'],
             ['/admin/audit', 'Audit'],
         ];
@@ -65,6 +66,7 @@ class AdminNavigationTest extends TestCase
             ->assertSee(route('admin.webmaster'), false)
             ->assertSee(route('admin.insert-code'), false)
             ->assertSee(route('admin.ai'), false)
+            ->assertSee(route('admin.google-auth'), false)
             ->assertSee(route('admin.audit'), false);
     }
 

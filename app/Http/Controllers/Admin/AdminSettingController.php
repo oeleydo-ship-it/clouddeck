@@ -88,6 +88,17 @@ class AdminSettingController extends Controller
         return back()->with('status', 'Logo updated.');
     }
 
+    public function branding(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $request->validate(['logo_image_only' => ['sometimes', 'boolean']]);
+
+        $enabled = $request->boolean('logo_image_only');
+        $settings->put('logo_image_only', $enabled ? '1' : '0', 'boolean', true);
+        $audit->record($request, 'settings.branding_updated', null, [], ['logo_image_only' => $enabled]);
+
+        return back()->with('status', 'Logo display updated.');
+    }
+
     public function destroyLogo(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
     {
         $previous = $settings->get('logo_path');
@@ -242,6 +253,45 @@ class AdminSettingController extends Controller
         ]);
 
         return back()->with('status', 'AI guide settings saved.');
+    }
+
+    public function googleAuth(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'google_auth_enabled' => ['sometimes', 'boolean'],
+            'google_client_id' => ['nullable', 'string', 'max:255'],
+            'google_client_secret' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $settings->put('google_auth_enabled', $request->boolean('google_auth_enabled') ? '1' : '0', 'boolean', true);
+
+        if (filled($data['google_client_id'] ?? null)) {
+            $settings->put('google_client_id', (string) $data['google_client_id'], 'string', false);
+        }
+
+        // Blank secret means keep the stored value — same pattern as Stripe / OpenAI.
+        if (filled($data['google_client_secret'] ?? null)) {
+            $settings->put('google_client_secret', (string) $data['google_client_secret'], 'string', false);
+        }
+
+        if ($id = $settings->get('google_client_id')) {
+            config(['services.google.client_id' => $id]);
+        }
+        if ($secret = $settings->get('google_client_secret')) {
+            config(['services.google.client_secret' => $secret]);
+        }
+        config([
+            'services.google.enabled' => $request->boolean('google_auth_enabled'),
+            'services.google.redirect' => rtrim((string) config('app.url'), '/').'/auth/google/callback',
+        ]);
+
+        $audit->record($request, 'settings.google_auth_updated', null, [], [
+            'enabled' => $request->boolean('google_auth_enabled'),
+            'client_id_updated' => filled($data['google_client_id'] ?? null),
+            'client_secret_updated' => filled($data['google_client_secret'] ?? null),
+        ]);
+
+        return back()->with('status', 'Google Auth settings saved.');
     }
 
     public function stripe(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse

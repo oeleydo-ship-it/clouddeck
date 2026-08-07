@@ -65,9 +65,10 @@ class InstallController extends Controller
                 'name' => $data['name'],
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
-                'role' => 'super_admin',
                 'email_verified_at' => now(),
             ]);
+            // Role is not mass-assignable; only the installer (and admin UI) may elevate.
+            $user->forceFill(['role' => 'super_admin'])->save();
             $user->subscriptions()->create(['plan_id' => $defaults->freePlan()->id, 'provider' => 'system', 'status' => 'active']);
 
             // Default brand when the wizard omits it — still editable later in Admin → Settings.

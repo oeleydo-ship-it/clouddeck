@@ -12,6 +12,7 @@
         ['id' => 'databases', 'label' => 'Databases'],
         ['id' => 'workers', 'label' => 'Workers & cron'],
         ['id' => 'monitoring', 'label' => 'Monitoring'],
+        ['id' => 'firewall', 'label' => 'Firewall'],
         ['id' => 'backups', 'label' => 'Backups'],
         ['id' => 'staging', 'label' => 'Staging sites'],
         ['id' => 'remote', 'label' => 'Remote management'],
@@ -276,6 +277,36 @@
                 </ol>
             </section>
 
+            {{-- Firewall --}}
+            <section id="firewall" class="panel scroll-mt-8">
+                <h2 class="section-title">Firewall</h2>
+                <p class="mt-3 text-sm muted">Manage per-server UFW allow and deny rules from the console without pasting raw shell. Open <a class="link-action" href="{{ route('firewall.index') }}">Firewall</a> in the sidebar (directly below <strong class="heading">Sites</strong>).</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Using the page</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>Pick a ready server from the dropdown — rules belong to one host at a time.</li>
+                    <li>Add an <strong class="heading">allow</strong> or <strong class="heading">deny</strong> rule with protocol, port (or an allowlisted profile such as OpenSSH / Nginx Full), optional source IP/CIDR, and an optional description.</li>
+                    <li>New rules queue automatically; use <strong class="heading">Apply to server</strong> to re-sync every stored rule after a failure or drift.</li>
+                    <li>Use <strong class="heading">Refresh remote status</strong> to pull <code>ufw status verbose</code> into the page without changing rules.</li>
+                </ol>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Requirements</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>The server must be ready with working SSH from {{ $branding['name'] }}.</li>
+                    <li>UFW must be installed on the host (included in the Ubuntu bootstrap). If it is missing, the page shows a clear warning instead of failing silently.</li>
+                    <li>Horizon (or an equivalent worker) must process the <code>operations</code> queue so sync and refresh jobs run.</li>
+                </ul>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Statuses</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li><strong class="heading">pending</strong> — queued or in flight; not yet confirmed on the host.</li>
+                    <li><strong class="heading">synced</strong> — last apply or remove succeeded.</li>
+                    <li><strong class="heading">failed</strong> — remote command failed; check the rule’s status message.</li>
+                    <li><strong class="heading">missing_ufw</strong> — UFW is not available on the host.</li>
+                </ul>
+                <p class="mt-3 text-sm muted">Bootstrap still opens OpenSSH and Nginx Full on new hosts. Custom rules layer on top of that baseline. The UI reflects the last synchronization job rather than assuming the remote action succeeded.</p>
+            </section>
+
             {{-- Backups --}}
             <section id="backups" class="panel scroll-mt-8">
                 <h2 class="section-title">Backups and restores</h2>
@@ -404,6 +435,14 @@
 
                 <h3 class="mt-6 text-sm font-semibold heading">Forgot password</h3>
                 <p class="mt-2 text-sm muted">From the login screen, use the password reset link. A reset email is sent when mail is configured.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Google Sign-In</h3>
+                <p class="mt-2 text-sm muted">When a superadmin enables Google Auth under <strong class="heading">Admin → Google Auth</strong>, login and register show <strong class="heading">Continue with Google</strong>. Verified Google emails can create a customer account or link to an existing password account. New OAuth users are never granted administrator roles. Two-factor authentication still applies after Google sign-in when enabled.</p>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>In Google Cloud Console, create an OAuth 2.0 Client ID (Web application).</li>
+                    <li>Set the authorized redirect URI to <code class="rounded bg-slate-100 px-1 dark:bg-white/10">{{ url('/auth/google/callback') }}</code> (also shown on the admin page).</li>
+                    <li>Save Client ID and Client Secret under Admin → Google Auth, and enable Google sign-in. Optional <code class="rounded bg-slate-100 px-1 dark:bg-white/10">.env</code> fallbacks: <code class="rounded bg-slate-100 px-1 dark:bg-white/10">GOOGLE_CLIENT_ID</code>, <code class="rounded bg-slate-100 px-1 dark:bg-white/10">GOOGLE_CLIENT_SECRET</code>, <code class="rounded bg-slate-100 px-1 dark:bg-white/10">GOOGLE_AUTH_ENABLED</code>.</li>
+                </ol>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Stronger account security</h3>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">

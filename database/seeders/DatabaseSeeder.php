@@ -40,9 +40,9 @@ class DatabaseSeeder extends Seeder
             $admin = User::updateOrCreate(['email' => config('clouddeck.development_admin.email')], [
                 'name' => 'CloudDeck Administrator',
                 'password' => Hash::make(config('clouddeck.development_admin.password')),
-                'role' => 'super_admin',
                 'email_verified_at' => now(),
             ]);
+            $admin->forceFill(['role' => 'super_admin'])->save();
             $admin->subscriptions()->firstOrCreate(['plan_id' => $free->id, 'provider' => 'system'], ['status' => 'active']);
         }
     }

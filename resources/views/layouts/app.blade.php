@@ -67,7 +67,7 @@
 </head>
 <body @class(['min-h-screen antialiased', 'console-body' => auth()->check() && ! $onMarketing])>
 @php
-    $branding = $branding ?? ['name' => config('app.name', 'Uplary'), 'logo_url' => null];
+    $branding = $branding ?? ['name' => config('app.name', 'Uplary'), 'logo_url' => null, 'logo_image_only' => false];
     // Public marketing pages keep the landing chrome for everyone — including signed-in
     // admins — so the console sidebar never appears on /, /about, /blog, etc.
 @endphp
@@ -79,6 +79,7 @@
             ['href' => route('dashboard'), 'label' => 'Dashboard', 'match' => 'dashboard', 'icon' => 'M3 3h7v7H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 14h7v7H3z'],
             ['href' => route('servers.index'), 'label' => 'Servers', 'match' => 'servers*', 'icon' => 'M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5ZM4 16a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3ZM8 7h.01M8 18h.01'],
             ['href' => route('sites.index'), 'label' => 'Sites', 'match' => 'sites*', 'icon' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z'],
+            ['href' => route('firewall.index'), 'label' => 'Firewall', 'match' => 'firewall*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9.5 12h5M12 9.5v5'],
             ['href' => route('cloud-accounts'), 'label' => 'Providers', 'match' => 'cloud-accounts*', 'icon' => 'M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.4 4.5 4.5 0 0 0 6.5 19h11Z'],
         ];
         // Mirrors the routes rather than deciding anything: DNS is switched off in admin
@@ -114,14 +115,16 @@
             <div class="mb-7 flex items-center justify-between px-3">
                 <a href="{{ route('dashboard') }}" class="sidebar-brand">
                     @if($branding['logo_url'])
-                        <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="sidebar-brand-mark">
+                        <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" @class(['h-10 w-auto max-w-[11rem] object-contain', 'sidebar-brand-mark' => ! $branding['logo_image_only']])>
                     @else
                         <span class="sidebar-brand-mark bg-sky-500 font-display text-sm font-bold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
                     @endif
-                    <span class="min-w-0">
-                        <span class="sidebar-brand-name">{{ $branding['name'] }}</span>
-                        <span class="sidebar-brand-subtitle">Cloud management</span>
-                    </span>
+                    @unless($branding['logo_image_only'])
+                        <span class="min-w-0" data-brand-name>
+                            <span class="sidebar-brand-name">{{ $branding['name'] }}</span>
+                            <span class="sidebar-brand-subtitle">Cloud management</span>
+                        </span>
+                    @endunless
                 </a>
                 <button type="button" @click="nav = false" class="icon-button !text-slate-400 hover:!bg-white/10 hover:!text-white lg:hidden" aria-label="Close navigation">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="size-4"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -287,11 +290,13 @@
             <div class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5">
                 <a href="{{ route('home') }}" class="flex shrink-0 items-center gap-3 font-display font-bold heading">
                     @if($branding['logo_url'])
-                        <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="size-9 rounded-xl object-contain">
+                        <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" class="h-10 w-auto max-w-[12rem] object-contain">
                     @else
                         <span class="grid size-9 place-items-center rounded-xl bg-sky-500 font-extrabold text-white">{{ Str::upper(Str::substr($branding['name'], 0, 1)) }}</span>
                     @endif
-                    {{ $branding['name'] }}
+                    @unless($branding['logo_image_only'])
+                        <span data-brand-name>{{ $branding['name'] }}</span>
+                    @endunless
                 </a>
 
                 <nav class="hidden items-center gap-0.5 md:flex" aria-label="Primary">

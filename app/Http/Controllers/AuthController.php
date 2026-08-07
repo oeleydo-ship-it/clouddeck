@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RedirectsAfterAuthentication;
 use App\Models\Plan;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -11,13 +12,18 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 
 class AuthController extends Controller
 {
-    public function loginForm(): View
+    use RedirectsAfterAuthentication;
+
+    public function loginForm(SystemSettings $settings): View
     {
-        return view('auth.login');
+        return view('auth.login', [
+            'googleAuthEnabled' => $settings->googleAuthEnabled(),
+        ]);
     }
 
     public function login(Request $request): RedirectResponse
@@ -41,22 +47,35 @@ class AuthController extends Controller
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
-        return redirect()->intended('/dashboard');
+        return $this->redirectAfterLogin($request);
     }
 
-    public function registerForm(): View
+    public function registerForm(SystemSettings $settings): View
     {
         abort_if(SystemSetting::where('key', 'registration_enabled')->first()?->value === '0', 403, 'Registration is temporarily disabled.');
 
-        return view('auth.register');
+        return view('auth.register', [
+            'googleAuthEnabled' => $settings->googleAuthEnabled(),
+        ]);
     }
 
     public function register(Request $request, SystemSettings $settings): RedirectResponse
     {
         abort_if(SystemSetting::where('key', 'registration_enabled')->first()?->value === '0', 403, 'Registration is temporarily disabled.');
-        $data = $request->validate(['name' => ['required', 'string', 'max:100'], 'email' => ['required', 'email', 'unique:users'], 'password' => ['required', 'confirmed', 'min:12']]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'email' => ['required', 'email', 'unique:users'],
+            'password' => ['required', 'confirmed', Password::min(12)->letters()->numbers()],
+        ]);
         $verificationRequired = $settings->emailVerificationRequired();
-        $user = User::create([...$data, 'password' => Hash::make($data['password']), 'email_verified_at' => $verificationRequired ? null : now()]);
+        // Explicit attributes only — never accept role / elevated fields from the request.
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => Hash::make($data['password']),
+            'email_verified_at' => $verificationRequired ? null : now(),
+        ]);
+        $user->forceFill(['role' => 'customer'])->save();
         if ($plan = Plan::where('slug', 'free')->where('active', true)->first()) {
             $user->subscriptions()->create(['plan_id' => $plan->id, 'status' => 'active', 'provider' => 'system']);
         }
@@ -64,6 +83,7 @@ class AuthController extends Controller
             event(new Registered($user));
         }
         Auth::login($user);
+        $request->session()->regenerate();
 
         return redirect('/dashboard');
     }

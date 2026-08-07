@@ -105,10 +105,13 @@ final class SystemSettings
     public function branding(): array
     {
         $logo = $this->get('logo_path');
+        $logoUrl = $logo && Storage::disk('public')->exists($logo) ? Storage::disk('public')->url($logo) : null;
 
         return [
             'name' => $this->get('platform_name', config('app.name', 'Uplary')),
-            'logo_url' => $logo && Storage::disk('public')->exists($logo) ? Storage::disk('public')->url($logo) : null,
+            'logo_url' => $logoUrl,
+            // Never suppress the text fallback unless there is an image that can replace it.
+            'logo_image_only' => $logoUrl !== null && $this->boolean('logo_image_only'),
         ];
     }
 
@@ -217,6 +220,35 @@ PROMPT;
     public function stripeWebhookSecret(): ?string
     {
         return $this->get('stripe_webhook_secret');
+    }
+
+    public function googleClientId(): ?string
+    {
+        return $this->get('google_client_id') ?: config('services.google.client_id');
+    }
+
+    public function googleClientSecret(): ?string
+    {
+        return $this->get('google_client_secret') ?: config('services.google.client_secret');
+    }
+
+    /**
+     * Whether Google Sign-In should be offered on login/register. Requires credentials
+     * (admin settings or .env). An explicit admin toggle wins; otherwise GOOGLE_AUTH_ENABLED
+     * defaults to true so env-only installs are not silently invisible.
+     */
+    public function googleAuthEnabled(): bool
+    {
+        if (! filled($this->googleClientId()) || ! filled($this->googleClientSecret())) {
+            return false;
+        }
+
+        $stored = $this->get('google_auth_enabled');
+        if ($stored !== null) {
+            return in_array($stored, ['1', 'true'], true);
+        }
+
+        return filter_var(config('services.google.enabled', true), FILTER_VALIDATE_BOOLEAN);
     }
 
     /**

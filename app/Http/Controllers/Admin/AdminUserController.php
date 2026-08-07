@@ -33,7 +33,7 @@ class AdminUserController extends Controller
         $role = $request->validate(['role' => ['required', Rule::in(['customer', 'super_admin'])]])['role'];
         abort_if($user->id === $request->user()->id && $role !== 'super_admin', 422, 'You cannot remove your own administrator role.');
         $old = $user->role;
-        $user->update(['role' => $role]);
+        $user->forceFill(['role' => $role])->save();
         $audit->record($request, 'user.role_changed', $user, ['role' => $old], ['role' => $role]);
 
         return back()->with('status', 'User role updated.');

@@ -42,6 +42,14 @@ return [
         'automatic_tax' => env('STRIPE_AUTOMATIC_TAX', true),
     ],
 
+    'google' => [
+        // Prefer Admin → Google Auth (system_settings). .env is the fallback for local/dev.
+        'enabled' => env('GOOGLE_AUTH_ENABLED', true),
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', rtrim((string) env('APP_URL', 'http://localhost'), '/').'/auth/google/callback'),
+    ],
+
     // No key here: Cloudflare tokens belong to an account, are entered in the console, and
     // are stored encrypted per user. Only the base URL is configuration.
     'cloudflare' => [

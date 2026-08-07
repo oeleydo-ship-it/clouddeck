@@ -67,6 +67,42 @@ class PlatformSettingsTest extends TestCase
         $this->assertNull(SystemSetting::whereKey('logo_path')->value('value'));
     }
 
+    public function test_image_only_logo_setting_hides_header_text_across_console_marketing_and_auth_pages(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('branding/logo.png', 'image');
+        app(SystemSettings::class)->put('platform_name', 'Acme Cloud');
+        app(SystemSettings::class)->put('logo_path', 'branding/logo.png');
+
+        $admin = $this->admin();
+        $this->actingAs($admin)->put('/admin/settings/branding', ['logo_image_only' => '1'])->assertSessionHas('status');
+
+        $stored = SystemSetting::whereKey('logo_image_only')->sole();
+        $this->assertSame('1', $stored->value);
+        $this->assertTrue($stored->is_public);
+
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertDontSee('data-brand-name', false);
+        $this->post('/logout');
+
+        foreach (['/', '/login', '/register'] as $url) {
+            $this->get($url)
+                ->assertOk()
+                ->assertSee('alt="Acme Cloud"', false)
+                ->assertDontSee('data-brand-name', false);
+        }
+    }
+
+    public function test_image_only_setting_keeps_text_fallback_when_custom_logo_is_missing(): void
+    {
+        app(SystemSettings::class)->put('platform_name', 'Acme Cloud');
+        app(SystemSettings::class)->put('logo_image_only', '1', 'boolean');
+
+        $this->actingAs($this->admin())->get('/admin')
+            ->assertOk()
+            ->assertSee('data-brand-name', false)
+            ->assertSee('Acme Cloud');
+    }
+
     public function test_smtp_settings_drive_the_mail_config_and_keep_the_password_private(): void
     {
         $this->actingAs($this->admin())->put('/admin/settings/mail', [

@@ -22,6 +22,7 @@
         </div>
 
         <button class="button-primary mt-6 w-full">Sign in</button>
+        @include('auth.partials.google-button')
         <p class="mt-5 text-center text-sm text-slate-500 dark:text-slate-400">New here? <a href="{{ route('register') }}" class="text-cyan-600 dark:text-cyan-300">Create account</a></p>
     </form>
 </div>

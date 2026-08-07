@@ -34,7 +34,7 @@ The control center can disable public registration and configure the support ema
 
 ## Platform services (control-plane runtime)
 
-Super admins can open **Admin → Platform services** (`/admin/platform-services`) to monitor this install’s own Redis, Horizon, queue workers, Reverb, and HTTPS/TLS — not customer-site Supervisor programs or site SSL tabs.
+Super admins can open **Admin â†’ Platform services** (`/admin/platform-services`) to monitor this installâ€™s own Redis, Horizon, queue workers, Reverb, and HTTPS/TLS â€” not customer-site Supervisor programs or site SSL tabs.
 
 - Status is polled about every 7 seconds (`GET /admin/platform-services/status`).
 - Redis shows connectivity (`PING`) and optional Docker control for the container named `uplary-redis` (override with `PLATFORM_REDIS_CONTAINER`). The panel never kills an unrelated system Redis process.
@@ -42,17 +42,17 @@ Super admins can open **Admin → Platform services** (`/admin/platform-services
 - Queue workers start `php artisan queue:work` against the same queues as `config/horizon.php` (default, operations, deployments, provisioning, notifications, monitoring, billing). PIDs for processes started here are stored under `storage/app/platform-services/`.
 - Reverb start/stop uses `php artisan reverb:start` with port checks from `config/reverb.php`.
 - **SSL / TLS** probes the host from `APP_URL` (HTTPS reachability, issuer, expiry, days remaining). Status values: `valid`, `expiring_soon` (&lt;30 days), `expired`, `not_https`, `unreachable`.
-  - **Linux production-like hosts:** when `resources/scripts/renew-platform-ssl.sh` is present (override with `PLATFORM_SSL_RENEW_SCRIPT`), **Renew certificate** runs Certbot for the control-plane domain and reloads nginx (`POST /admin/platform-services/ssl/renew`). This is local-only — it does not SSH to customer servers or touch site certificates.
+  - **Linux production-like hosts:** when `resources/scripts/renew-platform-ssl.sh` is present (override with `PLATFORM_SSL_RENEW_SCRIPT`), **Renew certificate** runs Certbot for the control-plane domain and reloads nginx (`POST /admin/platform-services/ssl/renew`). This is local-only â€” it does not SSH to customer servers or touch site certificates.
   - **Windows / local `artisan serve`:** Start/Stop N/A for TLS. If `APP_URL` is still `http://localhost`, the card explains that local serve is HTTP-only. Pointing `APP_URL` at a remote `https://` origin still shows live certificate status.
 
 Horizon dashboard auth is unchanged: super admins always pass the gate; optional extra emails use `HORIZON_ALLOWED_EMAILS`.
 
 ## Staging sites
 
-Staging is off until a superadmin enables **Staging sites** under Admin → Settings and optionally sets the platform staging apex (default `uplary.com`). Customers then create a linked staging site from a production site's Overview tab:
+Staging is off until a superadmin enables **Staging sites** under Admin â†’ Settings and optionally sets the platform staging apex (default `uplary.com`). Customers then create a linked staging site from a production site's Overview tab:
 
-- **Platform subdomain** — `{slug}.staging.{platform_domain}` (for example `acme.staging.uplary.com`)
-- **Client domain** — any FQDN such as `staging.client.com`
+- **Platform subdomain** â€” `{slug}.staging.{platform_domain}` (for example `acme.staging.uplary.com`)
+- **Client domain** â€” any FQDN such as `staging.client.com`
 
 Staging is a separate site on the same server (own nginx vhost, release root, and environment). Laravel staging seeds `APP_ENV=staging`. **Promote to production** copies the staging repository, branch, script, and PHP version onto the linked production site and queues a production deployment. Create and promote routes return 404 while the platform toggle is off.
 
@@ -62,12 +62,29 @@ Dedicated admin sections (sidebar): **Pages**, **SEO**, **Analytics**, **Webmast
 
 - Edit homepage hero, steps intro, and closing CTA copy (blank fields keep built-in defaults).
 - Set default meta description, keywords, Open Graph image URL, robots, Google Analytics (GA4 measurement ID), and Google Search Console verification token. Tags are injected in the shared layout head.
-- Paste custom HTML/JS (**Insert code**) for chat widgets and similar embeds into head/body. Defaults to marketing/public pages; console injection is optional. Raw markup is intentional for trusted operators only. Iframe-based widgets also need the widget host to allow framing — if that host is a site on this platform, enable **Allow embedding in iframes** under the site’s Remote → Nginx settings.
+- Paste custom HTML/JS (**Insert code**) for chat widgets and similar embeds into head/body. Defaults to marketing/public pages; console injection is optional. Raw markup is intentional for trusted operators only. Iframe-based widgets also need the widget host to allow framing â€” if that host is a site on this platform, enable **Allow embedding in iframes** under the siteâ€™s Remote â†’ Nginx settings.
 - Enable an **AI platform guide** with an encrypted OpenAI API key and optional system prompt. When enabled, signed-in users see a floating chat helper that answers how-to questions about the console (throttled at `/guide/chat`).
 
 Stripe API keys and the webhook signing secret are configured under **Admin → Payments** (see `docs/stripe-billing.md`).
 
+## Google Sign-In (OAuth)
+
+Configure under **Admin → Google Auth** (`/admin/google-auth`), or via `.env` as a fallback:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/) create an OAuth 2.0 Client ID (application type **Web application**).
+2. Add an authorized redirect URI of `{APP_URL}/auth/google/callback` (shown read-only on the admin page).
+3. Paste Client ID and Client Secret, enable Google sign-in, and save. The secret is encrypted and never re-displayed (blank keeps the stored value).
+4. Optional `.env` keys: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_AUTH_ENABLED` (default `true` when no admin toggle has been saved yet). Saved admin settings override env.
+5. Only Google accounts with a **verified** email are accepted. New users receive the default `customer` role (never `super_admin`). Matching emails auto-link `google_id` to an existing password account without changing role. Two-factor challenge still applies when enabled on the account.
+
+Continue with Google appears on login and register only when Google Auth is enabled and both credentials are available.
+
+## Firewall (customer console)
+
+Per-server UFW rules are managed from the customer console **Firewall** page (sidebar, below Sites), not from `/admin`. Operators document add/delete, **Apply to server**, **Refresh remote status**, rule fields, and sync statuses in [Server operations — Firewall](server-operations.md#firewall).
+
 ## Production checklist
+
 
 - Create a separate super-admin account; the seeder intentionally does not grant administrator access.
 - Configure Stripe live keys, signed webhooks, recurring plan Price IDs, tax registrations, and Customer Portal behavior before accepting online paid orders.

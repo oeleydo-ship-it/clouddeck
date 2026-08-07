@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RedirectsAfterAuthentication;
 use App\Models\User;
 use App\Services\TwoFactorService;
 use Illuminate\Http\RedirectResponse;
@@ -11,6 +12,8 @@ use Illuminate\View\View;
 
 class TwoFactorChallengeController extends Controller
 {
+    use RedirectsAfterAuthentication;
+
     public function create(Request $request): View|RedirectResponse
     {
         return $request->session()->has('login.id') ? view('auth.two-factor-challenge') : redirect('/login');
@@ -38,6 +41,6 @@ class TwoFactorChallengeController extends Controller
         $request->session()->forget('login.id');
         $request->session()->regenerate();
 
-        return redirect()->intended('/dashboard');
+        return $this->redirectAfterLogin($request);
     }
 }

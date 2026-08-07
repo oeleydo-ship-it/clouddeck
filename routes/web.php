@@ -22,6 +22,8 @@ use App\Http\Controllers\DeploymentController;
 use App\Http\Controllers\DnsController;
 use App\Http\Controllers\DocumentationController;
 use App\Http\Controllers\FileManagerController;
+use App\Http\Controllers\FirewallController;
+use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\GuideController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\LogController;
@@ -76,12 +78,14 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::get('/register', [AuthController::class, 'registerForm'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+    Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->middleware('throttle:20,1')->name('auth.google.redirect');
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('throttle:20,1')->name('auth.google.callback');
     Route::get('/two-factor-challenge', [TwoFactorChallengeController::class, 'create'])->name('two-factor.login');
     Route::post('/two-factor-challenge', [TwoFactorChallengeController::class, 'store'])->middleware('throttle:5,1');
     Route::get('/forgot-password', [PasswordResetController::class, 'requestForm'])->name('password.request');
     Route::post('/forgot-password', [PasswordResetController::class, 'send'])->middleware('throttle:5,1')->name('password.email');
     Route::get('/reset-password/{token}', [PasswordResetController::class, 'resetForm'])->name('password.reset');
-    Route::post('/reset-password', [PasswordResetController::class, 'reset'])->name('password.update');
+    Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:5,1')->name('password.update');
 });
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::get('/email/verify', fn () => view('auth.verify-email'))->middleware('auth')->name('verification.notice');
@@ -141,6 +145,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/ssh-keys', [SshKeyController::class, 'store']);
     Route::get('/ssh-keys/{sshKey}/download', [SshKeyController::class, 'download'])->name('ssh-keys.download');
     Route::delete('/ssh-keys/{sshKey}', [SshKeyController::class, 'destroy']);
+
+    Route::get('/firewall', [FirewallController::class, 'index'])->name('firewall.index');
+    Route::post('/firewall/rules', [FirewallController::class, 'store'])->middleware('throttle:30,1')->name('firewall.rules.store');
+    Route::delete('/firewall/rules/{firewallRule}', [FirewallController::class, 'destroy'])->name('firewall.rules.destroy');
+    Route::post('/firewall/servers/{server}/sync', [FirewallController::class, 'sync'])->middleware('throttle:20,1')->name('firewall.sync');
+    Route::post('/firewall/servers/{server}/refresh', [FirewallController::class, 'refresh'])->middleware('throttle:20,1')->name('firewall.refresh');
 
     Route::get('/servers', [ServerManagementController::class, 'index'])->name('servers.index');
     Route::get('/servers/create', ServerProvisionWizard::class)->name('servers.create');
@@ -235,6 +245,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/webmaster', [AdminDashboardController::class, 'webmaster'])->name('webmaster');
         Route::get('/insert-code', [AdminDashboardController::class, 'insertCode'])->name('insert-code');
         Route::get('/ai', [AdminDashboardController::class, 'ai'])->name('ai');
+        Route::get('/google-auth', [AdminDashboardController::class, 'googleAuth'])->name('google-auth');
         Route::get('/platform-services', [PlatformServicesController::class, 'index'])->name('platform-services');
         Route::get('/platform-services/status', [PlatformServicesController::class, 'status'])->name('platform-services.status');
         Route::post('/platform-services/ssl/renew', [PlatformServicesController::class, 'renewSsl'])->name('platform-services.ssl.renew');
@@ -264,7 +275,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/settings/webmaster', [AdminSettingController::class, 'webmaster'])->name('settings.webmaster');
         Route::put('/settings/insert-code', [AdminSettingController::class, 'insertCode'])->name('settings.insert-code');
         Route::put('/settings/ai', [AdminSettingController::class, 'ai'])->name('settings.ai');
+        Route::put('/settings/google-auth', [AdminSettingController::class, 'googleAuth'])->name('settings.google-auth');
         Route::put('/settings/stripe', [AdminSettingController::class, 'stripe'])->name('settings.stripe');
+        Route::put('/settings/branding', [AdminSettingController::class, 'branding'])->name('settings.branding');
         Route::post('/settings/logo', [AdminSettingController::class, 'logo'])->name('settings.logo');
         Route::delete('/settings/logo', [AdminSettingController::class, 'destroyLogo'])->name('settings.logo.destroy');
         Route::put('/settings/mail', [AdminSettingController::class, 'mail'])->name('settings.mail');

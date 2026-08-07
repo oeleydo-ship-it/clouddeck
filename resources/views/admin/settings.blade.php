@@ -52,6 +52,14 @@
                     <form method="POST" action="{{ route('admin.settings.logo.destroy') }}">@csrf @method('DELETE')<button class="button-secondary !text-rose-600 dark:!text-rose-300">Remove</button></form>
                 @endif
             </div>
+            <form method="POST" action="{{ route('admin.settings.branding') }}" class="mt-5 border-t border-slate-100 pt-5 dark:border-white/5">@csrf @method('PUT')
+                <label class="flex gap-2 text-sm heading">
+                    <input type="checkbox" name="logo_image_only" value="1" @checked($branding['logo_image_only']) @disabled(! $branding['logo_url'])>
+                    Show logo image only
+                </label>
+                <p class="mt-2 text-xs muted">Hides the platform name beside the logo in console, marketing, and authentication headers. Upload a custom logo first.</p>
+                <button class="button-secondary mt-3" @disabled(! $branding['logo_url'])>Save logo display</button>
+            </form>
         </section>
 
         <section class="panel">

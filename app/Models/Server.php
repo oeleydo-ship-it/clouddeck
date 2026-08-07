@@ -28,6 +28,7 @@ class Server extends Model
             'auto_heal_last_actions' => 'array',
             'last_seen_at' => 'datetime',
             'phpmyadmin_enabled' => 'boolean',
+            'firewall_synced_at' => 'datetime',
         ];
     }
 
@@ -82,6 +83,11 @@ class Server extends Model
     public function cronJobs()
     {
         return $this->hasMany(CronJob::class);
+    }
+
+    public function firewallRules()
+    {
+        return $this->hasMany(FirewallRule::class);
     }
 
     public function operations()

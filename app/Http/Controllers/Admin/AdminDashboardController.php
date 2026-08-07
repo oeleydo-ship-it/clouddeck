@@ -98,6 +98,11 @@ class AdminDashboardController extends Controller
         return view('admin.ai', ['settings' => SystemSetting::all()->keyBy('key')]);
     }
 
+    public function googleAuth(): View
+    {
+        return view('admin.google-auth', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
     public function insertCode(): View
     {
         return view('admin.insert-code', ['settings' => SystemSetting::all()->keyBy('key')]);

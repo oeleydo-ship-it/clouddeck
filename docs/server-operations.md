@@ -22,6 +22,51 @@ A Reverb worker binds to `127.0.0.1` on its allocated port and is published by N
 
 Deleting a cron entry or worker queues removal of its remote configuration. The UI status reflects the last synchronization job rather than assuming the remote action succeeded.
 
+## Firewall
+
+The Firewall console page (`/firewall`) manages per-server UFW rules for servers the customer owns or can operate through a team. It appears in the main sidebar directly below **Sites**. Select a ready server, then add, remove, apply, or refresh rules without pasting raw shell into the browser.
+
+Bootstrap still opens OpenSSH and Nginx Full on new hosts. Rules created here layer on top of that baseline. Each managed rule is tagged on the remote host with a stable `uplary-fw-{id}` UFW comment so apply and remove stay idempotent.
+
+### Requirements
+
+- The target server status must be ready, with working SSH access from the control plane.
+- UFW must be installed on the host (the Ubuntu bootstrap script includes it).
+- Horizon (or an equivalent worker) must process the `operations` queue so sync and refresh jobs run.
+
+### Rule fields
+
+| Field | Values |
+| --- | --- |
+| Action | `allow` or `deny` |
+| Protocol | `tcp`, `udp`, or `any` |
+| Port / profile | Numeric port, or an allowlisted named profile: `OpenSSH`, `Nginx Full`, `Nginx HTTP`, `Nginx HTTPS` |
+| From IP | Optional source IP or CIDR; empty means any source |
+| Description | Optional operator note stored only in the control plane |
+
+Customers cannot submit arbitrary UFW arguments or application profile names outside that list.
+
+### Adding, applying, and deleting
+
+1. Open **Firewall**, choose the server, and submit a new rule. Creation sets status to `pending` and dispatches `SyncFirewallRuleJob` on the `operations` queue.
+2. **Apply to server** re-queues every stored rule for that host (useful after a failed sync or manual drift).
+3. Deleting a rule soft-deletes it locally, marks it `pending`, and queues remote removal via the same sync job.
+
+### Refresh remote status
+
+**Refresh remote status** runs `ufw status verbose` through `RefreshFirewallStatusJob` and stores the summarized result on the server record. Use it to confirm what UFW currently reports without changing rules.
+
+### Statuses
+
+| Status | Meaning |
+| --- | --- |
+| `pending` | Queued or in flight; not yet confirmed on the host |
+| `synced` | Last apply or remove succeeded |
+| `failed` | Remote command failed; see `status_message` for detail |
+| `missing_ufw` | UFW is not available on the host; the page surfaces this explicitly instead of failing silently |
+
+The UI reflects the last synchronization job rather than assuming the remote action succeeded.
+
 ## Service actions
 
 The application never accepts a raw service command. The operation job maps a fixed identifier to an allowlisted command for Nginx configuration testing/reload/restart, PHP 8.4-FPM reload/restart, and Supervisor, Redis, or MySQL restart. Each action is tenant-authorized and stores output, exit status, start time, and completion time.

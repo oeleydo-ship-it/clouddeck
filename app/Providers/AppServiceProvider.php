@@ -58,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(DeploymentFinished::class, SendDeploymentNotification::class);
         $this->applyStripeCredentialsFromSettings();
         $this->applyMailCredentialsFromSettings();
+        $this->applyGoogleCredentialsFromSettings();
 
         // Resolved per render rather than shared once, so a logo or name saved on the
         // settings page shows up on the next request instead of after a deploy.
@@ -188,6 +189,36 @@ class AppServiceProvider extends ServiceProvider
             }
         } catch (Throwable $e) {
             Log::warning('Could not load Stripe credentials from settings: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Google OAuth credentials from Admin → Google Auth. Settings override .env when set;
+     * redirect always matches the live app URL used in the admin UI and Google Cloud console.
+     */
+    private function applyGoogleCredentialsFromSettings(): void
+    {
+        try {
+            $settings = app(SystemSettings::class);
+
+            if ($id = $settings->get('google_client_id')) {
+                config(['services.google.client_id' => $id]);
+            }
+
+            if ($secret = $settings->get('google_client_secret')) {
+                config(['services.google.client_secret' => $secret]);
+            }
+
+            $enabled = $settings->get('google_auth_enabled');
+            if ($enabled !== null) {
+                config(['services.google.enabled' => in_array($enabled, ['1', 'true'], true)]);
+            }
+
+            config([
+                'services.google.redirect' => rtrim((string) config('app.url'), '/').'/auth/google/callback',
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('Could not load Google OAuth credentials from settings: '.$e->getMessage());
         }
     }
 }
