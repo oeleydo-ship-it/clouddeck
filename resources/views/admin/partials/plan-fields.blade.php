@@ -32,8 +32,9 @@
 </fieldset>
 
 <fieldset class="mt-5">
-    <legend class="text-sm font-medium heading">Entitlements</legend>
-    <div class="mt-3 flex flex-wrap gap-x-6 gap-y-3 text-sm">
+    <legend class="text-sm font-medium heading">Feature entitlements</legend>
+    <p class="mt-1 text-xs muted">Optional modules. Server and site counts are set under Limits above — not here.</p>
+    <div class="mt-3 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
         @foreach($featureKeys as $key => $label)
             <label class="flex items-center gap-2 heading"><input type="checkbox" name="feature_{{ $key }}" value="1" @checked(old('feature_'.$key, $plan?->features[$key] ?? false))>{{ $label }}</label>
         @endforeach

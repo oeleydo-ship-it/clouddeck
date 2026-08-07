@@ -6,6 +6,7 @@ use App\Jobs\Operations\CheckQueueWorkerStatusJob;
 use App\Jobs\Operations\SyncQueueWorkerJob;
 use App\Models\QueueWorker;
 use App\Models\Site;
+use App\Services\FeatureManager;
 use App\Services\ReverbEnvironment;
 use App\Services\ServerPortRegistry;
 use Illuminate\Http\RedirectResponse;
@@ -20,6 +21,7 @@ class QueueWorkerController extends Controller
     public function store(Request $request, Site $site): RedirectResponse
     {
         $this->authorize('update', $site);
+        $this->assertWorkerEntitlement($request);
         $server = $site->server;
         $data = $request->validate([
             'name' => ['required', 'regex:/^[a-z][a-z0-9-]{0,40}$/', Rule::unique('queue_workers', 'name')->where(fn ($query) => $query->where('site_id', $site->id)->whereNull('deleted_at'))],
@@ -68,6 +70,7 @@ class QueueWorkerController extends Controller
     public function destroy(Request $request, QueueWorker $queueWorker): RedirectResponse
     {
         $this->authorize('update', $queueWorker->site);
+        $this->assertWorkerEntitlement($request);
         $queueWorker->delete();
         SyncQueueWorkerJob::dispatch($queueWorker->id)->onQueue('operations');
 
@@ -77,8 +80,18 @@ class QueueWorkerController extends Controller
     public function status(Request $request, QueueWorker $queueWorker): RedirectResponse
     {
         $this->authorize('update', $queueWorker->site);
+        $this->assertWorkerEntitlement($request);
         CheckQueueWorkerStatusJob::dispatch($queueWorker->id)->onQueue('operations');
 
         return back()->with('status', 'Checking Supervisor status.');
+    }
+
+    private function assertWorkerEntitlement(Request $request): void
+    {
+        abort_unless(
+            app(FeatureManager::class)->enabled('redis', $request->user()),
+            403,
+            'This feature is not enabled for your account.',
+        );
     }
 }

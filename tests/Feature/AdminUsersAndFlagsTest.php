@@ -70,15 +70,16 @@ class AdminUsersAndFlagsTest extends TestCase
         $this->actingAs($admin)->get('/admin/users')->assertOk()->assertSee('No active plans');
     }
 
-    public function test_the_account_menu_holds_teams_billing_and_signing_out(): void
+    public function test_billing_is_in_the_sidebar_and_account_menu_holds_teams(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
 
         $response = $this->actingAs($user)->get('/dashboard')->assertOk();
 
-        // They moved out of the top bar and into the menu, but must still be reachable.
-        $response->assertSee('/teams', false)->assertSee('/billing', false)->assertSee('/account', false);
+        // Billing lives in the sidebar below Contact; Account + Teams stay in the profile menu.
+        $response->assertSee('/teams', false)->assertSee('/account', false)->assertSee('/billing', false);
         $response->assertSee('Sign out');
+        $response->assertSee('Billing');
     }
 
     public function test_billing_renders_the_plans_an_administrator_published(): void

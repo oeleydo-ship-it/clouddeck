@@ -5,7 +5,7 @@
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">@foreach($usage as $resource=>$value)<div class="panel p-5"><div class="flex justify-between text-sm"><span class="capitalize text-slate-500 dark:text-slate-400">{{ str_replace('_',' ',$resource) }}</span><span>{{ $value['used'] }} / {{ $value['limit'] < 0 ? 'Unlimited' : $value['limit'] }}</span></div>@if($value['limit']>0)<div class="mt-3 h-2 rounded bg-slate-100 dark:bg-white/10"><div class="h-full rounded bg-cyan-400" style="width:{{ min(100,$value['used']*100/$value['limit']) }}%"></div></div>@endif</div>@endforeach</div>
     @php
         $limitLabels = ['servers' => 'Servers', 'sites' => 'Sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members'];
-        $featureLabels = ['monitoring' => 'Monitoring and alerts', 'remote_management' => 'Remote management', 'teams' => 'Team collaboration'];
+        $featureLabels = \App\Services\FeatureManager::catalog();
         $price = fn ($cents, $currency) => $cents === 0 ? 'Free' : Str::upper($currency).' '.number_format($cents / 100, $cents % 100 === 0 ? 0 : 2);
     @endphp
     <div class="mt-8 grid gap-6 lg:grid-cols-3">

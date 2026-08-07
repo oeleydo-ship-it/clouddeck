@@ -76,36 +76,52 @@
 @if(auth()->check() && ! $onMarketing)
     @php
         $user = auth()->user();
+        $features = $planFeatures ?? [];
+        $can = fn (string $key): bool => (bool) ($features[$key] ?? false);
         $sections = [
             ['href' => route('dashboard'), 'label' => 'Dashboard', 'match' => 'dashboard', 'icon' => 'M3 3h7v7H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 14h7v7H3z'],
             ['href' => route('servers.index'), 'label' => 'Servers', 'match' => 'servers*', 'icon' => 'M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5ZM4 16a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3ZM8 7h.01M8 18h.01'],
             ['href' => route('sites.index'), 'label' => 'Sites', 'match' => 'sites*', 'icon' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z'],
-            ['href' => route('firewall.index'), 'label' => 'Firewall', 'match' => 'firewall*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9.5 12h5M12 9.5v5'],
-            ['href' => route('security.index'), 'label' => 'Security', 'match' => 'security*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9 12l2 2 4-4'],
-            ['href' => route('notifications.index'), 'label' => 'Notifications', 'match' => 'notifications*', 'icon' => 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9ZM10.3 21a1.94 1.94 0 0 0 3.4 0'],
-            ['href' => route('cloud-accounts'), 'label' => 'Providers', 'match' => 'cloud-accounts*', 'icon' => 'M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.4 4.5 4.5 0 0 0 6.5 19h11Z'],
         ];
-        // Mirrors the routes rather than deciding anything: DNS is switched off in admin
-        // settings, and the entry follows so the nav never offers a 404.
-        if ($dnsEnabled ?? true) {
+        if ($can('firewall')) {
+            $sections[] = ['href' => route('firewall.index'), 'label' => 'Firewall', 'match' => 'firewall*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9.5 12h5M12 9.5v5'];
+        }
+        if ($can('security')) {
+            $sections[] = ['href' => route('security.index'), 'label' => 'Security', 'match' => 'security*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9 12l2 2 4-4'];
+        }
+        if ($can('notifications')) {
+            $sections[] = ['href' => route('notifications.index'), 'label' => 'Notifications', 'match' => 'notifications*', 'icon' => 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9ZM10.3 21a1.94 1.94 0 0 0 3.4 0'];
+        }
+        if ($can('providers')) {
+            $sections[] = ['href' => route('cloud-accounts'), 'label' => 'Providers', 'match' => 'cloud-accounts*', 'icon' => 'M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.4 4.5 4.5 0 0 0 6.5 19h11Z'];
+        }
+        // Platform DNS switch and plan entitlement must both allow the entry.
+        if (($dnsEnabled ?? true) && $can('dns')) {
             $sections[] = ['href' => route('dns.index'), 'label' => 'DNS', 'match' => 'dns*', 'icon' => 'M4 6h16M4 12h16M4 18h10M18 15l3 3-3 3'];
         }
-        $sections[] = ['href' => route('ssh-keys'), 'label' => 'SSH keys', 'match' => 'ssh-keys*', 'icon' => 'M15 7a5 5 0 1 1-4.9 6H7v3H4v-3H2v-3h8.1A5 5 0 0 1 15 7Zm2 4h.01'];
+        if ($can('ssh')) {
+            $sections[] = ['href' => route('ssh-keys'), 'label' => 'SSH keys', 'match' => 'ssh-keys*', 'icon' => 'M15 7a5 5 0 1 1-4.9 6H7v3H4v-3H2v-3h8.1A5 5 0 0 1 15 7Zm2 4h.01'];
+        }
         if ($user->isSuperAdmin()) {
             $sections[] = ['href' => route('admin.dashboard'), 'label' => 'Admin', 'match' => 'admin*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 0v4'];
         }
-        $accountLinks = ['/account' => 'Account settings', '/teams' => 'Teams', '/billing' => 'Billing'];
-        $inAccountArea = request()->is('account*') || request()->is('teams*') || request()->is('billing*');
+        $accountLinks = ['/account' => 'Account settings'];
+        if ($can('teams')) {
+            $accountLinks['/teams'] = 'Teams';
+        }
+        $inAccountArea = request()->is('account*') || ($can('teams') && request()->is('teams*'));
         $current = collect($sections)->first(fn ($section) => request()->is($section['match']));
         $alerts = $shellAlerts ?? [];
 
-        // Account, Teams and Billing share a sidebar entry but are separate pages, so the
-        // crumb names the page rather than lumping all three under "Account".
+        // Account and Teams share the profile menu; Billing is a sidebar mini-link below Contact.
         $crumb = $current['label'] ?? null;
         foreach ($accountLinks as $href => $label) {
             if (! $crumb && request()->is(ltrim($href, '/').'*')) {
                 $crumb = $label;
             }
+        }
+        if (! $crumb && request()->is('billing*')) {
+            $crumb = 'Billing';
         }
         $crumb ??= $title ?? 'Overview';
     @endphp
@@ -163,6 +179,10 @@
                             Contact
                         </a>
                     @endif
+                    <a href="/billing" @class(['side-mini-link !px-2', 'bg-white/10 text-white' => request()->is('billing*')])>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="size-4.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                        Billing
+                    </a>
                 </div>
 
                 <div class="relative border-t border-white/10 pt-2" x-data="{ open: false }">
@@ -217,12 +237,12 @@
                                 q: '',
                                 items: @js(collect($sections)->map(fn ($s) => ['label' => $s['label'], 'href' => $s['href']])
                                     ->merge(array_filter([
-                                        ['label' => 'Incidents', 'href' => route('notifications.index', ['tab' => 'incidents'])],
+                                        $can('notifications') ? ['label' => 'Incidents', 'href' => route('notifications.index', ['tab' => 'incidents'])] : null,
                                         ['label' => 'Provision server', 'href' => route('servers.create')],
                                         ['label' => 'Add existing server', 'href' => route('servers.custom')],
                                         ['label' => 'Add site', 'href' => route('sites.create')],
                                         ['label' => 'Account settings', 'href' => '/account'],
-                                        ['label' => 'Teams', 'href' => '/teams'],
+                                        $can('teams') ? ['label' => 'Teams', 'href' => '/teams'] : null,
                                         ['label' => 'Billing', 'href' => '/billing'],
                                         ['label' => 'Documentation', 'href' => route('docs')],
                                         ($publicSiteEnabled ?? true) ? ['label' => 'Contact support', 'href' => route('contact')] : null,

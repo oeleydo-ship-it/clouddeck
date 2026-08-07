@@ -125,7 +125,7 @@ class SaasAdministrationTest extends TestCase
     {
         $this->markInstalled();
         $free = $this->plan([], 'free');
-        $this->post('/register', ['name' => 'New User', 'email' => 'new@example.com', 'password' => 'very-secure-password', 'password_confirmation' => 'very-secure-password'])->assertRedirect('/dashboard');
+        $this->post('/register', ['name' => 'New User', 'email' => 'new@example.com', 'password' => 'very-secure-password-1', 'password_confirmation' => 'very-secure-password-1'])->assertRedirect('/dashboard');
         $user = User::where('email', 'new@example.com')->firstOrFail();
         $this->assertSame($free->id, $user->subscriptions()->firstOrFail()->plan_id);
 
@@ -178,7 +178,7 @@ class SaasAdministrationTest extends TestCase
         $this->actingAs($admin)->put('/admin/settings', ['registration_enabled' => '1'])->assertSessionHas('status');
         auth()->logout();
 
-        $this->post('/register', ['name' => 'Development User', 'email' => 'development@example.com', 'password' => 'very-secure-password', 'password_confirmation' => 'very-secure-password'])->assertRedirect('/dashboard');
+        $this->post('/register', ['name' => 'Development User', 'email' => 'development@example.com', 'password' => 'very-secure-password-1', 'password_confirmation' => 'very-secure-password-1'])->assertRedirect('/dashboard');
         $user = User::where('email', 'development@example.com')->firstOrFail();
 
         $this->assertNotNull($user->email_verified_at);
@@ -210,6 +210,19 @@ class SaasAdministrationTest extends TestCase
 
     private function plan(array $limits = [], string $slug = 'test', array $features = []): Plan
     {
-        return Plan::create(['name' => ucfirst($slug), 'slug' => $slug, 'monthly_price' => 0, 'yearly_price' => 0, 'limits' => array_merge(['servers' => 5, 'sites' => 5, 'databases' => 5, 'api_tokens' => 5, 'teams' => 2, 'team_members' => 5], $limits), 'features' => $features, 'active' => true, 'public' => true]);
+        return Plan::create([
+            'name' => ucfirst($slug),
+            'slug' => $slug,
+            'monthly_price' => 0,
+            'yearly_price' => 0,
+            'limits' => array_merge(['servers' => 5, 'sites' => 5, 'databases' => 5, 'api_tokens' => 5, 'teams' => 2, 'team_members' => 5], $limits),
+            // Tests that only care about quotas get a fully entitled plan unless they pass
+            // an explicit features map (including false values).
+            'features' => $features === []
+                ? array_fill_keys(array_keys(config('plan-features.labels')), true)
+                : $features,
+            'active' => true,
+            'public' => true,
+        ]);
     }
 }

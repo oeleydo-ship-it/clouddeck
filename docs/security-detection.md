@@ -3,6 +3,26 @@
 Uplary security detection is a production-oriented detection and response layer for managed
 servers and sites. It is intentionally conservative and does not replace an EDR or SIEM.
 
+Customer-facing walkthrough: in-app **Support & documentation** → [Security detection](/docs#security-detection)
+(sidebar **Security** at `/security`).
+
+## Customer overview
+
+- Open **Security** in the sidebar. Detection is enabled by default.
+- Scans collect read-only host and site signals over managed SSH. Use **Scan now** /
+  **Scan all now**, or rely on the five-minute schedule. Jobs run on the `operations` queue.
+- Live per-server status: **Queued** → **Scanning…** → last completed scan (or **Failed**).
+  The Security page polls status while a scan is in flight.
+- **Detection settings** (team owners / admins): per-rule enable, threshold, window, and
+  severity. **Reset to recommended defaults** clears workspace overrides. Keep detection on;
+  tune only after observing a normal baseline.
+- Incidents appear under **Notifications → Incidents** (filter Security). Acknowledge or
+  resolve there. Email fires for **Security incident** when a recipient is subscribed (or to
+  the account address when no recipients are configured).
+- **Block IP** / **Unblock** are manual only (UFW deny via Firewall). Never automatic.
+- Prerequisites: Ready server + managed SSH. App-level login/admin events need agent
+  ingestion (`POST /api/monitoring/{server}/security-events`).
+
 ## Collection and prerequisites
 
 - The scheduler dispatches scans every five minutes to the `operations` queue.

@@ -4,7 +4,7 @@
 @section('admin')
     @php
         $limitKeys = ['servers' => 'Servers', 'sites' => 'Sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members'];
-        $featureKeys = ['monitoring' => 'Monitoring', 'remote_management' => 'Remote tools', 'teams' => 'Teams'];
+        $featureKeys = \App\Services\FeatureManager::catalog();
         $amount = fn (int $cents, string $currency) => $cents === 0 ? 'Free' : Str::upper($currency).' '.number_format($cents / 100, ($cents % 100 === 0) ? 0 : 2);
         $limit = fn ($value) => $value === -1 ? 'Unlimited' : (int) $value;
     @endphp

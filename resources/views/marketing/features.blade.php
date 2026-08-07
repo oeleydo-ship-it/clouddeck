@@ -28,6 +28,7 @@
             ['Databases', 'Create databases and users, link them to a site, and import or export with protected downloads.'],
             ['Backups', 'Schedule database backups or full server snapshots. Choose how long to keep them and confirm before restore.'],
             ['Monitoring and auto-heal', 'Track CPU, memory, disk, and site uptime. Restart down services automatically and alert Slack, Discord, or Telegram.'],
+            ['Security detection', 'Scan managed servers for suspicious SSH, integrity, and site signals. Review incidents and block IPs manually from the console.'],
             ['DNS', 'Connect Cloudflare and manage A, AAAA, CNAME, and TXT records next to your sites.'],
             ['SSH keys', 'Generate a managed key for automation, or upload public keys for your team.'],
             ['Remote access', 'Edit allowed files, change PHP or Nginx settings, and run a limited set of commands from the browser.'],

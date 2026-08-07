@@ -8,6 +8,21 @@ Plans store monthly and yearly prices as integer cents, per-resource limits, and
 
 The quota manager is enforced when customers create servers, sites, managed databases, API tokens, teams, or team members. Both web and API entry points use the same quota service. New registrations automatically receive the active free plan when one exists.
 
+Boolean plan features (catalog in `config/plan-features.php`) gate console modules and site capabilities sold with a plan. **Servers and sites are quotas only** (`plans.limits`) — they are not duplicated as feature checkboxes.
+
+| Key | Gates |
+| --- | --- |
+| `firewall`, `security`, `notifications`, `providers`, `dns`, `ssh` | Matching sidebar entries and route groups |
+| `monitoring` | Server and site monitoring actions |
+| `remote_management` | Remote configuration, files, and terminal |
+| `teams` | `/teams` and the account menu link |
+| `staging` | Staging create/promote (also requires the platform staging toggle) |
+| `backups` | Backup policies and snapshots |
+| `horizon`, `reverb` | Installing those Laravel packages on a site |
+| `redis` | Creating and managing queue / Horizon / Reverb workers |
+
+DNS still requires the platform **DNS** setting as well as the plan `dns` entitlement. Control-plane **Admin → Platform services** (this install’s Redis, Horizon, Reverb, queue workers) is operator-only and is not sold on customer plans.
+
 ## Billing
 
 Uplary supports both manual approval and Stripe-hosted subscription billing. A customer can request a public plan for offline review, or use Stripe Checkout when the plan has a mapped recurring Price ID. Manual approval atomically ends the prior entitlement and creates the new subscription; Stripe access is synchronized only from signed asynchronous webhooks.
@@ -16,9 +31,9 @@ Manual activation is isolated behind `App\Billing\Contracts\BillingGateway`. Str
 
 ## Feature flags
 
-Flags support global enablement, stable percentage rollouts, plan feature values, and user or plan overrides. Resolution order is user override, global state, plan override, plan entitlement, and stable rollout bucket. Cached flag state is invalidated by administrative changes.
+Flags support global enablement, stable percentage rollouts, plan feature values, and user or plan overrides. Resolution order is user override, global state, plan override, plan entitlement, and stable rollout bucket. Cached flag state is invalidated by administrative changes. Super-admins always pass feature checks. When no plan is entitled, features stay open (same unmetered posture as quotas).
 
-Routes or actions that require staged rollout can use the `feature:<key>` middleware. Application services can inject `FeatureManager` for finer-grained checks.
+Routes or actions that require staged rollout can use the `feature:<key>` middleware. Application services can inject `FeatureManager` for finer-grained checks. Plan booleans alone are enough when no matching `FeatureFlag` row exists. An empty `features` map (legacy unmetered plans) still grants every catalog entitlement; once any keys are stored, missing keys are denied.
 
 ## Teams
 

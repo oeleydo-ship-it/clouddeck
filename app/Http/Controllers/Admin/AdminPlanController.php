@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Plan;
 use App\Services\AuditLogger;
+use App\Services\FeatureManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -62,6 +63,10 @@ class AdminPlanController extends Controller
      */
     private function validated(Request $request, ?Plan $plan = null): array
     {
+        $featureRules = collect(FeatureManager::keys())
+            ->mapWithKeys(fn (string $key) => ['feature_'.$key => ['sometimes', 'boolean']])
+            ->all();
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'slug' => ['nullable', 'alpha_dash', 'max:100', Rule::unique('plans')->ignore($plan)],
@@ -76,11 +81,13 @@ class AdminPlanController extends Controller
             'team_members' => ['required', 'integer', 'min:-1'],
             'active' => ['sometimes', 'boolean'],
             'public' => ['sometimes', 'boolean'],
-            'feature_monitoring' => ['sometimes', 'boolean'],
-            'feature_remote_management' => ['sometimes', 'boolean'],
-            'feature_teams' => ['sometimes', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'between:0,1000'],
+            ...$featureRules,
         ]);
+
+        $features = collect(FeatureManager::keys())
+            ->mapWithKeys(fn (string $key) => [$key => $request->boolean('feature_'.$key)])
+            ->all();
 
         return [
             'name' => $data['name'],
@@ -89,7 +96,7 @@ class AdminPlanController extends Controller
             'yearly_price' => (int) round($data['yearly_price'] * 100),
             'currency' => strtoupper($data['currency']),
             'limits' => collect(['servers', 'sites', 'databases', 'api_tokens', 'teams', 'team_members'])->mapWithKeys(fn ($key) => [$key => (int) $data[$key]])->all(),
-            'features' => ['monitoring' => $request->boolean('feature_monitoring'), 'remote_management' => $request->boolean('feature_remote_management'), 'teams' => $request->boolean('feature_teams')],
+            'features' => $features,
             'active' => $request->boolean('active'),
             'public' => $request->boolean('public'),
             'sort_order' => $data['sort_order'] ?? 0,

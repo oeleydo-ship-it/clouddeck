@@ -184,11 +184,7 @@
             'teams' => 'teams',
             'team_members' => 'team members',
         ];
-        $featureLabels = [
-            'monitoring' => 'Monitoring and alerts',
-            'remote_management' => 'Remote management',
-            'teams' => 'Team collaboration',
-        ];
+        $featureLabels = \App\Services\FeatureManager::catalog();
         $featuredPlan = $plans->firstWhere('slug', 'pro') ?? $plans->get(1);
         $money = fn (int $cents, string $currency) => $cents === 0
             ? 'Free'

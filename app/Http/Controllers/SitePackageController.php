@@ -6,6 +6,7 @@ use App\Jobs\Sites\CheckSitePackagesJob;
 use App\Jobs\Sites\InstallLaravelPackageJob;
 use App\Jobs\Sites\UpdateHorizonAdminsJob;
 use App\Models\Site;
+use App\Services\FeatureManager;
 use App\Services\ReverbEnvironment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,11 +19,17 @@ class SitePackageController extends Controller
         'laravel/reverb' => 'reverb:install',
     ];
 
+    private const PACKAGE_FEATURES = [
+        'laravel/horizon' => 'horizon',
+        'laravel/reverb' => 'reverb',
+    ];
+
     public function store(Request $request, Site $site): RedirectResponse
     {
         $this->authorize('update', $site);
         abort_unless($site->status === 'active', 422, 'Deploy the site at least once before installing a package.');
         $data = $request->validate(['package' => ['required', Rule::in(array_keys(self::PACKAGES))]]);
+        $this->assertPackageEntitlement($request, $data['package']);
         $command = $site->terminalCommands()->create(['user_id' => $request->user()->id, 'command' => 'composer require '.$data['package']]);
         InstallLaravelPackageJob::dispatch($command->id, $data['package'], self::PACKAGES[$data['package']]);
         $site->update(['managed_packages' => collect($site->managed_packages ?? [])->push($data['package'])->unique()->values()->all()]);
@@ -40,6 +47,7 @@ class SitePackageController extends Controller
     {
         $this->authorize('update', $site);
         $data = $request->validate(['package' => ['required', Rule::in(array_keys(self::PACKAGES))]]);
+        $this->assertPackageEntitlement($request, $data['package']);
         $site->update(['managed_packages' => collect($site->managed_packages ?? [])->reject(fn ($p) => $p === $data['package'])->values()->all()]);
 
         return back()->with('status', 'Uplary will no longer reinstall '.$data['package'].' on future deployments. It remains in the current release until removed manually.');
@@ -57,6 +65,11 @@ class SitePackageController extends Controller
     public function horizonAdmins(Request $request, Site $site): RedirectResponse
     {
         $this->authorize('update', $site);
+        abort_unless(
+            app(FeatureManager::class)->enabled('horizon', $request->user()),
+            403,
+            'This feature is not enabled for your account.',
+        );
         abort_unless($site->status === 'active', 422, 'Deploy the site at least once before managing Horizon admins.');
         $data = $request->validate(['emails' => ['nullable', 'string', 'max:5000']]);
         $emails = collect(preg_split('/[\s,]+/', (string) ($data['emails'] ?? ''), -1, PREG_SPLIT_NO_EMPTY))
@@ -69,5 +82,15 @@ class SitePackageController extends Controller
         UpdateHorizonAdminsJob::dispatch($site->id);
 
         return back()->with('status', 'Horizon dashboard access updated. The allowlist takes effect immediately (no redeploy). App-admin access still requires a deploy if the site is on an older Horizon gate.');
+    }
+
+    private function assertPackageEntitlement(Request $request, string $package): void
+    {
+        $feature = self::PACKAGE_FEATURES[$package] ?? null;
+        abort_unless(
+            $feature && app(FeatureManager::class)->enabled($feature, $request->user()),
+            403,
+            'This feature is not enabled for your account.',
+        );
     }
 }

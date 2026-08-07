@@ -109,16 +109,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('throttle:10,1')->name('billing.checkout');
     Route::post('/billing/portal', [BillingController::class, 'portal'])->middleware('throttle:10,1')->name('billing.portal');
     Route::get('/billing/success', [BillingController::class, 'success'])->name('billing.success');
-    Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
-    Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
-    Route::post('/teams/{team}/switch', [TeamController::class, 'switch'])->name('teams.switch');
-    Route::post('/teams/{team}/invitations', [TeamController::class, 'invite'])->name('teams.invite');
-    Route::patch('/teams/{team}/invitations/{invitation}', [TeamController::class, 'updateInvitation'])->name('teams.invitations.update');
-    Route::post('/teams/{team}/invitations/{invitation}/resend', [TeamController::class, 'resendInvitation'])->middleware('throttle:10,1')->name('teams.invitations.resend');
-    Route::delete('/teams/{team}/invitations/{invitation}', [TeamController::class, 'destroyInvitation'])->name('teams.invitations.destroy');
-    Route::get('/team-invitations/{teamInvitation}/{token}', [TeamController::class, 'accept'])->name('team-invitations.accept');
-    Route::delete('/teams/{team}/members/{member}', [TeamController::class, 'remove'])->name('teams.members.remove');
-    Route::patch('/teams/{team}/members/{member}/role', [TeamController::class, 'role'])->name('teams.members.role');
+
+    Route::middleware('feature:teams')->group(function () {
+        Route::get('/teams', [TeamController::class, 'index'])->name('teams.index');
+        Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
+        Route::post('/teams/{team}/switch', [TeamController::class, 'switch'])->name('teams.switch');
+        Route::post('/teams/{team}/invitations', [TeamController::class, 'invite'])->name('teams.invite');
+        Route::patch('/teams/{team}/invitations/{invitation}', [TeamController::class, 'updateInvitation'])->name('teams.invitations.update');
+        Route::post('/teams/{team}/invitations/{invitation}/resend', [TeamController::class, 'resendInvitation'])->middleware('throttle:10,1')->name('teams.invitations.resend');
+        Route::delete('/teams/{team}/invitations/{invitation}', [TeamController::class, 'destroyInvitation'])->name('teams.invitations.destroy');
+        Route::get('/team-invitations/{teamInvitation}/{token}', [TeamController::class, 'accept'])->name('team-invitations.accept');
+        Route::delete('/teams/{team}/members/{member}', [TeamController::class, 'remove'])->name('teams.members.remove');
+        Route::patch('/teams/{team}/members/{member}/role', [TeamController::class, 'role'])->name('teams.members.role');
+    });
+
     Route::get('/docs', DocumentationController::class)->name('docs');
     Route::post('/guide/chat', [GuideController::class, 'chat'])->middleware('throttle:30,1')->name('guide.chat');
     Route::get('/account', [AccountController::class, 'show'])->name('account');
@@ -131,15 +135,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/account/tokens/{token}', [AccountController::class, 'destroyToken']);
     Route::delete('/account/sessions/{session}', [AccountController::class, 'destroySession']);
 
-    Route::get('/cloud-accounts', [CloudAccountController::class, 'index'])->name('cloud-accounts');
-    Route::post('/cloud-accounts', [CloudAccountController::class, 'store'])->middleware('throttle:5,1');
-    Route::get('/cloud-accounts/{cloudAccount}/servers', [CloudServerImportController::class, 'index'])->name('cloud-accounts.servers');
-    Route::post('/cloud-accounts/{cloudAccount}/servers', [CloudServerImportController::class, 'store'])->middleware('throttle:10,1')->name('cloud-accounts.servers.store');
-    Route::delete('/cloud-accounts/{cloudAccount}', [CloudAccountController::class, 'destroy']);
+    Route::middleware('feature:providers')->group(function () {
+        Route::get('/cloud-accounts', [CloudAccountController::class, 'index'])->name('cloud-accounts');
+        Route::post('/cloud-accounts', [CloudAccountController::class, 'store'])->middleware('throttle:5,1');
+        Route::get('/cloud-accounts/{cloudAccount}/servers', [CloudServerImportController::class, 'index'])->name('cloud-accounts.servers');
+        Route::post('/cloud-accounts/{cloudAccount}/servers', [CloudServerImportController::class, 'store'])->middleware('throttle:10,1')->name('cloud-accounts.servers.store');
+        Route::delete('/cloud-accounts/{cloudAccount}', [CloudAccountController::class, 'destroy']);
+    });
 
-    // Behind the switch as a group: hiding the nav entry alone would leave every one of
-    // these reachable by anyone who kept a link.
-    Route::middleware(EnsureDnsEnabled::class)->group(function () {
+    // Behind the platform switch and plan entitlement: hiding the nav entry alone would
+    // leave every one of these reachable by anyone who kept a link.
+    Route::middleware(['feature:dns', EnsureDnsEnabled::class])->group(function () {
         Route::get('/dns', [DnsController::class, 'index'])->name('dns.index');
         Route::post('/dns/accounts', [DnsController::class, 'store'])->middleware('throttle:5,1')->name('dns.accounts.store');
         Route::post('/dns/accounts/{dnsAccount}/sync', [DnsController::class, 'sync'])->middleware('throttle:20,1')->name('dns.accounts.sync');
@@ -150,29 +156,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/dns/zones/{dnsZone}/records/{record}', [DnsController::class, 'destroyRecord'])->name('dns.records.destroy');
     });
 
-    Route::get('/ssh-keys', [SshKeyController::class, 'index'])->name('ssh-keys');
-    Route::post('/ssh-keys/generate', [SshKeyController::class, 'generate']);
-    Route::post('/ssh-keys', [SshKeyController::class, 'store']);
-    Route::get('/ssh-keys/{sshKey}/download', [SshKeyController::class, 'download'])->name('ssh-keys.download');
-    Route::delete('/ssh-keys/{sshKey}', [SshKeyController::class, 'destroy']);
+    Route::middleware('feature:ssh')->group(function () {
+        Route::get('/ssh-keys', [SshKeyController::class, 'index'])->name('ssh-keys');
+        Route::post('/ssh-keys/generate', [SshKeyController::class, 'generate']);
+        Route::post('/ssh-keys', [SshKeyController::class, 'store']);
+        Route::get('/ssh-keys/{sshKey}/download', [SshKeyController::class, 'download'])->name('ssh-keys.download');
+        Route::delete('/ssh-keys/{sshKey}', [SshKeyController::class, 'destroy']);
+    });
 
-    Route::get('/firewall', [FirewallController::class, 'index'])->name('firewall.index');
-    Route::post('/firewall/rules', [FirewallController::class, 'store'])->middleware('throttle:30,1')->name('firewall.rules.store');
-    Route::delete('/firewall/rules/{firewallRule}', [FirewallController::class, 'destroy'])->name('firewall.rules.destroy');
-    Route::post('/firewall/servers/{server}/sync', [FirewallController::class, 'sync'])->middleware('throttle:20,1')->name('firewall.sync');
-    Route::post('/firewall/servers/{server}/refresh', [FirewallController::class, 'refresh'])->middleware('throttle:20,1')->name('firewall.refresh');
+    Route::middleware('feature:firewall')->group(function () {
+        Route::get('/firewall', [FirewallController::class, 'index'])->name('firewall.index');
+        Route::post('/firewall/rules', [FirewallController::class, 'store'])->middleware('throttle:30,1')->name('firewall.rules.store');
+        Route::delete('/firewall/rules/{firewallRule}', [FirewallController::class, 'destroy'])->name('firewall.rules.destroy');
+        Route::post('/firewall/servers/{server}/sync', [FirewallController::class, 'sync'])->middleware('throttle:20,1')->name('firewall.sync');
+        Route::post('/firewall/servers/{server}/refresh', [FirewallController::class, 'refresh'])->middleware('throttle:20,1')->name('firewall.refresh');
+    });
 
-    Route::get('/security', [SecurityController::class, 'index'])->name('security.index');
-    Route::get('/security/status', [SecurityController::class, 'scanStatus'])->name('security.status');
-    Route::post('/security/scan', [SecurityController::class, 'scan'])->middleware('throttle:10,1')->name('security.scan');
-    Route::put('/security/settings', [SecurityController::class, 'settings'])->name('security.settings.update');
-    Route::delete('/security/settings', [SecurityController::class, 'resetSettings'])->name('security.settings.reset');
-    Route::patch('/security/incidents/{securityIncident}/status', [SecurityController::class, 'status'])->name('security.incidents.status');
-    Route::post('/security/incidents/{securityIncident}/block', [SecurityController::class, 'block'])->middleware('throttle:10,1')->name('security.incidents.block');
-    Route::delete('/security/incidents/{securityIncident}/block', [SecurityController::class, 'unblock'])->middleware('throttle:10,1')->name('security.incidents.unblock');
+    Route::middleware('feature:security')->group(function () {
+        Route::get('/security', [SecurityController::class, 'index'])->name('security.index');
+        Route::get('/security/status', [SecurityController::class, 'scanStatus'])->name('security.status');
+        Route::post('/security/scan', [SecurityController::class, 'scan'])->middleware('throttle:10,1')->name('security.scan');
+        Route::put('/security/settings', [SecurityController::class, 'settings'])->name('security.settings.update');
+        Route::delete('/security/settings', [SecurityController::class, 'resetSettings'])->name('security.settings.reset');
+        Route::patch('/security/incidents/{securityIncident}/status', [SecurityController::class, 'status'])->name('security.incidents.status');
+        Route::post('/security/incidents/{securityIncident}/block', [SecurityController::class, 'block'])->middleware('throttle:10,1')->name('security.incidents.block');
+        Route::delete('/security/incidents/{securityIncident}/block', [SecurityController::class, 'unblock'])->middleware('throttle:10,1')->name('security.incidents.unblock');
+    });
 
-    Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
-    Route::get('/notifications', [NotificationSettingsController::class, 'index'])->name('notifications.index');
+    Route::middleware('feature:notifications')->group(function () {
+        Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
+        Route::get('/notifications', [NotificationSettingsController::class, 'index'])->name('notifications.index');
+        Route::post('/notification-channels', [MonitoringController::class, 'storeChannel'])->name('notification-channels.store');
+        Route::delete('/notification-channels/{notificationChannel}', [MonitoringController::class, 'destroyChannel'])->name('notification-channels.destroy');
+    });
 
     Route::get('/servers', [ServerManagementController::class, 'index'])->name('servers.index');
     Route::get('/servers/create', ServerProvisionWizard::class)->name('servers.create');
@@ -182,25 +198,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/servers/{server}', [ServerManagementController::class, 'destroy'])->name('servers.destroy');
     Route::post('/servers/{server}/retry-provisioning', RetryServerProvisioningController::class)->name('servers.retry-provisioning');
     Route::patch('/servers/{server}/team', [ServerTeamController::class, 'update'])->name('servers.team.update');
-    Route::post('/servers/{server}/backup-policies', [BackupController::class, 'store'])->name('backup-policies.store');
-    Route::patch('/backup-policies/{backupPolicy}/toggle', [BackupController::class, 'toggle'])->name('backup-policies.toggle');
-    Route::post('/backup-policies/{backupPolicy}/run', [BackupController::class, 'run'])->name('backup-policies.run');
-    Route::delete('/backup-policies/{backupPolicy}', [BackupController::class, 'destroy'])->name('backup-policies.destroy');
-    Route::post('/database-backups/{databaseBackup}/restore', [BackupController::class, 'restoreDatabase'])->name('database-backups.restore');
-    Route::post('/servers/{server}/snapshots', [BackupController::class, 'snapshot'])->name('snapshots.store');
-    Route::post('/server-snapshots/{serverSnapshot}/restore', [BackupController::class, 'restoreSnapshot'])->name('snapshots.restore');
-    Route::delete('/server-snapshots/{serverSnapshot}', [BackupController::class, 'destroySnapshot'])->name('snapshots.destroy');
     Route::post('/servers/{server}/phpmyadmin', [PhpMyAdminController::class, 'store'])->name('phpmyadmin.store');
     Route::delete('/servers/{server}/phpmyadmin', [PhpMyAdminController::class, 'destroy'])->name('phpmyadmin.destroy');
-    Route::post('/servers/{server}/monitoring/rotate', [MonitoringController::class, 'rotate'])->name('monitoring.rotate');
-    Route::delete('/servers/{server}/monitoring', [MonitoringController::class, 'disable'])->name('monitoring.disable');
-    Route::post('/servers/{server}/auto-heal', [MonitoringController::class, 'enableAutoHeal'])->name('auto-heal.enable');
-    Route::delete('/servers/{server}/auto-heal', [MonitoringController::class, 'disableAutoHeal'])->name('auto-heal.disable');
-    Route::get('/servers/{server}/monitoring/agent', MonitoringAgentController::class)->name('monitoring.agent');
-    Route::post('/servers/{server}/alert-rules', [MonitoringController::class, 'storeRule'])->name('alert-rules.store');
-    Route::delete('/alert-rules/{alertRule}', [MonitoringController::class, 'destroyRule'])->name('alert-rules.destroy');
-    Route::post('/notification-channels', [MonitoringController::class, 'storeChannel'])->name('notification-channels.store');
-    Route::delete('/notification-channels/{notificationChannel}', [MonitoringController::class, 'destroyChannel'])->name('notification-channels.destroy');
     Route::post('/servers/{server}/databases', [ManagedDatabaseController::class, 'store'])->name('databases.store');
     Route::delete('/databases/{managedDatabase}', [ManagedDatabaseController::class, 'destroy'])->name('databases.destroy');
     Route::post('/databases/{managedDatabase}/export', [ManagedDatabaseController::class, 'export'])->name('databases.export');
@@ -211,6 +210,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/cron-jobs/{cronJob}', [CronJobController::class, 'destroy'])->name('cron-jobs.destroy');
     Route::post('/servers/{server}/operations', [ServerOperationController::class, 'store'])->name('server-operations.store');
     Route::post('/servers/{server}/php-extensions', [PhpExtensionController::class, 'store'])->name('php-extensions.store');
+
+    Route::middleware('feature:backups')->group(function () {
+        Route::post('/servers/{server}/backup-policies', [BackupController::class, 'store'])->name('backup-policies.store');
+        Route::patch('/backup-policies/{backupPolicy}/toggle', [BackupController::class, 'toggle'])->name('backup-policies.toggle');
+        Route::post('/backup-policies/{backupPolicy}/run', [BackupController::class, 'run'])->name('backup-policies.run');
+        Route::delete('/backup-policies/{backupPolicy}', [BackupController::class, 'destroy'])->name('backup-policies.destroy');
+        Route::post('/database-backups/{databaseBackup}/restore', [BackupController::class, 'restoreDatabase'])->name('database-backups.restore');
+        Route::post('/servers/{server}/snapshots', [BackupController::class, 'snapshot'])->name('snapshots.store');
+        Route::post('/server-snapshots/{serverSnapshot}/restore', [BackupController::class, 'restoreSnapshot'])->name('snapshots.restore');
+        Route::delete('/server-snapshots/{serverSnapshot}', [BackupController::class, 'destroySnapshot'])->name('snapshots.destroy');
+    });
+
+    Route::middleware('feature:monitoring')->group(function () {
+        Route::post('/servers/{server}/monitoring/rotate', [MonitoringController::class, 'rotate'])->name('monitoring.rotate');
+        Route::delete('/servers/{server}/monitoring', [MonitoringController::class, 'disable'])->name('monitoring.disable');
+        Route::post('/servers/{server}/auto-heal', [MonitoringController::class, 'enableAutoHeal'])->name('auto-heal.enable');
+        Route::delete('/servers/{server}/auto-heal', [MonitoringController::class, 'disableAutoHeal'])->name('auto-heal.disable');
+        Route::get('/servers/{server}/monitoring/agent', MonitoringAgentController::class)->name('monitoring.agent');
+        Route::post('/servers/{server}/alert-rules', [MonitoringController::class, 'storeRule'])->name('alert-rules.store');
+        Route::delete('/alert-rules/{alertRule}', [MonitoringController::class, 'destroyRule'])->name('alert-rules.destroy');
+    });
+
     Route::post('/sites/{site}/ssl', [SslCertificateController::class, 'store'])->name('ssl.store');
     Route::post('/sites/{site}/cron-jobs', [CronJobController::class, 'storeForSite'])->name('sites.cron-jobs.store');
     Route::post('/sites/{site}/workers', [QueueWorkerController::class, 'store'])->name('workers.store');
@@ -224,19 +245,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/sites/create', [SiteController::class, 'create'])->name('sites.create');
     Route::post('/sites', [SiteController::class, 'store'])->name('sites.store');
     Route::get('/sites/{site}', [SiteController::class, 'show'])->name('sites.show');
-    Route::middleware(EnsureStagingSitesEnabled::class)->group(function () {
+    Route::middleware(['feature:staging', EnsureStagingSitesEnabled::class])->group(function () {
         Route::post('/sites/{site}/staging', [SiteController::class, 'storeStaging'])->name('sites.staging.store');
         Route::post('/sites/{site}/promote', [SiteController::class, 'promote'])->name('sites.promote');
     });
-    Route::post('/sites/{site}/monitoring', [SiteController::class, 'enableMonitoring'])->name('sites.monitoring.enable');
-    Route::delete('/sites/{site}/monitoring', [SiteController::class, 'disableMonitoring'])->name('sites.monitoring.disable');
-    Route::post('/sites/{site}/monitoring/check', [SiteController::class, 'checkMonitoring'])->name('sites.monitoring.check');
-    Route::get('/sites/{site}/remote', RemoteManagementController::class)->name('sites.remote');
-    Route::post('/sites/{site}/configurations', [SiteConfigurationController::class, 'store'])->name('site-configurations.store');
-    Route::post('/site-configurations/{siteConfiguration}/rollback', [SiteConfigurationController::class, 'rollback'])->name('site-configurations.rollback');
-    Route::post('/sites/{site}/files', [FileManagerController::class, 'store'])->name('site-files.store');
-    Route::get('/file-operations/{fileOperation}/download', [FileManagerController::class, 'download'])->name('site-files.download');
-    Route::post('/sites/{site}/terminal', [TerminalController::class, 'store'])->middleware('throttle:10,1')->name('terminal.store');
+    Route::middleware('feature:monitoring')->group(function () {
+        Route::post('/sites/{site}/monitoring', [SiteController::class, 'enableMonitoring'])->name('sites.monitoring.enable');
+        Route::delete('/sites/{site}/monitoring', [SiteController::class, 'disableMonitoring'])->name('sites.monitoring.disable');
+        Route::post('/sites/{site}/monitoring/check', [SiteController::class, 'checkMonitoring'])->name('sites.monitoring.check');
+    });
+    Route::middleware('feature:remote_management')->group(function () {
+        Route::get('/sites/{site}/remote', RemoteManagementController::class)->name('sites.remote');
+        Route::post('/sites/{site}/configurations', [SiteConfigurationController::class, 'store'])->name('site-configurations.store');
+        Route::post('/site-configurations/{siteConfiguration}/rollback', [SiteConfigurationController::class, 'rollback'])->name('site-configurations.rollback');
+        Route::post('/sites/{site}/files', [FileManagerController::class, 'store'])->name('site-files.store');
+        Route::get('/file-operations/{fileOperation}/download', [FileManagerController::class, 'download'])->name('site-files.download');
+        Route::post('/sites/{site}/terminal', [TerminalController::class, 'store'])->middleware('throttle:10,1')->name('terminal.store');
+    });
     Route::patch('/sites/{site}', [SiteController::class, 'update'])->name('sites.update');
     Route::put('/sites/{site}/environment', [SiteController::class, 'environment'])->name('sites.environment');
     Route::post('/sites/{site}/deployments', [SiteController::class, 'deploy'])->name('sites.deploy');

@@ -85,8 +85,9 @@
                 <h2 class="section-title">What's new</h2>
                 <p class="mt-3 text-sm muted">Recent console updates for customers. Jump to a section for the full walkthrough.</p>
                 <ul class="mt-4 list-inside list-disc space-y-2 text-sm muted">
+                    <li><a class="link-action" href="#security-detection">Security detection</a> — sidebar <strong class="heading">Security</strong> page with live scan status (<strong class="heading">Queued</strong> → <strong class="heading">Scanning…</strong> → last scan / Failed), scheduled checks every five minutes, and configurable per-rule detection settings (enabled by default).</li>
                     <li><a class="link-action" href="#firewall">Firewall</a> — manage per-server UFW allow/deny rules from the sidebar.</li>
-                    <li><a class="link-action" href="#notifications">Notifications</a> — fleet incidents plus account-wide email recipients (including backup failure alerts).</li>
+                    <li><a class="link-action" href="#notifications">Notifications</a> — fleet incidents (including security) plus account-wide email recipients (backup failure and security incident alerts).</li>
                     <li><a class="link-action" href="#teams">Teams</a> — invite Edit / Resend / Delete, plus Viewer, Operator, Admin, and Owner privileges.</li>
                     <li><a class="link-action" href="#workers">Cron presets</a> — one-click Laravel <code>schedule:run</code> on site and server Cron tabs.</li>
                     <li><a class="link-action" href="#sites">PHP 8.5</a> — available when creating sites; new servers install 8.5 (plus 8.4/8.3/8.2) with 8.5 as the default.</li>
@@ -311,17 +312,53 @@
             {{-- Security detection --}}
             <section id="security-detection" class="panel scroll-mt-8">
                 <h2 class="section-title">Security detection</h2>
-                <p class="mt-3 text-sm muted">The <a class="link-action" href="{{ route('security.index') }}">Security</a> page runs read-only checks over managed SSH and turns threshold breaches into tenant-scoped incidents.</p>
-                <ul class="mt-4 list-inside list-disc space-y-2 text-sm muted">
-                    <li><strong class="heading">Server signals:</strong> failed SSH authentication, administrative user changes, known miner processes and ports, and hash changes to cron, SSH keys, web roots, and <code>.env</code> files.</li>
-                    <li><strong class="heading">Site signals:</strong> login and POST bursts, rapid route scans, known scanner user agents, Fail2ban/WAF blocks, malware signatures, and unexpected admin actions.</li>
-                    <li><strong class="heading">Configuration:</strong> detection is on by default. In <a class="link-action" href="{{ route('security.index') }}">Security → Detection settings</a>, team owners and administrators can change each rule's enabled state, threshold, window, and severity for the active workspace.</li>
-                    <li>Deployment configuration supplies recommended defaults; database-backed workspace overrides take precedence. Use <strong class="heading">Reset to recommended defaults</strong> to remove all overrides. Keep detection enabled and tune only after observing a normal baseline.</li>
-                    <li>Scans run every five minutes through the operations queue (SSH collection). The first integrity scan creates a protected host-side hash baseline and does not alert.</li>
-                    <li>Incidents can be open, acknowledged, resolved, or reopened. Every state and mitigation change is audit logged.</li>
-                    <li><strong class="heading">Block IP</strong> is manual only. It rejects private, reserved, loopback, and server-owned addresses, then queues a normal UFW deny rule that can be removed from the incident.</li>
+                <p class="mt-3 text-sm muted">Open <a class="link-action" href="{{ route('security.index') }}">Security</a> in the sidebar to watch managed servers for suspicious host and site signals. {{ $branding['name'] }} runs read-only checks over managed SSH, turns threshold breaches into workspace incidents, and never auto-blocks IPs or kills processes.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">What is detected</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li><strong class="heading">Server signals</strong> — repeated failed SSH logins, administrative user or group changes, known crypto-miner process names and high-confidence mining ports, and unexpected hash changes to cron, SSH authorized keys, web entry files, and <code>.env</code> paths (path and change indication only — secrets are never collected).</li>
+                    <li><strong class="heading">Site signals</strong> — login and POST bursts, one address rapidly scanning routes, known scanner user agents, Fail2ban / WAF blocks, malware signature hits, and unexpected admin actions when those events are available.</li>
                 </ul>
-                <p class="mt-3 text-sm muted">Generic application login/admin events require the signed security-event endpoint or an app/agent integration. This feature is pragmatic detection and response, not a replacement for endpoint protection or a SIEM.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">How scans work</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>Use <strong class="heading">Scan now</strong> on a server (or <strong class="heading">Scan all now</strong>) to queue collection immediately.</li>
+                    <li>Scheduled scans also run about every five minutes for eligible servers.</li>
+                    <li>Jobs use the <code>operations</code> queue and existing managed SSH credentials — keep an operations worker running.</li>
+                    <li>Each server shows a live status badge: <strong class="heading">Queued</strong> → <strong class="heading">Scanning…</strong> → last completed scan time, or <strong class="heading">Failed</strong> with a short message. The Security page refreshes status while a scan is in flight.</li>
+                    <li>The first integrity scan builds a protected host-side hash baseline and does not raise an alert.</li>
+                </ol>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Configuration</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>Detection is <strong class="heading">enabled by default</strong> for the workspace.</li>
+                    <li>Team owners and administrators open <strong class="heading">Detection settings</strong> on the Security page to toggle each rule, and set threshold, lookback window (minutes), and severity (info / warning / critical).</li>
+                    <li>Recommended defaults ship with the platform; workspace overrides are stored separately. Use <strong class="heading">Reset to recommended defaults</strong> to clear overrides.</li>
+                    <li>Keep detection enabled. Observe a normal baseline first, then tune only noisy thresholds or windows. Turning the global setting off stops scheduled collection, manual scans, and incident creation from pushed agent events for that workspace.</li>
+                </ol>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Incidents and email</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>Matching signals become incidents under <a class="link-action" href="{{ route('notifications.index') }}">Notifications → Incidents</a> (filter by Security). You can acknowledge or resolve them; reopen if needed. State and mitigation changes are audit logged.</li>
+                    <li>New or escalated incidents can email you when a recipient is subscribed to <strong class="heading">Security incident</strong> under Notifications → Email recipients (or when no recipients are configured, mail goes to your account address).</li>
+                </ul>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Block IP (manual only)</h3>
+                <p class="mt-2 text-sm muted">From a security incident, <strong class="heading">Block IP</strong> queues a normal UFW deny rule for a public source address. Private, reserved, loopback, and server-owned addresses are rejected. <strong class="heading">Unblock</strong> removes only the rule created for that incident. Automatic IP blocking is off and unavailable — review each case first. Related allow/deny management also lives under <a class="link-action" href="#firewall">Firewall</a>.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Limitations</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>This is pragmatic detection and response for managed hosts — not a full EDR or SIEM replacement.</li>
+                    <li>Generic application login and admin events need a signed security-event push from your app or agent; they are not inferred from SSH collection alone.</li>
+                    <li>{{ $branding['name'] }} never deletes users or kills processes automatically.</li>
+                </ul>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Prerequisites</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>The server must be <strong class="heading">Ready</strong> with a working managed SSH key.</li>
+                    <li>Security detection must stay enabled for the workspace.</li>
+                    <li>An operations queue worker must process scan jobs (a status stuck on Queued usually means the worker is down).</li>
+                </ul>
             </section>
 
             {{-- Notifications --}}
@@ -330,11 +367,11 @@
                 <p class="mt-3 text-sm muted">Open <a class="link-action" href="{{ route('notifications.index') }}">Notifications</a> in the sidebar (below Firewall). The page has two tabs: <strong class="heading">Incidents</strong> and <strong class="heading">Email recipients</strong>.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Incidents</h3>
-                <p class="mt-2 text-sm muted">A single list of open and resolved events across your servers and sites — uptime, DNS mismatch, metric alerts, and similar operational signals.</p>
+                <p class="mt-2 text-sm muted">A single list of open and resolved events across your servers and sites — uptime, DNS mismatch, metric alerts, <a class="link-action" href="#security-detection">security detection</a>, and similar operational signals.</p>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
-                    <li>Filter by status (open / resolved / all), severity, and server.</li>
+                    <li>Filter by status (open / resolved / all), severity, type (including Security), and server.</li>
                     <li>Each row shows the message, severity, source, start/resolve times, and links back to the related server or site when available.</li>
-                    <li>Incidents open from monitoring rules and site probes; they resolve automatically when health returns to normal.</li>
+                    <li>Monitoring and site-probe incidents often resolve when health returns; security incidents are acknowledged or resolved from the incident actions (with optional manual Block IP).</li>
                 </ul>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Email recipients</h3>
@@ -344,7 +381,7 @@
                     <li>Optionally tick which events to receive — leave every box clear to get all of them.</li>
                     <li>Recipients are account-wide, not tied to a single server.</li>
                 </ol>
-                <p class="mt-3 text-sm muted">With no recipients configured, operational email goes to your account address. Event types include server provisioned, server down, disk full, site added, website down/recovered, DNS mismatch, deploy complete, SSL issued/expiring, queue failed, <strong class="heading">backup failed</strong>, and auto-heal actions. Per-server Slack, Discord, and Telegram channels still live on each server’s Monitoring controls.</p>
+                <p class="mt-3 text-sm muted">With no recipients configured, operational email goes to your account address. Event types include server provisioned, server down, disk full, site added, website down/recovered, DNS mismatch, deploy complete, SSL issued/expiring, queue failed, <strong class="heading">backup failed</strong>, <strong class="heading">security incident</strong>, and auto-heal actions. Per-server Slack, Discord, and Telegram channels still live on each server’s Monitoring controls.</p>
             </section>
 
             {{-- Firewall --}}

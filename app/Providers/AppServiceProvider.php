@@ -79,6 +79,10 @@ class AppServiceProvider extends ServiceProvider
             $view->with('analytics', $settings->analytics());
             $view->with('aiGuideEnabled', $settings->aiGuideEnabled());
             $view->with('insertCode', $settings->insertCode());
+            $user = auth()->user();
+            $view->with('planFeatures', $user
+                ? app(\App\Services\FeatureManager::class)->mapFor($user)
+                : []);
         });
     }
 
