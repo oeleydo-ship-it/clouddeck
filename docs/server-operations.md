@@ -69,7 +69,19 @@ The UI reflects the last synchronization job rather than assuming the remote act
 
 ## Service actions
 
-The application never accepts a raw service command. The operation job maps a fixed identifier to an allowlisted command for Nginx configuration testing/reload/restart, PHP 8.4-FPM reload/restart, and Supervisor, Redis, or MySQL restart. Each action is tenant-authorized and stores output, exit status, start time, and completion time.
+The application never accepts a raw service command. The operation job maps a fixed identifier to an allowlisted command for Nginx configuration testing/reload/restart, PHP-FPM reload/restart (every installed `php*-fpm` unit), and Supervisor, Redis, or MySQL restart. Each action is tenant-authorized and stores output, exit status, start time, and completion time.
+
+## Maintenance (Services tab)
+
+Three additional allowlisted operations run shell scripts from `resources/scripts/` over SSH and record output on the same `server_operations` history:
+
+| Type | Script | Purpose |
+| --- | --- | --- |
+| `system:harden` | `harden-ubuntu.sh` | Idempotent hardening: ensure UFW/Fail2Ban/unattended-upgrades, additive UFW baseline (OpenSSH + Nginx Full only — does **not** `ufw reset` or remove `uplary-fw-*` console rules), SSH drop-in (password auth off), Fail2Ban sshd jail, sysctl drop-in |
+| `system:update` | `update-ubuntu.sh` | `apt-get update && apt-get upgrade -y` (and autoremove) with apt-lock retries |
+| `system:release-upgrade` | `upgrade-ubuntu-release.sh` | Noninteractive `do-release-upgrade`; requires typing the server hostname; disruptive and should be rare |
+
+Package updates are the primary maintenance action. Major release upgrades are behind a confirmation panel with an explicit warning. Job timeout is 30 minutes on the `operations` queue.
 
 ## Production requirements
 
@@ -77,5 +89,5 @@ The application never accepts a raw service command. The operation job maps a fi
 - Run `php artisan schedule:work` or invoke `php artisan schedule:run` every minute.
 - Keep SSH private keys and provider credentials encrypted with a stable production `APP_KEY`.
 - Configure a private filesystem disk and retention policy for database exports.
-- Bootstrap hosts with the bundled Ubuntu script, or provide equivalent Nginx, PHP 8.4, MySQL, PostgreSQL, Redis, Supervisor, Certbot, and firewall packages.
+- Bootstrap hosts with the bundled Ubuntu script, or provide equivalent Nginx, PHP 8.5 (and 8.4/8.3/8.2), MySQL, PostgreSQL, Redis, Supervisor, Certbot, and firewall packages.
 - Test provisioning against an isolated cloud account before enabling customer access.

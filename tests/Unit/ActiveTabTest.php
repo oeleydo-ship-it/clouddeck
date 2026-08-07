@@ -27,6 +27,7 @@ class ActiveTabTest extends TestCase
         $this->assertSame($site.'?tab=environment', ActiveTab::append($site.'?tab=environment', 'queue'));
         $this->assertSame($remote, ActiveTab::append($remote, 'queue'));
         $this->assertSame($manage.'?tab=workers', ActiveTab::append($manage, 'workers'));
+        $this->assertSame('https://uplary.test/notifications?tab=email', ActiveTab::append('https://uplary.test/notifications', 'email'));
         $this->assertSame('https://uplary.test/deployments/abc', ActiveTab::append('https://uplary.test/deployments/abc', 'queue'));
     }
 }

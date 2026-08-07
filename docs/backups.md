@@ -32,4 +32,9 @@ Sanctum clients can list recovery state at `GET /api/backups`, create policies a
 - Database and server restores require explicit resource-name confirmation.
 - Restore requests and policy changes are written to the encrypted administrative audit trail.
 - Provider credentials, database passwords, and stored configuration remain encrypted at rest.
-- Alert on failed backup or restore rows and review Horizon failures; automated notification escalation is a future extension.
+- Failed database exports, provider snapshot create/refresh failures, and database restore failures notify the owner through `OperationalEventNotification` (`backup_failed`), the same event WordPress on-server backups already use. Subscribe under Notifications.
+- Review Horizon failures for jobs that never reach `failed()` (worker crashes, timeout kills).
+- Large SQL restores still base64 the payload over SSH; very large production databases should use provider-native backups or a future streaming agent.
+- WordPress site archives remain on the VPS (not downloaded/offloaded to S3 from this panel).
+- Custom (BYO) servers support database policies only; provider snapshots require a Droplet `provider_id`.
+- Encrypted off-site archives, Laravel site file backups, and restore verification drills remain out of scope.

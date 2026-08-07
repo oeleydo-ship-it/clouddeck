@@ -14,15 +14,20 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class TeamController extends Controller
 {
     public function index(Request $request): View
     {
-        $owned = $request->user()->ownedTeams()->with(['memberships.user', 'invitations'])->latest()->get();
+        $owned = $request->user()->ownedTeams()->with([
+            'memberships.user',
+            'invitations' => fn ($query) => $query->whereNull('accepted_at')->latest(),
+        ])->latest()->get();
         $memberships = $request->user()->teamMemberships()->with('team.owner')->whereNotNull('accepted_at')->get();
 
         return view('teams.index', compact('owned', 'memberships'));
@@ -67,6 +72,52 @@ class TeamController extends Controller
         return back()->with('status', 'Team invitation sent.');
     }
 
+    public function updateInvitation(Request $request, Team $team, TeamInvitation $invitation, AuditLogger $audit, TeamAccess $access): RedirectResponse
+    {
+        $this->assertManagesPendingInvitation($request, $team, $invitation, $access);
+        $data = $request->validate(['role' => ['required', Rule::in(['admin', 'operator', 'viewer'])]]);
+        $oldRole = $invitation->role;
+        $invitation->update(['role' => $data['role']]);
+        $audit->record($request, 'team.invitation_role_updated', $team, ['role' => $oldRole], ['role' => $invitation->role, 'email' => $invitation->email]);
+
+        return back()->with('status', 'Invitation role updated.');
+    }
+
+    public function resendInvitation(Request $request, Team $team, TeamInvitation $invitation, AuditLogger $audit, TeamAccess $access): RedirectResponse
+    {
+        $this->assertManagesPendingInvitation($request, $team, $invitation, $access);
+
+        $key = 'team-invitation-resend:'.$invitation->id;
+        if (RateLimiter::tooManyAttempts($key, 1)) {
+            $seconds = RateLimiter::availableIn($key);
+
+            throw ValidationException::withMessages([
+                'invitation' => "Please wait {$seconds} seconds before resending this invitation.",
+            ]);
+        }
+
+        RateLimiter::hit($key, 180);
+
+        $token = Str::random(64);
+        $invitation->update([
+            'token_hash' => hash('sha256', $token),
+            'expires_at' => now()->addDays(7),
+        ]);
+        Notification::route('mail', $invitation->email)->notify(new TeamInvitationNotification($invitation->load('team'), $token));
+        $audit->record($request, 'team.invitation_resent', $team, [], ['email' => $invitation->email, 'role' => $invitation->role]);
+
+        return back()->with('status', 'Invitation resent. Expiry reset to seven days.');
+    }
+
+    public function destroyInvitation(Request $request, Team $team, TeamInvitation $invitation, AuditLogger $audit, TeamAccess $access): RedirectResponse
+    {
+        $this->assertManagesPendingInvitation($request, $team, $invitation, $access);
+        $audit->record($request, 'team.invitation_cancelled', $team, ['email' => $invitation->email, 'role' => $invitation->role]);
+        $invitation->delete();
+
+        return back()->with('status', 'Invitation cancelled.');
+    }
+
     public function accept(Request $request, TeamInvitation $teamInvitation, string $token, AuditLogger $audit): RedirectResponse
     {
         abort_unless(! $teamInvitation->accepted_at && $teamInvitation->expires_at->isFuture() && hash_equals($teamInvitation->token_hash, hash('sha256', $token)) && strcasecmp($teamInvitation->email, $request->user()->email) === 0, 403);
@@ -78,6 +129,11 @@ class TeamController extends Controller
         $audit->record($request, 'team.invitation_accepted', $teamInvitation->team, [], ['invitation_id' => $teamInvitation->id]);
 
         return redirect()->route('teams.index')->with('status', 'Team invitation accepted.');
+    }
+
+    private function assertManagesPendingInvitation(Request $request, Team $team, TeamInvitation $invitation, TeamAccess $access): void
+    {
+        abort_unless($access->canManage($request->user(), $team) && $invitation->team_id === $team->id && $invitation->isPending(), 403);
     }
 
     public function role(Request $request, Team $team, TeamMember $member, AuditLogger $audit, TeamAccess $access): RedirectResponse

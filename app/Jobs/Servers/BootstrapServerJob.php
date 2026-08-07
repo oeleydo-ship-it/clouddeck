@@ -26,7 +26,10 @@ class BootstrapServerJob implements ShouldQueue
         $this->progress($server, 35, 'Waiting for SSH', ServerStatus::Provisioning);
         $this->awaitSsh($server);
         $this->progress($server, 40, 'Bootstrapping Ubuntu', ServerStatus::Provisioning);
-        $ssh->runScript($server, resource_path('scripts/bootstrap-ubuntu.sh'), ['PHP_VERSION' => '8.4']);
+        $ssh->runScript($server, resource_path('scripts/bootstrap-ubuntu.sh'), [
+            'PHP_VERSION' => config('clouddeck.default_php_version'),
+            'PHP_VERSIONS' => implode(' ', config('clouddeck.php_versions')),
+        ]);
         $this->progress($server, 90, 'Verifying services');
     }
 

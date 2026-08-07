@@ -4,6 +4,7 @@ namespace App\Jobs\Operations;
 
 use App\Jobs\Backups\PruneBackupRetentionJob;
 use App\Models\DatabaseBackup;
+use App\Notifications\OperationalEventNotification;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -63,6 +64,18 @@ class ExportDatabaseJob implements ShouldQueue
 
     public function failed(Throwable $e): void
     {
-        DatabaseBackup::find($this->backupId)?->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
+        $backup = DatabaseBackup::with(['user', 'database.server'])->find($this->backupId);
+        $backup?->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
+
+        $server = $backup?->database?->server;
+        $notifiable = $backup?->user ?? $server?->user;
+        $notifiable?->notify(new OperationalEventNotification(
+            event: 'backup_failed',
+            title: 'Database backup failed'.($server ? ' on '.$server->hostname : ''),
+            body: ($backup?->database?->name ? $backup->database->name.': ' : '').$e->getMessage(),
+            url: $server ? route('servers.manage', ['server' => $server, 'tab' => 'backups']) : null,
+            severity: 'critical',
+            context: ['backup_id' => $backup?->id, 'database_id' => $backup?->managed_database_id, 'server_id' => $server?->id],
+        ));
     }
 }

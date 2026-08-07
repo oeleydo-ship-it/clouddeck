@@ -119,7 +119,7 @@ class EmailNotificationTest extends TestCase
 
         $this->actingAs($user)->post(route('notification-channels.store'), [
             'name' => 'Operations', 'address' => 'ops@example.com', 'events' => ['server_down', 'ssl_expiring'],
-        ])->assertSessionHas('status');
+        ])->assertRedirect(route('notifications.index', ['tab' => 'email']))->assertSessionHas('status');
 
         $channel = NotificationChannel::sole();
         $this->assertSame('email', $channel->type);

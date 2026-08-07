@@ -139,7 +139,7 @@
                 <h3 class="mt-6 text-sm font-semibold heading">What happens next</h3>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
                     <li>The droplet is created at the provider and progress is tracked on the dashboard.</li>
-                    <li>Bootstrap installs Nginx, PHP 8.4, MySQL, Redis, Supervisor, Node, Composer, UFW, Fail2Ban, Certbot, and swap.</li>
+                    <li>Bootstrap installs Nginx, PHP 8.5 (plus 8.4/8.3/8.2), MySQL, Redis, Supervisor, Node, Composer, UFW, Fail2Ban, Certbot, and swap.</li>
                     <li>When status is ready, you can create sites on the server.</li>
                     <li>If a stage fails, open the server and use <strong class="heading">Retry provisioning</strong> after fixing the cause.</li>
                 </ul>
@@ -154,7 +154,7 @@
                 <h3 class="mt-6 text-sm font-semibold heading">Laravel sites</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
                     <li>Choose the <strong class="heading">Laravel</strong> platform.</li>
-                    <li>Select a ready server, enter the domain, and pick a PHP version (8.4, 8.3, or 8.2).</li>
+                    <li>Select a ready server, enter the domain, and pick a PHP version (8.5, 8.4, 8.3, or 8.2).</li>
                     <li>Provide the Git repository URL and branch (defaults to <code>main</code>).</li>
                     <li>Optionally enable <strong class="heading">Auto deploy</strong> (webhook-driven) and <strong class="heading">Zero downtime</strong> releases.</li>
                     <li>Create the site. {{ $branding['name'] }} configures Nginx and prepares release directories in the background.</li>

@@ -136,6 +136,24 @@ class ServerOperationsTest extends TestCase
         $this->actingAs($user)->get("/sites/{$site->id}")->assertOk()->assertSee('Scheduler');
     }
 
+    public function test_cron_forms_expose_laravel_scheduler_presets(): void
+    {
+        [$user, $server, $site] = $this->infrastructure();
+        $commandAttr = 'data-cron-command="cd /var/www/app.example.com/current &amp;&amp; php artisan schedule:run"';
+
+        $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=cron")
+            ->assertOk()
+            ->assertSee('data-cron-presets', false)
+            ->assertSee('Laravel · app.example.com')
+            ->assertSee($commandAttr, false);
+
+        $this->actingAs($user)->get("/sites/{$site->id}?tab=cron")
+            ->assertOk()
+            ->assertSee('data-cron-presets', false)
+            ->assertSee('>Laravel scheduler</button>', false)
+            ->assertSee($commandAttr, false);
+    }
+
     public function test_site_cron_jobs_cannot_be_created_by_another_user(): void
     {
         [$user, $server, $site] = $this->infrastructure();
@@ -148,6 +166,43 @@ class ServerOperationsTest extends TestCase
         [$user, $server] = $this->infrastructure();
         $this->actingAs($user)->post("/servers/{$server->id}/cron-jobs", ['name' => 'Unsafe', 'expression' => '* * * * *', 'command' => "echo safe\nrm -rf /tmp/x"])->assertSessionHasErrors('command');
         $this->actingAs($user)->post("/servers/{$server->id}/operations", ['type' => 'shell:rm'])->assertSessionHasErrors('type');
+    }
+
+    public function test_maintenance_operations_are_queued_and_release_upgrade_requires_hostname(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+
+        $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=services")
+            ->assertOk()
+            ->assertSee('Software hardening')
+            ->assertSee('Update Ubuntu packages')
+            ->assertSee('Major release upgrade');
+
+        $this->actingAs($user)->post("/servers/{$server->id}/operations", ['type' => 'system:harden'])->assertSessionHas('status');
+        $this->actingAs($user)->post("/servers/{$server->id}/operations", ['type' => 'system:update'])->assertSessionHas('status');
+        $this->actingAs($user)->post("/servers/{$server->id}/operations", ['type' => 'system:release-upgrade'])->assertSessionHasErrors('confirmation');
+        $this->actingAs($user)->post("/servers/{$server->id}/operations", [
+            'type' => 'system:release-upgrade',
+            'confirmation' => $server->hostname,
+        ])->assertSessionHas('status');
+
+        Queue::assertPushedOn('operations', RunServerOperationJob::class);
+        $this->assertDatabaseHas('server_operations', ['server_id' => $server->id, 'type' => 'system:harden']);
+        $this->assertDatabaseHas('server_operations', ['server_id' => $server->id, 'type' => 'system:update']);
+        $this->assertDatabaseHas('server_operations', ['server_id' => $server->id, 'type' => 'system:release-upgrade']);
+    }
+
+    public function test_maintenance_operation_job_runs_the_matching_script(): void
+    {
+        Process::fake(['*' => Process::result(output: "CLOUDDECK_HARDEN_OK=1\n", exitCode: 0)]);
+        [$user, $server] = $this->infrastructure();
+        $operation = $server->operations()->create(['user_id' => $user->id, 'type' => 'system:harden', 'target' => 'system', 'status' => 'pending']);
+
+        (new RunServerOperationJob($operation->id))->handle(app(SshClient::class));
+
+        $this->assertSame('successful', $operation->fresh()->status);
+        $this->assertStringContainsString('CLOUDDECK_HARDEN_OK=1', $operation->fresh()->output);
     }
 
     public function test_database_import_and_export_are_private_queued_operations(): void

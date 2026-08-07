@@ -22,4 +22,14 @@ class TeamInvitation extends Model
     {
         return $this->belongsTo(Team::class);
     }
+
+    public function isPending(): bool
+    {
+        return $this->accepted_at === null;
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->isPending() && $this->expires_at !== null && $this->expires_at->isPast();
+    }
 }

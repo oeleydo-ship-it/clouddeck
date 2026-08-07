@@ -80,6 +80,7 @@
             ['href' => route('servers.index'), 'label' => 'Servers', 'match' => 'servers*', 'icon' => 'M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5ZM4 16a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3ZM8 7h.01M8 18h.01'],
             ['href' => route('sites.index'), 'label' => 'Sites', 'match' => 'sites*', 'icon' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z'],
             ['href' => route('firewall.index'), 'label' => 'Firewall', 'match' => 'firewall*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9.5 12h5M12 9.5v5'],
+            ['href' => route('notifications.index'), 'label' => 'Notifications', 'match' => 'notifications*', 'icon' => 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9ZM10.3 21a1.94 1.94 0 0 0 3.4 0'],
             ['href' => route('cloud-accounts'), 'label' => 'Providers', 'match' => 'cloud-accounts*', 'icon' => 'M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.4 4.5 4.5 0 0 0 6.5 19h11Z'],
         ];
         // Mirrors the routes rather than deciding anything: DNS is switched off in admin
@@ -112,8 +113,8 @@
         <div x-cloak x-show="nav" x-transition.opacity @click="nav = false" class="fixed inset-0 z-50 bg-slate-900/50 lg:hidden"></div>
 
         <aside class="app-sidebar" :class="nav ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
-            <div class="mb-7 flex items-center justify-between px-3">
-                <a href="{{ route('dashboard') }}" class="sidebar-brand">
+            <div @class(['mb-7 flex items-center px-3', 'justify-center' => $branding['logo_image_only'] && $branding['logo_url'], 'justify-between' => ! ($branding['logo_image_only'] && $branding['logo_url'])])>
+                <a href="{{ route('dashboard') }}" @class(['sidebar-brand', 'w-full justify-center' => $branding['logo_image_only'] && $branding['logo_url']])>
                     @if($branding['logo_url'])
                         <img src="{{ $branding['logo_url'] }}" alt="{{ $branding['name'] }}" @class(['h-10 w-auto max-w-[11rem] object-contain', 'sidebar-brand-mark' => ! $branding['logo_image_only']])>
                     @else
@@ -214,6 +215,7 @@
                                 q: '',
                                 items: @js(collect($sections)->map(fn ($s) => ['label' => $s['label'], 'href' => $s['href']])
                                     ->merge(array_filter([
+                                        ['label' => 'Incidents', 'href' => route('notifications.index', ['tab' => 'incidents'])],
                                         ['label' => 'Provision server', 'href' => route('servers.create')],
                                         ['label' => 'Add existing server', 'href' => route('servers.custom')],
                                         ['label' => 'Add site', 'href' => route('sites.create')],

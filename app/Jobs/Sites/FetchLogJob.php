@@ -36,7 +36,7 @@ class FetchLogJob implements ShouldQueue
             'DOMAIN' => $snapshot->site?->domain ?? '',
             'SOURCE' => $snapshot->source,
             'LINES' => (string) $snapshot->lines,
-            'PHP_VERSION' => $snapshot->site?->php_version ?? '8.4',
+            'PHP_VERSION' => $snapshot->site?->php_version ?? config('clouddeck.default_php_version'),
         ]);
 
         $path = null;

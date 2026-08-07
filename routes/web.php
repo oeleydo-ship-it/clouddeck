@@ -25,11 +25,13 @@ use App\Http\Controllers\FileManagerController;
 use App\Http\Controllers\FirewallController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\GuideController;
+use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\ManagedDatabaseController;
 use App\Http\Controllers\MonitoringAgentController;
 use App\Http\Controllers\MonitoringController;
+use App\Http\Controllers\NotificationSettingsController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PhpExtensionController;
@@ -106,6 +108,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/teams', [TeamController::class, 'store'])->name('teams.store');
     Route::post('/teams/{team}/switch', [TeamController::class, 'switch'])->name('teams.switch');
     Route::post('/teams/{team}/invitations', [TeamController::class, 'invite'])->name('teams.invite');
+    Route::patch('/teams/{team}/invitations/{invitation}', [TeamController::class, 'updateInvitation'])->name('teams.invitations.update');
+    Route::post('/teams/{team}/invitations/{invitation}/resend', [TeamController::class, 'resendInvitation'])->middleware('throttle:10,1')->name('teams.invitations.resend');
+    Route::delete('/teams/{team}/invitations/{invitation}', [TeamController::class, 'destroyInvitation'])->name('teams.invitations.destroy');
     Route::get('/team-invitations/{teamInvitation}/{token}', [TeamController::class, 'accept'])->name('team-invitations.accept');
     Route::delete('/teams/{team}/members/{member}', [TeamController::class, 'remove'])->name('teams.members.remove');
     Route::patch('/teams/{team}/members/{member}/role', [TeamController::class, 'role'])->name('teams.members.role');
@@ -151,6 +156,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/firewall/rules/{firewallRule}', [FirewallController::class, 'destroy'])->name('firewall.rules.destroy');
     Route::post('/firewall/servers/{server}/sync', [FirewallController::class, 'sync'])->middleware('throttle:20,1')->name('firewall.sync');
     Route::post('/firewall/servers/{server}/refresh', [FirewallController::class, 'refresh'])->middleware('throttle:20,1')->name('firewall.refresh');
+
+    Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
+    Route::get('/notifications', [NotificationSettingsController::class, 'index'])->name('notifications.index');
 
     Route::get('/servers', [ServerManagementController::class, 'index'])->name('servers.index');
     Route::get('/servers/create', ServerProvisionWizard::class)->name('servers.create');

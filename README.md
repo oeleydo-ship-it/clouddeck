@@ -11,7 +11,7 @@ Uplary is a SaaS control plane (uplary.com) where developers connect their own c
 - Encrypted DigitalOcean credentials and a provider-neutral `CloudProvider` contract
 - DigitalOcean account validation, catalogs, droplet create/read/delete, and power/snapshot actions
 - Queue-chain provisioning with persisted progress and failure state
-- Hardened Ubuntu bootstrap for Nginx, PHP 8.4, MySQL, Redis, Supervisor, Node 22, Composer, UFW, Fail2Ban, Certbot, and swap
+- Hardened Ubuntu bootstrap for Nginx, PHP 8.5 (with 8.4/8.3/8.2), MySQL, Redis, Supervisor, Node 22, Composer, UFW, Fail2Ban, Certbot, and swap
 - Sanctum server API, API Resources, validation scoped to resource ownership, rate-limited actions
 - Responsive dark control-plane landing, auth, verification, and dashboard views
 - TOTP two-factor login challenge with encrypted secrets and hashed, single-use recovery codes
@@ -62,7 +62,7 @@ Uplary is a SaaS control plane (uplary.com) where developers connect their own c
 
 The product itself is hosted SaaS. Use this section only when developing or contributing to the control plane codebase.
 
-Requirements: PHP 8.2+ (8.4 recommended), Composer 2, Node 20+, SQLite/MySQL, and Redis. Horizon runs on Linux because it requires `pcntl` and `posix`.
+Requirements: PHP 8.2+ (8.5 recommended), Composer 2, Node 20+, SQLite/MySQL, and Redis. Horizon runs on Linux because it requires `pcntl` and `posix`.
 
 ```bash
 composer install

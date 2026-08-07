@@ -24,7 +24,8 @@ class ActiveTab
         }
 
         return (bool) preg_match('#^/sites/[0-9a-f-]{36}$#i', $path)
-            || (bool) preg_match('#^/servers/[0-9a-f-]{36}/manage$#i', $path);
+            || (bool) preg_match('#^/servers/[0-9a-f-]{36}/manage$#i', $path)
+            || $path === '/notifications';
     }
 
     public static function append(string $url, string $tab): string

@@ -46,7 +46,7 @@
             </label>
             <label class="text-sm heading">Domain<input class="field" name="domain" value="{{ old('domain') }}" placeholder="app.example.com" required></label>
             <label class="text-sm heading">PHP version
-                <select class="field" name="php_version">@foreach(['8.4','8.3','8.2'] as $version)<option @selected(old('php_version') === $version)>{{ $version }}</option>@endforeach</select>
+                <select class="field" name="php_version">@foreach(config('clouddeck.php_versions') as $version)<option @selected(old('php_version', config('clouddeck.default_php_version')) === $version)>{{ $version }}</option>@endforeach</select>
             </label>
         </div>
 

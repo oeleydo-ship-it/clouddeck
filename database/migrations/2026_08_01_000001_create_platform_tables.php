@@ -67,7 +67,7 @@ return new class extends Migration
             $table->foreignUuid('server_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('domain')->index();
-            $table->string('php_version')->default('8.4');
+            $table->string('php_version')->default('8.5');
             $table->string('repository_url')->nullable();
             $table->string('branch')->default('main');
             $table->string('project_type')->default('laravel');

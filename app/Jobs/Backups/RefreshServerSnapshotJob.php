@@ -4,6 +4,7 @@ namespace App\Jobs\Backups;
 
 use App\Cloud\CloudProviderManager;
 use App\Models\ServerSnapshot;
+use App\Notifications\OperationalEventNotification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -51,6 +52,18 @@ class RefreshServerSnapshotJob implements ShouldQueue
 
     public function failed(Throwable $e): void
     {
-        ServerSnapshot::find($this->snapshotId)?->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
+        $snapshot = ServerSnapshot::with(['user', 'server.user'])->find($this->snapshotId);
+        $snapshot?->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
+
+        $server = $snapshot?->server;
+        $notifiable = $snapshot?->user ?? $server?->user;
+        $notifiable?->notify(new OperationalEventNotification(
+            event: 'backup_failed',
+            title: 'Server snapshot failed'.($server ? ' on '.$server->hostname : ''),
+            body: ($snapshot?->name ? $snapshot->name.': ' : '').$e->getMessage(),
+            url: $server ? route('servers.manage', ['server' => $server, 'tab' => 'backups']) : null,
+            severity: 'critical',
+            context: ['snapshot_id' => $snapshot?->id, 'server_id' => $server?->id],
+        ));
     }
 }

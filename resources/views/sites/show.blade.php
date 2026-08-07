@@ -178,7 +178,7 @@
         </div>
     @endif
     <div x-cloak x-show="tab==='environment'" class="mt-6"><form method="POST" action="{{ route('sites.environment',$site) }}" class="panel">@csrf @method('PUT')<h2 class="font-semibold heading">Encrypted environment</h2><p class="mt-2 text-sm muted">Values are encrypted at rest and written only to the server's shared release directory.</p><textarea class="field mt-5 min-h-[28rem] font-mono text-xs leading-6" name="environment" spellcheck="false">{{ $environment }}</textarea><button class="button-primary mt-5">Save environment</button></form></div>
-    <div x-cloak x-show="tab==='deploy'" class="mt-6"><form method="POST" action="{{ route('sites.update',$site) }}" class="panel">@csrf @method('PATCH')<div class="grid gap-5 sm:grid-cols-2"><label class="text-sm heading sm:col-span-2">Repository URL<input class="field font-mono text-xs" name="repository_url" value="{{ $site->repository_url }}" placeholder="https://github.com/acme/app.git"></label><label class="text-sm heading">Branch<input class="field" name="branch" value="{{ $site->branch }}"></label><label class="text-sm heading">PHP version<select class="field" name="php_version">@foreach(['8.4','8.3','8.2'] as $version)<option @selected($site->php_version===$version)>{{ $version }}</option>@endforeach</select></label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_deploy" value="1" @checked($site->auto_deploy)>Automatic deployments</label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="zero_downtime" value="1" @checked($site->zero_downtime)>Zero-downtime releases</label><label class="text-sm heading sm:col-span-2">Custom post-build script<textarea class="field min-h-44 font-mono text-xs" name="deployment_script">{{ $site->deployment_script }}</textarea></label></div><button class="button-primary mt-5">Save settings</button></form></div>
+    <div x-cloak x-show="tab==='deploy'" class="mt-6"><form method="POST" action="{{ route('sites.update',$site) }}" class="panel">@csrf @method('PATCH')<div class="grid gap-5 sm:grid-cols-2"><label class="text-sm heading sm:col-span-2">Repository URL<input class="field font-mono text-xs" name="repository_url" value="{{ $site->repository_url }}" placeholder="https://github.com/acme/app.git"></label><label class="text-sm heading">Branch<input class="field" name="branch" value="{{ $site->branch }}"></label><label class="text-sm heading">PHP version<select class="field" name="php_version">@foreach(config('clouddeck.php_versions') as $version)<option @selected($site->php_version===$version)>{{ $version }}</option>@endforeach</select></label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_deploy" value="1" @checked($site->auto_deploy)>Automatic deployments</label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="zero_downtime" value="1" @checked($site->zero_downtime)>Zero-downtime releases</label><label class="text-sm heading sm:col-span-2">Custom post-build script<textarea class="field min-h-44 font-mono text-xs" name="deployment_script">{{ $site->deployment_script }}</textarea></label></div><button class="button-primary mt-5">Save settings</button></form></div>
     <div x-cloak x-show="tab==='ssl'" class="mt-6">
         @php $certificate = $site->sslCertificates->sortByDesc('created_at')->first(); @endphp
         <section class="panel">
@@ -197,12 +197,43 @@
     </div>
     <div x-cloak x-show="tab==='logs'" class="mt-6">@livewire('log-viewer',['site'=>$site])</div>
     <div x-cloak x-show="tab==='cron'" class="mt-6 grid gap-6 lg:grid-cols-[380px_1fr]">
-        <form method="POST" action="{{ route('sites.cron-jobs.store',$site) }}" class="panel h-fit">@csrf
+        @php $siteSchedulerCommand = 'cd /var/www/'.$site->domain.'/current && php artisan schedule:run'; @endphp
+        <form method="POST" action="{{ route('sites.cron-jobs.store',$site) }}" class="panel h-fit"
+              x-data="{
+                  preset: 'custom',
+                  name: '',
+                  expression: '* * * * *',
+                  command: '',
+                  apply(key, values) {
+                      this.preset = key;
+                      this.name = values.name;
+                      this.expression = values.expression;
+                      this.command = values.command;
+                  }
+              }">
+            @csrf
             <h2 class="font-semibold heading">Add cron job</h2>
             <p class="mt-1 text-sm muted">Runs on {{ $site->server->name }} for this site.</p>
-            <label class="mt-4 block text-sm heading">Name<input class="field" name="name" placeholder="Laravel scheduler"></label>
-            <label class="mt-4 block text-sm heading">Expression<input class="field font-mono" name="expression" value="* * * * *"></label>
-            <label class="mt-4 block text-sm heading">Command<input class="field font-mono text-xs" name="command" placeholder="cd /var/www/{{ $site->domain }}/current && php artisan schedule:run"></label>
+            <div class="mt-4" data-cron-presets>
+                <p class="text-sm heading">Preset</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <button type="button"
+                            @click="apply('custom', { name: '', expression: '* * * * *', command: '' })"
+                            :class="preset === 'custom' ? 'border-cyan-400 bg-cyan-50/50 text-slate-900 dark:border-cyan-400/40 dark:bg-cyan-400/5 dark:text-white' : 'border-slate-200 text-slate-600 dark:border-white/10 dark:text-slate-300'"
+                            class="rounded border px-2.5 py-1 text-xs font-medium transition">Custom</button>
+                    @unless($site->isWordPress())
+                        <button type="button"
+                                data-cron-command="{{ $siteSchedulerCommand }}"
+                                @click="apply('laravel', { name: 'Laravel scheduler', expression: '* * * * *', command: $el.dataset.cronCommand })"
+                                :class="preset === 'laravel' ? 'border-cyan-400 bg-cyan-50/50 text-slate-900 dark:border-cyan-400/40 dark:bg-cyan-400/5 dark:text-white' : 'border-slate-200 text-slate-600 dark:border-white/10 dark:text-slate-300'"
+                                class="rounded border px-2.5 py-1 text-xs font-medium transition"
+                                title="{{ $siteSchedulerCommand }}">Laravel scheduler</button>
+                    @endunless
+                </div>
+            </div>
+            <label class="mt-4 block text-sm heading">Name<input class="field" name="name" x-model="name" placeholder="Laravel scheduler"></label>
+            <label class="mt-4 block text-sm heading">Expression<input class="field font-mono" name="expression" x-model="expression" placeholder="* * * * *"></label>
+            <label class="mt-4 block text-sm heading">Command<input class="field font-mono text-xs" name="command" x-model="command" placeholder="{{ $siteSchedulerCommand }}"></label>
             <button class="button-primary mt-5">Add cron</button>
         </form>
         <div class="space-y-3">

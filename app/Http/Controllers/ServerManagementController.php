@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Cloud\CloudProviderManager;
 use App\Models\AlertIncident;
-use App\Models\NotificationChannel;
 use App\Models\Server;
 use App\Models\ServerMetric;
 use App\Services\AuditLogger;
@@ -60,12 +59,16 @@ class ServerManagementController extends Controller
                 'sites.queueWorkers',
                 'metrics' => fn ($q) => $q->latest('recorded_at')->limit(72),
                 'alertRules',
-                'alertIncidents' => fn ($q) => $q->latest('started_at')->limit(20),
+                'alertIncidents' => fn ($q) => $q->latest('started_at')->limit(5),
                 'backupPolicies.database',
+                'backupPolicies.databaseBackups' => fn ($q) => $q->latest()->limit(1),
+                'backupPolicies.snapshots' => fn ($q) => $q->latest()->limit(1),
                 'snapshots' => fn ($q) => $q->latest()->limit(30),
             ]),
-            'notificationChannels' => $request->user()->notificationChannels()->latest()->get(),
-            'notificationEvents' => NotificationChannel::EVENTS,
+            'backupDisks' => collect(config('filesystems.disks'))
+                ->reject(fn (array $disk) => ($disk['visibility'] ?? null) === 'public')
+                ->keys()
+                ->values(),
             'transferTeams' => $request->user()->teamMemberships()->with('team')->whereNotNull('accepted_at')->get()->filter(fn ($membership) => $teams->canManage($request->user(), $membership->team))->pluck('team'),
         ]);
     }

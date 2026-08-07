@@ -16,6 +16,13 @@ return [
     'ssh_ready_timeout' => (int) env('CLOUDDECK_SSH_READY_TIMEOUT', 180),
 
     /*
+     * PHP versions offered on site create/update and installed during Ubuntu bootstrap
+     * via ondrej/php. Newest first so Blade selects and docs list the current default.
+     */
+    'php_versions' => ['8.5', '8.4', '8.3', '8.2'],
+    'default_php_version' => '8.5',
+
+    /*
      * Providers an account can be connected for. "api" marks the ones Uplary can drive
      * directly — creating and destroying servers through their API. The rest are recorded
      * so an operator can keep their credentials and infrastructure organised here, but

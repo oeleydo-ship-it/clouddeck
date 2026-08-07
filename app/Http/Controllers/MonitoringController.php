@@ -112,7 +112,7 @@ class MonitoringController extends Controller
             'events' => $data['events'] ?? [],
         ]);
 
-        return back()->with('status', 'Email recipient added.');
+        return redirect()->route('notifications.index', ['tab' => 'email'])->with('status', 'Email recipient added.');
     }
 
     public function destroyChannel(Request $request, NotificationChannel $notificationChannel): RedirectResponse
@@ -120,6 +120,6 @@ class MonitoringController extends Controller
         abort_unless($notificationChannel->user_id === $request->user()->id, 404);
         $notificationChannel->delete();
 
-        return back()->with('status', 'Email recipient removed.');
+        return redirect()->route('notifications.index', ['tab' => 'email'])->with('status', 'Email recipient removed.');
     }
 }

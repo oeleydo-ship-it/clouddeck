@@ -32,7 +32,7 @@ memory_percent=$(awk -v used="$memory_used" -v total="$memory_total" 'BEGIN {pri
 processes=$(ps -eo comm=,%cpu=,%mem= --sort=-%cpu | head -n 5 | jq -R -s 'split("\n") | map(select(length > 0) | capture("^(?<name>\\S+)\\s+(?<cpu>\\S+)\\s+(?<memory>\\S+)$") | {name, cpu:(.cpu|tonumber), memory:(.memory|tonumber)})')
 services=$(jq -nc \
     --argjson nginx "$(systemctl is-active --quiet nginx && echo true || echo false)" \
-    --argjson php_fpm "$(systemctl is-active --quiet php8.4-fpm && echo true || echo false)" \
+    --argjson php_fpm "$( { systemctl is-active --quiet php8.5-fpm || systemctl is-active --quiet php8.4-fpm || systemctl is-active --quiet php8.3-fpm || systemctl is-active --quiet php8.2-fpm; } && echo true || echo false)" \
     --argjson mysql "$(systemctl is-active --quiet mysql && echo true || echo false)" \
     --argjson postgresql "$(systemctl is-active --quiet postgresql && echo true || echo false)" \
     --argjson redis "$(systemctl is-active --quiet redis-server && echo true || echo false)" \

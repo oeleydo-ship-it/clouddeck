@@ -35,7 +35,7 @@ class StoreSiteRequest extends FormRequest
                 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/',
                 Rule::unique('sites', 'domain')->where(fn ($query) => $query->where('server_id', $this->input('server_id'))->whereNull('deleted_at')),
             ],
-            'php_version' => ['required', Rule::in(['8.2', '8.3', '8.4'])],
+            'php_version' => ['required', Rule::in(config('clouddeck.php_versions'))],
             'platform' => ['required', Rule::in(['laravel', 'wordpress'])],
             // WordPress is downloaded from wordpress.org rather than cloned, so a repository
             // is required for Laravel and meaningless for WordPress.

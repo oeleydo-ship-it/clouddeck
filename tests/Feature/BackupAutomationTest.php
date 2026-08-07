@@ -17,11 +17,13 @@ use App\Models\CloudAccount;
 use App\Models\Server;
 use App\Models\SshKey;
 use App\Models\User;
+use App\Notifications\OperationalEventNotification;
 use App\Services\BackupSchedule;
 use App\Ssh\SshClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -145,7 +147,81 @@ class BackupAutomationTest extends TestCase
     {
         [$user, $server] = $this->infrastructure();
 
-        $this->actingAs($user)->get("/servers/{$server->id}/manage")->assertOk()->assertSee('Automated backup policy')->assertSee('Provider snapshots');
+        $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=backups")
+            ->assertOk()
+            ->assertSee('Automated backup policy')
+            ->assertSee('Provider snapshots')
+            ->assertSee('Storage disk')
+            ->assertSee('Create snapshot');
+    }
+
+    public function test_custom_server_hides_provider_snapshot_controls(): void
+    {
+        [$user, $server] = $this->infrastructure();
+        $server->update(['provider_id' => null, 'cloud_account_id' => null]);
+
+        $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=backups")
+            ->assertOk()
+            ->assertSee('database export policies')
+            ->assertDontSee('>Create snapshot<', false);
+
+        $this->actingAs($user)->post("/servers/{$server->id}/backup-policies", [
+            'name' => 'Snap', 'type' => 'snapshot',
+            'frequency' => 'daily', 'run_at' => '02:00', 'timezone' => 'UTC', 'retention_count' => 2,
+        ])->assertStatus(422);
+    }
+
+    public function test_database_policy_can_select_a_private_storage_disk(): void
+    {
+        [$user, $server, $database] = $this->infrastructure();
+
+        $this->actingAs($user)->post("/servers/{$server->id}/backup-policies", [
+            'name' => 'Nightly', 'type' => 'database', 'managed_database_id' => $database->id,
+            'frequency' => 'daily', 'run_at' => '02:00', 'timezone' => 'UTC', 'retention_count' => 7,
+            'disk' => 'local',
+        ])->assertSessionHas('status');
+
+        $this->assertDatabaseHas('backup_policies', ['server_id' => $server->id, 'disk' => 'local']);
+    }
+
+    public function test_failed_database_export_notifies_the_owner(): void
+    {
+        Notification::fake();
+        [$user, $server, $database] = $this->infrastructure();
+        $backup = $database->backups()->create(['user_id' => $user->id, 'type' => 'export', 'status' => 'running', 'disk' => 'local']);
+
+        (new ExportDatabaseJob($backup->id))->failed(new \RuntimeException('mysqldump failed'));
+
+        $this->assertSame('failed', $backup->fresh()->status);
+        $this->assertSame('mysqldump failed', $backup->fresh()->failure_reason);
+        Notification::assertSentTo($user, OperationalEventNotification::class, fn ($n) => $n->event === 'backup_failed');
+    }
+
+    public function test_failed_snapshot_create_notifies_the_owner(): void
+    {
+        Notification::fake();
+        [$user, $server] = $this->infrastructure();
+        $snapshot = $server->snapshots()->create(['user_id' => $user->id, 'name' => 'app-snapshot', 'status' => 'creating']);
+
+        (new CreateServerSnapshotJob($snapshot->id))->failed(new \RuntimeException('provider timeout'));
+
+        $this->assertSame('failed', $snapshot->fresh()->status);
+        Notification::assertSentTo($user, OperationalEventNotification::class, fn ($n) => $n->event === 'backup_failed' && str_contains($n->title, 'snapshot'));
+    }
+
+    public function test_failed_database_restore_notifies_the_owner(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        [$user, $server, $database] = $this->infrastructure();
+        Storage::disk('local')->put('database-exports/backup.sql', 'CREATE TABLE restored (id INT);');
+        $backup = $database->backups()->create(['user_id' => $user->id, 'type' => 'export', 'status' => 'ready', 'disk' => 'local', 'disk_path' => 'database-exports/backup.sql']);
+        $restore = $backup->restores()->create(['user_id' => $user->id, 'managed_database_id' => $database->id, 'status' => 'running']);
+
+        (new RestoreDatabaseBackupJob($restore->id))->failed(new \RuntimeException('import failed'));
+
+        $this->assertSame('failed', $restore->fresh()->status);
+        Notification::assertSentTo($user, OperationalEventNotification::class, fn ($n) => $n->event === 'backup_failed' && str_contains($n->title, 'restore'));
     }
 
     public function test_retention_prunes_old_database_recovery_points(): void

@@ -3,6 +3,7 @@
 namespace App\Jobs\Backups;
 
 use App\Models\BackupRestore;
+use App\Notifications\OperationalEventNotification;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -36,6 +37,18 @@ class RestoreDatabaseBackupJob implements ShouldQueue
 
     public function failed(Throwable $e): void
     {
-        BackupRestore::find($this->restoreId)?->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
+        $restore = BackupRestore::with(['user', 'database.server.user'])->find($this->restoreId);
+        $restore?->update(['status' => 'failed', 'failure_reason' => $e->getMessage()]);
+
+        $server = $restore?->database?->server;
+        $notifiable = $restore?->user ?? $server?->user;
+        $notifiable?->notify(new OperationalEventNotification(
+            event: 'backup_failed',
+            title: 'Database restore failed'.($server ? ' on '.$server->hostname : ''),
+            body: ($restore?->database?->name ? $restore->database->name.': ' : '').$e->getMessage(),
+            url: $server ? route('servers.manage', ['server' => $server, 'tab' => 'backups']) : null,
+            severity: 'critical',
+            context: ['restore_id' => $restore?->id, 'database_id' => $restore?->managed_database_id, 'server_id' => $server?->id],
+        ));
     }
 }
