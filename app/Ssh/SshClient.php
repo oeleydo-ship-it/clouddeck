@@ -24,9 +24,9 @@ final class SshClient
         return $this->execute($server, $command, $output);
     }
 
-    public function runScript(Server $server, string $path, array $env = []): string
+    public function runScript(Server $server, string $path, array $env = [], ?int $timeoutSeconds = null): string
     {
-        $result = $this->executeScript($server, $this->script($path, $env));
+        $result = $this->executeScript($server, $this->script($path, $env), timeoutSeconds: $timeoutSeconds);
         if ($result->failed()) {
             throw new RuntimeException($result->errorOutput());
         }
@@ -34,17 +34,17 @@ final class SshClient
         return $result->output();
     }
 
-    public function runScriptStreaming(Server $server, string $path, array $env, callable $output): ProcessResult
+    public function runScriptStreaming(Server $server, string $path, array $env, callable $output, ?int $timeoutSeconds = null): ProcessResult
     {
-        return $this->executeScript($server, $this->script($path, $env), $output);
+        return $this->executeScript($server, $this->script($path, $env), $output, $timeoutSeconds);
     }
 
-    private function execute(Server $server, string $command, ?callable $output = null): ProcessResult
+    private function execute(Server $server, string $command, ?callable $output = null, ?int $timeoutSeconds = null): ProcessResult
     {
         $this->guard($command);
         $key = $this->keyFile($server);
         try {
-            return Process::timeout(1800)->run([...$this->sshCommand($server, $key), $command], $output);
+            return Process::timeout($timeoutSeconds ?? 1800)->run([...$this->sshCommand($server, $key), $command], $output);
         } finally {
             if (is_file($key)) {
                 unlink($key);
@@ -52,11 +52,11 @@ final class SshClient
         }
     }
 
-    private function executeScript(Server $server, string $script, ?callable $output = null): ProcessResult
+    private function executeScript(Server $server, string $script, ?callable $output = null, ?int $timeoutSeconds = null): ProcessResult
     {
         $key = $this->keyFile($server);
         try {
-            return Process::timeout(1800)->input($script)->run([...$this->sshCommand($server, $key), 'bash', '-s'], $output);
+            return Process::timeout($timeoutSeconds ?? 1800)->input($script)->run([...$this->sshCommand($server, $key), 'bash', '-s'], $output);
         } finally {
             if (is_file($key)) {
                 unlink($key);

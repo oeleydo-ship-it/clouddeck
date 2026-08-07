@@ -15,6 +15,11 @@ class DispatchSecurityScansJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public function __construct()
+    {
+        $this->onQueue('operations');
+    }
+
     public function handle(SecurityDetectionSettings $settings): void
     {
         if (! config('security-detection.enabled')) {
@@ -32,7 +37,7 @@ class DispatchSecurityScansJob implements ShouldQueue
                     }
 
                     $server->markSecurityScan('queued');
-                    CollectServerSecuritySignalsJob::dispatch($server->id)->onQueue('monitoring');
+                    CollectServerSecuritySignalsJob::dispatch($server->id)->onQueue('operations');
                 }
             });
     }

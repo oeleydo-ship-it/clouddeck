@@ -317,7 +317,7 @@
                     <li><strong class="heading">Site signals:</strong> login and POST bursts, rapid route scans, known scanner user agents, Fail2ban/WAF blocks, malware signatures, and unexpected admin actions.</li>
                     <li><strong class="heading">Configuration:</strong> detection is on by default. In <a class="link-action" href="{{ route('security.index') }}">Security → Detection settings</a>, team owners and administrators can change each rule's enabled state, threshold, window, and severity for the active workspace.</li>
                     <li>Deployment configuration supplies recommended defaults; database-backed workspace overrides take precedence. Use <strong class="heading">Reset to recommended defaults</strong> to remove all overrides. Keep detection enabled and tune only after observing a normal baseline.</li>
-                    <li>Scans run every five minutes through the monitoring queue. The first integrity scan creates a protected host-side hash baseline and does not alert.</li>
+                    <li>Scans run every five minutes through the operations queue (SSH collection). The first integrity scan creates a protected host-side hash baseline and does not alert.</li>
                     <li>Incidents can be open, acknowledged, resolved, or reopened. Every state and mitigation change is audit logged.</li>
                     <li><strong class="heading">Block IP</strong> is manual only. It rejects private, reserved, loopback, and server-owned addresses, then queues a normal UFW deny rule that can be removed from the incident.</li>
                 </ul>

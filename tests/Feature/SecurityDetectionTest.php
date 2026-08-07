@@ -133,7 +133,7 @@ class SecurityDetectionTest extends TestCase
             ->post(route('security.scan'), ['server_id' => $server->id])
             ->assertSessionHas('status');
 
-        Queue::assertPushedOn('monitoring', CollectServerSecuritySignalsJob::class);
+        Queue::assertPushedOn('operations', CollectServerSecuritySignalsJob::class);
         $this->assertSame('queued', $server->fresh()->security_scan_status);
         $this->assertNull($server->fresh()->security_scan_message);
         $this->assertSame('Security incident', NotificationChannel::EVENTS['security_incident']);
@@ -141,6 +141,58 @@ class SecurityDetectionTest extends TestCase
         $html = $this->actingAs($user)->get('/dashboard')->assertOk()->getContent();
         $sidebar = str($html)->after('<aside')->before('</aside>')->toString();
         $this->assertStringContainsString(route('security.index'), $sidebar);
+    }
+
+    public function test_stale_queued_scan_is_not_busy_and_shows_worker_hint(): void
+    {
+        [$user, $server] = $this->infrastructure('stale-queued');
+        $server->forceFill([
+            'security_scan_status' => 'queued',
+            'security_scan_message' => null,
+            'updated_at' => now()->subMinutes(11),
+        ])->save();
+
+        $this->assertTrue($server->fresh()->securityScanIsStale());
+        $this->assertFalse($server->fresh()->securityScanIsBusy());
+
+        $payload = $this->actingAs($user)->getJson(route('security.status'))->assertOk()->json();
+        $row = collect($payload['servers'])->firstWhere('id', $server->id);
+        $this->assertSame('queued', $row['status']);
+        $this->assertFalse($row['busy']);
+        $this->assertSame('danger', $row['badge']);
+        $this->assertStringContainsString('operations worker', $row['label']);
+
+        $this->actingAs($user)
+            ->get('/security')
+            ->assertOk()
+            ->assertSee('Queued too long — is the operations worker running?', false);
+    }
+
+    public function test_sync_queue_driver_advances_scan_status_inline(): void
+    {
+        config(['queue.default' => 'sync']);
+        [$user, $server] = $this->infrastructure('sync-scan');
+
+        Process::fake(function (object $process) {
+            $command = $process->command;
+            if (is_array($command) && ($command[0] ?? null) === 'whoami') {
+                return Process::result(output: 'test-user', exitCode: 0);
+            }
+            if (is_array($command) && ($command[0] ?? null) === 'icacls') {
+                return Process::result(output: '', exitCode: 0);
+            }
+
+            return Process::result(output: '', exitCode: 0);
+        });
+
+        $this->actingAs($user)
+            ->post(route('security.scan'), ['server_id' => $server->id])
+            ->assertSessionHas('status');
+
+        $server->refresh();
+        $this->assertSame('succeeded', $server->security_scan_status);
+        $this->assertNotNull($server->security_scanned_at);
+        $this->assertNull($server->security_scan_message);
     }
 
     public function test_team_workspace_still_lists_personal_accessible_servers(): void

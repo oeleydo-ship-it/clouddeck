@@ -9,13 +9,19 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('servers', function (Blueprint $table) {
-            $table->timestamp('security_scanned_at')->nullable()->index();
+            if (! Schema::hasColumn('servers', 'security_scanned_at')) {
+                $table->timestamp('security_scanned_at')->nullable()->index();
+            }
         });
+
+        // Drop a partial table left by a failed deploy (MySQL FK type mismatch on team_id).
+        Schema::dropIfExists('security_incidents');
 
         Schema::create('security_incidents', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('team_id')->nullable()->constrained()->nullOnDelete();
+            // teams.id is UUID — foreignId() (bigint) breaks MySQL with errno 3780.
+            $table->foreignUuid('team_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignUuid('server_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignUuid('site_id')->nullable()->constrained()->nullOnDelete();
             $table->string('detector_key', 100);
@@ -49,6 +55,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('security_incidents');
-        Schema::table('servers', fn (Blueprint $table) => $table->dropColumn('security_scanned_at'));
+
+        if (Schema::hasColumn('servers', 'security_scanned_at')) {
+            Schema::table('servers', fn (Blueprint $table) => $table->dropColumn('security_scanned_at'));
+        }
     }
 };

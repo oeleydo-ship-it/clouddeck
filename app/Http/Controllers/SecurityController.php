@@ -64,7 +64,7 @@ class SecurityController extends Controller
         foreach ($servers as $server) {
             $this->authorize('update', $server);
             $server->markSecurityScan('queued');
-            CollectServerSecuritySignalsJob::dispatch($server->id)->onQueue('monitoring');
+            CollectServerSecuritySignalsJob::dispatch($server->id)->onQueue('operations');
         }
 
         return back()->with('status', 'Queued '.$servers->count().' security '.str('scan')->plural($servers->count()).'.');
@@ -242,6 +242,12 @@ class SecurityController extends Controller
 
     private function scanStatusLabel(Server $server): string
     {
+        if ($server->securityScanIsStale()) {
+            return $server->security_scan_status === 'running'
+                ? 'Scan stalled — check the operations queue worker'
+                : 'Queued too long — is the operations worker running?';
+        }
+
         return match ($server->security_scan_status) {
             'queued' => 'Queued',
             'running' => 'Scanning…',
@@ -255,6 +261,10 @@ class SecurityController extends Controller
 
     private function scanStatusBadge(Server $server): string
     {
+        if ($server->securityScanIsStale()) {
+            return 'danger';
+        }
+
         return match ($server->security_scan_status) {
             'queued' => 'warning',
             'running' => 'info',

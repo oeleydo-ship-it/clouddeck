@@ -5,6 +5,7 @@
         $canScan = $detectionEnabled
             && $server->status === \App\Enums\ServerStatus::Ready
             && $server->ssh_key_id;
+        $stale = $server->securityScanIsStale();
 
         return [
             'id' => $server->id,
@@ -16,21 +17,27 @@
             'busy' => $server->securityScanIsBusy(),
             'scanned_at' => $server->security_scanned_at?->toIso8601String(),
             'scanned_at_human' => $server->security_scanned_at?->diffForHumans() ?? 'never',
-            'label' => match ($server->security_scan_status) {
-                'queued' => 'Queued',
-                'running' => 'Scanning…',
-                'failed' => 'Failed',
-                default => $server->security_scanned_at
-                    ? 'Last scan '.$server->security_scanned_at->diffForHumans()
-                    : 'Last scan never',
-            },
-            'badge' => match ($server->security_scan_status) {
-                'queued' => 'warning',
-                'running' => 'info',
-                'failed' => 'danger',
-                'succeeded' => 'success',
-                default => 'neutral',
-            },
+            'label' => $stale
+                ? ($server->security_scan_status === 'running'
+                    ? 'Scan stalled — check the operations queue worker'
+                    : 'Queued too long — is the operations worker running?')
+                : match ($server->security_scan_status) {
+                    'queued' => 'Queued',
+                    'running' => 'Scanning…',
+                    'failed' => 'Failed',
+                    default => $server->security_scanned_at
+                        ? 'Last scan '.$server->security_scanned_at->diffForHumans()
+                        : 'Last scan never',
+                },
+            'badge' => $stale
+                ? 'danger'
+                : match ($server->security_scan_status) {
+                    'queued' => 'warning',
+                    'running' => 'info',
+                    'failed' => 'danger',
+                    'succeeded' => 'success',
+                    default => 'neutral',
+                },
         ];
     })->values();
 @endphp
@@ -167,7 +174,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h2 class="section-title">Managed servers</h2>
-                <p class="mt-1 text-sm muted">Scans use the monitoring queue and existing managed SSH credentials.</p>
+                <p class="mt-1 text-sm muted">Scans use the operations queue and existing managed SSH credentials.</p>
             </div>
             <span class="badge badge-neutral">IP blocking: manual only</span>
         </div>

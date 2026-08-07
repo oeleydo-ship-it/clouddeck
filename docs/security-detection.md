@@ -5,11 +5,15 @@ servers and sites. It is intentionally conservative and does not replace an EDR 
 
 ## Collection and prerequisites
 
-- The scheduler dispatches scans every five minutes to the `monitoring` queue.
+- The scheduler dispatches scans every five minutes to the `operations` queue.
 - Manual and scheduled scans persist per-server lifecycle status on `servers`
   (`security_scan_status`: idle/queued/running/succeeded/failed, plus
   `security_scan_message` and `security_scanned_at`). The Security page polls
-  `GET /security/status` while any scan is queued or running.
+  `GET /security/status` while any scan is queued or running. A status stuck on
+  **Queued** longer than ten minutes is treated as stale (re-scan is allowed) —
+  restart or start an `operations` worker (Platform Services → Queue workers, or
+  `php artisan queue:work redis --queue=default,operations,deployments,provisioning,notifications,monitoring,billing`).
+  Restart workers after deploying job code changes.
 - A ready server needs a working managed SSH key. Collection is read-only except for the
   protected `/var/lib/uplary/security` integrity-hash baseline.
 - The collector uses `journalctl` or `auth.log`, process and socket listings, Nginx access
@@ -68,6 +72,6 @@ users or kills processes automatically.
 
 1. Run `php artisan migrate`.
 2. Keep `php artisan schedule:run` active every minute.
-3. Run queue workers for `monitoring`, `notifications`, and `operations`.
+3. Run queue workers for `operations`, `notifications`, and `monitoring` (site checks). Security scans use `operations`.
 4. Visit **Security → Detection settings**, keep the recommended defaults for an initial scan,
    and tune thresholds only after observing normal traffic.

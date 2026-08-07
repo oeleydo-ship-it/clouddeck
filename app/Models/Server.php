@@ -35,7 +35,31 @@ class Server extends Model
 
     public function securityScanIsBusy(): bool
     {
-        return in_array($this->security_scan_status, ['queued', 'running'], true);
+        if (! in_array($this->security_scan_status, ['queued', 'running'], true)) {
+            return false;
+        }
+
+        // Stale queued/running rows must not permanently disable "Scan now" when a worker
+        // never picked up the job (or died before updating status).
+        return ! $this->securityScanIsStale();
+    }
+
+    public function securityScanIsStale(int $queuedMinutes = 10, int $runningMinutes = 20): bool
+    {
+        if (! in_array($this->security_scan_status, ['queued', 'running'], true)) {
+            return false;
+        }
+
+        $updatedAt = $this->updated_at;
+        if (! $updatedAt) {
+            return true;
+        }
+
+        $limit = $this->security_scan_status === 'running'
+            ? now()->subMinutes($runningMinutes)
+            : now()->subMinutes($queuedMinutes);
+
+        return $updatedAt->lt($limit);
     }
 
     public function markSecurityScan(string $status, ?string $message = null, bool $touchScannedAt = false): void

@@ -19,13 +19,15 @@ class CollectServerSecuritySignalsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $timeout = 120;
+    public int $timeout = 300;
 
     public int $tries = 2;
 
     public function __construct(public readonly string $serverId)
     {
-        $this->onQueue('monitoring');
+        // SSH collection is an operations-class job (same as other remote scripts).
+        // Horizon's monitoring supervisor defaults to a 60s timeout, which is too short.
+        $this->onQueue('operations');
     }
 
     public function handle(SshClient $ssh, SecurityDetectorEngine $detector, SecurityDetectionSettings $settings): void
@@ -41,9 +43,11 @@ class CollectServerSecuritySignalsJob implements ShouldQueue
         $server->markSecurityScan('running');
 
         try {
+            // Cap below the default 1800s SSH timeout so a hung host cannot pin a Windows
+            // queue:work process (no pcntl) and leave later scans stuck as "queued".
             $output = $ssh->runScript($server, resource_path('scripts/collect-security-signals.sh'), [
                 'WINDOW_MINUTES' => (string) $settings->maxLookbackForServer($server),
-            ]);
+            ], timeoutSeconds: 150);
 
             $events = collect(preg_split('/\R/', trim($output)))
                 ->filter()
