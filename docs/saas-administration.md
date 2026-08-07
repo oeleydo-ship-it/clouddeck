@@ -22,9 +22,18 @@ Routes or actions that require staged rollout can use the `feature:<key>` middle
 
 ## Teams
 
-Customers can create teams, invite members as `member` or `admin`, accept email-bound invitations, and remove members. Invitation tokens are random, stored only as hashes, expire, and can be used once. Member limits include the owner.
+Customers create teams at `/teams`, invite members by email as `viewer`, `operator`, or `admin`, accept email-bound invitations, and manage members. The creator is `owner`. Invitation tokens are random, stored only as hashes, expire (typically 7 days), and can be used once. Member limits include the owner.
 
-This phase establishes membership and authorization-ready team context. Existing servers and sites remain owned by individual users; moving infrastructure ownership to teams requires an explicit resource-transfer and team-policy phase.
+Pending invitations support **Edit** (change role before acceptance), **Resend** (rate-limited), and **Delete** (cancel). Owners and admins can change accepted members’ roles or remove them; the owner cannot be demoted or removed by others.
+
+| Role | Can | Cannot |
+| --- | --- | --- |
+| Owner | Manage members/invitations; view, operate, transfer, and delete team servers; switch active workspace | Be removed or demoted by other members |
+| Admin | Invite, edit, resend, cancel invitations; change roles and remove members; view, operate, transfer, and delete team servers | Remove or demote the owner |
+| Operator | View and operate team servers (deploy, configure) | Manage members/invitations; transfer or delete servers |
+| Viewer | View team servers and related console pages | Deploy or change servers; manage members; transfer or delete |
+
+Authorization helpers: `TeamAccess::canOperate` covers owner/admin/operator; `TeamAccess::canManage` covers owner/admin.
 
 ## Suspension, settings, and audit
 
@@ -61,7 +70,8 @@ Staging is a separate site on the same server (own nginx vhost, release root, an
 Dedicated admin sections (sidebar): **Pages**, **SEO**, **Analytics**, **Webmaster**, **Insert code**, **AI guide**. A superadmin can:
 
 - Edit homepage hero, steps intro, and closing CTA copy (blank fields keep built-in defaults).
-- Set default meta description, keywords, Open Graph image URL, robots, Google Analytics (GA4 measurement ID), and Google Search Console verification token. Tags are injected in the shared layout head.
+- Configure SEO under **Admin → SEO**: default title and `{page} | {site}` title template, default meta description / keywords / Open Graph image / meta robots, homepage and marketing-page overrides, and a full **robots.txt** body. Public routes serve `/sitemap.xml` (marketing pages + published posts) and `/robots.txt`. Per-post `meta_title` / `meta_description` are editable on Blog create/edit.
+- Set Google Analytics (GA4 measurement ID) and Google Search Console verification under **Analytics** / **Webmaster**. Tags are injected in the shared layout head.
 - Paste custom HTML/JS (**Insert code**) for chat widgets and similar embeds into head/body. Defaults to marketing/public pages; console injection is optional. Raw markup is intentional for trusted operators only. Iframe-based widgets also need the widget host to allow framing â€” if that host is a site on this platform, enable **Allow embedding in iframes** under the siteâ€™s Remote â†’ Nginx settings.
 - Enable an **AI platform guide** with an encrypted OpenAI API key and optional system prompt. When enabled, signed-in users see a floating chat helper that answers how-to questions about the console (throttled at `/guide/chat`).
 

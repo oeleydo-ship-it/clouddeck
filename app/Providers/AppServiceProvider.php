@@ -9,6 +9,7 @@ use App\Events\DeploymentFinished;
 use App\Listeners\SendDeploymentNotification;
 use App\Models\AlertIncident;
 use App\Models\Deployment;
+use App\Models\SecurityIncident;
 use App\Services\PlatformRuntime\Contracts\PlatformProcessLauncher;
 use App\Services\PlatformRuntime\Contracts\PlatformSslProbe;
 use App\Services\PlatformRuntime\FakePlatformProcessLauncher;
@@ -111,6 +112,22 @@ class AppServiceProvider extends ServiceProvider
                     'tone' => $incident->severity === 'critical' ? 'danger' : 'warning',
                 ]);
 
+            $securityIncidents = Schema::hasTable('security_incidents')
+                ? SecurityIncident::query()
+                    ->accessibleTo($user)
+                    ->with('server')
+                    ->whereIn('status', ['open', 'acknowledged'])
+                    ->latest('last_seen_at')
+                    ->limit(5)
+                    ->get()
+                    ->map(fn (SecurityIncident $incident) => [
+                        'title' => 'Security: '.$incident->title,
+                        'description' => ($incident->server?->name ?? 'Server').' · '.$incident->last_seen_at?->diffForHumans(),
+                        'href' => route('notifications.index', ['tab' => 'incidents', 'type' => 'security']),
+                        'tone' => $incident->severity === 'critical' ? 'danger' : 'warning',
+                    ])
+                : collect();
+
             $deployments = Deployment::query()
                 ->with('site')
                 ->where('status', DeploymentStatus::Failed)
@@ -125,7 +142,7 @@ class AppServiceProvider extends ServiceProvider
                     'tone' => 'danger',
                 ]);
 
-            return $incidents->concat($deployments)->take(6)->values()->all();
+            return $securityIncidents->concat($incidents)->concat($deployments)->take(6)->values()->all();
         } catch (Throwable $exception) {
             report($exception);
 

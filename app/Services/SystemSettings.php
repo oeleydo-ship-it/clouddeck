@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Post;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
@@ -155,18 +156,124 @@ final class SystemSettings
     }
 
     /**
-     * @return array{description: string, keywords: ?string, og_image: ?string, robots: string}
+     * Marketing pages that accept per-page SEO overrides in Admin → SEO.
+     *
+     * @return array<string, array{label: string, route: string}>
+     */
+    public function marketingSeoPages(): array
+    {
+        return [
+            'home' => ['label' => 'Homepage', 'route' => 'home'],
+            'about' => ['label' => 'About', 'route' => 'about'],
+            'features' => ['label' => 'Features', 'route' => 'features'],
+            'use_cases' => ['label' => 'Use cases', 'route' => 'use-cases'],
+            'blog' => ['label' => 'Blog', 'route' => 'blog'],
+            'contact' => ['label' => 'Contact', 'route' => 'contact'],
+        ];
+    }
+
+    /**
+     * @return array{
+     *     title: string,
+     *     title_template: string,
+     *     description: string,
+     *     keywords: ?string,
+     *     og_image: ?string,
+     *     robots: string,
+     *     robots_txt: string
+     * }
      */
     public function seo(): array
     {
         $name = $this->branding()['name'];
 
         return [
+            'title' => $this->get('seo_default_title') ?: $name,
+            'title_template' => $this->get('seo_title_template') ?: '{page} | {site}',
             'description' => $this->get('seo_default_description') ?: "{$name} helps you provision servers, deploy Laravel and WordPress, and run day-to-day ops on infrastructure you own.",
             'keywords' => $this->get('seo_keywords'),
             'og_image' => $this->get('seo_og_image'),
             'robots' => $this->get('seo_robots') ?: 'index,follow',
+            'robots_txt' => $this->robotsTxt(),
         ];
+    }
+
+    /**
+     * Compose a document title from the admin template (`{page}` / `{site}`).
+     */
+    public function applyTitleTemplate(string $page, ?string $site = null): string
+    {
+        $site ??= $this->branding()['name'];
+        $template = $this->get('seo_title_template') ?: '{page} | {site}';
+
+        return str_replace(['{page}', '{site}'], [$page, $site], $template);
+    }
+
+    /**
+     * Resolve the most specific title / description / OG image for a marketing page key.
+     *
+     * @return array{title: string, description: string, og_image: ?string}
+     */
+    public function pageSeo(string $page): array
+    {
+        $pages = $this->marketingSeoPages();
+        $label = $pages[$page]['label'] ?? Str::headline(str_replace('_', ' ', $page));
+        $defaults = $this->seo();
+        $site = $this->branding()['name'];
+
+        if ($page === 'home') {
+            return [
+                'title' => $this->get('seo_home_title')
+                    ?: $this->get('seo_default_title')
+                    ?: $site,
+                'description' => $this->get('seo_home_description') ?: $defaults['description'],
+                'og_image' => $this->get('seo_home_og_image') ?: $defaults['og_image'],
+            ];
+        }
+
+        $titleOverride = $this->get("seo_page_{$page}_title");
+        $descriptionOverride = $this->get("seo_page_{$page}_description");
+        $ogOverride = $this->get("seo_page_{$page}_og_image");
+
+        return [
+            'title' => $titleOverride ?: $this->applyTitleTemplate($label, $site),
+            'description' => $descriptionOverride ?: $defaults['description'],
+            'og_image' => $ogOverride ?: $defaults['og_image'],
+        ];
+    }
+
+    /**
+     * Resolve SEO tags for a published blog post (per-post fields, then excerpt / title).
+     *
+     * @return array{title: string, description: string, og_image: ?string}
+     */
+    public function postSeo(Post $post): array
+    {
+        $defaults = $this->seo();
+        $site = $this->branding()['name'];
+
+        return [
+            'title' => filled($post->meta_title)
+                ? (string) $post->meta_title
+                : $this->applyTitleTemplate((string) $post->title, $site),
+            'description' => filled($post->meta_description)
+                ? (string) $post->meta_description
+                : (filled($post->excerpt) ? (string) $post->excerpt : $defaults['description']),
+            'og_image' => $post->cover_url ?: $defaults['og_image'],
+        ];
+    }
+
+    /**
+     * Body of /robots.txt. Empty admin value falls back to allow-all plus the sitemap URL.
+     */
+    public function robotsTxt(): string
+    {
+        $custom = $this->get('seo_robots_txt');
+        if (filled($custom)) {
+            return rtrim(str_replace("\r\n", "\n", $custom))."\n";
+        }
+
+        return "User-agent: *\nAllow: /\nSitemap: ".url('/sitemap.xml')."\n";
     }
 
     /**

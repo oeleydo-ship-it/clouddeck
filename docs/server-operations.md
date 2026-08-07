@@ -18,6 +18,16 @@ The domain must already resolve to the server and ports 80 and 443 must be reach
 
 Cron entries are created either from a site's Cron tab, where they are bound to that site and its server, or from the server's Cron tab for entries that belong to no site. Cron expressions are validated as five fields and commands reject line breaks and shell-control characters before they are written to `/etc/cron.d`. Supervisor workers are generated from structured settings such as connection, queue, process count, retry count, timeout, and memory; customers cannot submit an arbitrary Supervisor configuration.
 
+### Laravel scheduler presets
+
+Both Cron tabs offer a **Laravel scheduler** preset next to Custom. Choosing it auto-fills:
+
+- Name: `Laravel scheduler`
+- Expression: `* * * * *`
+- Command: `cd /var/www/{domain}/current && php artisan schedule:run`
+
+On the site Cron tab the domain is the current site. On the server Cron tab, each Laravel site on that host appears as a preset chip; prefer the site tab so the entry stays bound to the site. Server-level cron runs as root and is unattached to a site.
+
 A Reverb worker binds to `127.0.0.1` on its allocated port and is published by Nginx on the site's own domain under `/app` and `/apps`, so the WebSocket reuses the site's certificate on port 443 and no high port is exposed. The proxy is written to `/etc/nginx/Uplary/<domain>-reverb.conf` and pulled in by a glob `include`, which survives both Certbot and the Nginx settings screen rewriting the vhost. The site's `REVERB_SCHEME` and `REVERB_PORT` follow whether the site has an active certificate, and are refreshed when one is issued; the compiled `VITE_REVERB_*` values reach the browser on the next deployment.
 
 Deleting a cron entry or worker queues removal of its remote configuration. The UI status reflects the last synchronization job rather than assuming the remote action succeeded.

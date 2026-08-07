@@ -77,6 +77,8 @@ class AdminPostController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'slug' => ['nullable', 'alpha_dash', 'max:180', Rule::unique('posts', 'slug')->ignore($post)],
             'excerpt' => ['nullable', 'string', 'max:500'],
+            'meta_title' => ['nullable', 'string', 'max:180'],
+            'meta_description' => ['nullable', 'string', 'max:320'],
             'body' => ['required', 'string', 'max:200000'],
             'published_at' => ['nullable', 'date'],
             'cover' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
@@ -86,6 +88,8 @@ class AdminPostController extends Controller
             'title' => $data['title'],
             'slug' => $data['slug'] ?? Str::slug($data['title']),
             'excerpt' => $data['excerpt'] ?? null,
+            'meta_title' => $data['meta_title'] ?? null,
+            'meta_description' => $data['meta_description'] ?? null,
             'body' => $data['body'],
             'published_at' => $data['published_at'] ?? $post?->published_at,
         ];

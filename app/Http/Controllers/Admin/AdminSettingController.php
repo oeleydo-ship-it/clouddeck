@@ -188,11 +188,30 @@ class AdminSettingController extends Controller
 
     public function seo(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
     {
+        $pageKeys = [];
+        foreach (array_keys($settings->marketingSeoPages()) as $page) {
+            if ($page === 'home') {
+                $pageKeys["seo_home_title"] = ['nullable', 'string', 'max:180'];
+                $pageKeys["seo_home_description"] = ['nullable', 'string', 'max:320'];
+                $pageKeys["seo_home_og_image"] = ['nullable', 'url', 'max:500'];
+
+                continue;
+            }
+
+            $pageKeys["seo_page_{$page}_title"] = ['nullable', 'string', 'max:180'];
+            $pageKeys["seo_page_{$page}_description"] = ['nullable', 'string', 'max:320'];
+            $pageKeys["seo_page_{$page}_og_image"] = ['nullable', 'url', 'max:500'];
+        }
+
         $data = $request->validate([
+            'seo_default_title' => ['nullable', 'string', 'max:180'],
+            'seo_title_template' => ['nullable', 'string', 'max:180'],
             'seo_default_description' => ['nullable', 'string', 'max:320'],
             'seo_keywords' => ['nullable', 'string', 'max:255'],
             'seo_og_image' => ['nullable', 'url', 'max:500'],
             'seo_robots' => ['nullable', 'string', 'max:80'],
+            'seo_robots_txt' => ['nullable', 'string', 'max:10000'],
+            ...$pageKeys,
         ]);
 
         foreach ($data as $key => $value) {

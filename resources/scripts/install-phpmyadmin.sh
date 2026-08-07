@@ -10,21 +10,36 @@ DEBCONF
     DEBIAN_FRONTEND=noninteractive apt-get install -y phpmyadmin
 fi
 
-# Prefer the newest managed PHP binary still present so apt's php-cli dependency cannot
-# leave Composer/artisan on a different major than site pools.
-PHP_BIN=""
+# Prefer an FPM socket that actually exists (starting the unit if needed).
+# Do not pick by newest php-cli alone: `apt install phpmyadmin` often pulls a
+# newer phpX.Y-cli without installing/starting phpX.Y-fpm, which yields nginx 502.
 PHP_SOCK=""
+PHP_VER=""
 for candidate in 8.5 8.4 8.3 8.2; do
-    if [ -x "/usr/bin/php${candidate}" ]; then
-        PHP_BIN="/usr/bin/php${candidate}"
-        PHP_SOCK="/run/php/php${candidate}-fpm.sock"
+    sock="/run/php/php${candidate}-fpm.sock"
+    unit="php${candidate}-fpm"
+    if systemctl cat "${unit}" >/dev/null 2>&1; then
+        systemctl enable --now "${unit}" 2>/dev/null || true
+    fi
+    if [ -S "${sock}" ]; then
+        PHP_SOCK="${sock}"
+        PHP_VER="${candidate}"
         break
     fi
 done
-if [ -n "$PHP_BIN" ]; then
-    update-alternatives --set php "$PHP_BIN" 2>/dev/null || true
+
+if [ -z "${PHP_SOCK}" ]; then
+    echo "No PHP-FPM socket found under /run/php/php*-fpm.sock (tried 8.5–8.2). Start php*-fpm and re-run." >&2
+    ls -la /run/php 2>/dev/null || true
+    systemctl status 'php*-fpm' --no-pager 2>/dev/null || true
+    exit 64
 fi
-: "${PHP_SOCK:=/run/php/php8.5-fpm.sock}"
+
+# Pin system `php` to the same major we will fastcgi to, so apt's phpmyadmin
+# dependency cannot leave Composer/artisan on a different version than FPM.
+if [ -x "/usr/bin/php${PHP_VER}" ]; then
+    update-alternatives --set php "/usr/bin/php${PHP_VER}" 2>/dev/null || true
+fi
 
 cat > /etc/nginx/sites-available/clouddeck-phpmyadmin <<NGINX
 server {
@@ -55,4 +70,4 @@ ln -sfn /etc/nginx/sites-available/clouddeck-phpmyadmin /etc/nginx/sites-enabled
 nginx -t
 systemctl reload nginx
 ufw allow "${PORT}/tcp" comment 'clouddeck-phpmyadmin' || true
-echo "phpMyAdmin installed on port ${PORT}"
+echo "phpMyAdmin installed on port ${PORT} (fastcgi ${PHP_SOCK})"

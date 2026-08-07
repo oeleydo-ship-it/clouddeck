@@ -17,7 +17,7 @@ class PageController extends Controller
 {
     public function home(): View
     {
-        $platform = app(SystemSettings::class)->branding()['name'];
+        $seo = app(SystemSettings::class)->pageSeo('home');
 
         return view('marketing.home', [
             'posts' => Post::published()->latest('published_at')->limit(3)->get(),
@@ -28,29 +28,30 @@ class PageController extends Controller
                 ->orderBy('monthly_price')
                 ->get(),
             'landing' => app(SystemSettings::class)->landing(),
-            'title' => $platform,
-            'metaDescription' => app(SystemSettings::class)->seo()['description'],
+            'title' => $seo['title'],
+            'metaDescription' => $seo['description'],
+            'ogImage' => $seo['og_image'],
         ]);
     }
 
     public function about(): View
     {
-        return view('marketing.about', ['title' => 'About · '.app(SystemSettings::class)->branding()['name']]);
+        return $this->marketingPage('about', 'marketing.about');
     }
 
     public function features(): View
     {
-        return view('marketing.features', ['title' => 'Features · '.app(SystemSettings::class)->branding()['name']]);
+        return $this->marketingPage('features', 'marketing.features');
     }
 
     public function useCases(): View
     {
-        return view('marketing.use-cases', ['title' => 'Use cases · '.app(SystemSettings::class)->branding()['name']]);
+        return $this->marketingPage('use_cases', 'marketing.use-cases');
     }
 
     public function contact(): View
     {
-        return view('marketing.contact', ['title' => 'Contact · '.app(SystemSettings::class)->branding()['name']]);
+        return $this->marketingPage('contact', 'marketing.contact');
     }
 
     public function submitContact(Request $request, SystemSettings $settings): RedirectResponse
@@ -76,5 +77,16 @@ class PageController extends Controller
         }
 
         return back()->with('status', 'Thanks — your message reached us. We will reply to '.$data['email'].'.');
+    }
+
+    private function marketingPage(string $page, string $view): View
+    {
+        $seo = app(SystemSettings::class)->pageSeo($page);
+
+        return view($view, [
+            'title' => $seo['title'],
+            'metaDescription' => $seo['description'],
+            'ogImage' => $seo['og_image'],
+        ]);
     }
 }

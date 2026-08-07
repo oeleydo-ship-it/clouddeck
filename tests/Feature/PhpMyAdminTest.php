@@ -47,6 +47,23 @@ class PhpMyAdminTest extends TestCase
         $this->assertSame(8081, $server->fresh()->phpmyadmin_port);
     }
 
+    public function test_install_script_selects_an_existing_fpm_socket_not_cli_alone(): void
+    {
+        $script = file_get_contents(resource_path('scripts/install-phpmyadmin.sh'));
+
+        $this->assertStringContainsString('for candidate in 8.5 8.4 8.3 8.2; do', $script);
+        $this->assertStringContainsString('[ -S "${sock}" ]', $script);
+        $this->assertStringContainsString('systemctl enable --now "${unit}"', $script);
+        $this->assertStringContainsString('fastcgi_pass unix:${PHP_SOCK};', $script);
+        $this->assertStringNotContainsString('fastcgi_pass unix:/run/php/php8.4-fpm.sock;', $script);
+        $this->assertStringNotContainsString('fastcgi_pass unix:/run/php/php8.5-fpm.sock;', $script);
+        // Must not assume newest CLI implies a matching FPM socket (apt phpmyadmin trap).
+        $this->assertDoesNotMatchRegularExpression(
+            '/if \[ -x "\/usr\/bin\/php\$\{candidate\}" \]; then\s+PHP_BIN=.*PHP_SOCK=/s',
+            $script,
+        );
+    }
+
     public function test_phpmyadmin_cannot_take_the_port_reverb_defaults_to(): void
     {
         Queue::fake();

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\AlertIncident;
+use App\Models\SecurityIncident;
+use App\Models\Server;
 use App\Models\SiteMonitorIncident;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,13 +20,14 @@ class IncidentController extends Controller
             'status' => $request->query('status'),
             'severity' => $request->query('severity'),
             'server' => $request->query('server'),
+            'type' => $request->query('type'),
         ], fn ($value) => $value !== null && $value !== ''));
     }
 
     /**
      * Shared incident inbox for the Notifications page (and any future consumers).
      *
-     * @return array{incidents: Collection<int, array<string, mixed>>, servers: Collection<int, \App\Models\Server>, filters: array{status: string, severity: string, server: ?string}}
+     * @return array{incidents: Collection<int, array<string, mixed>>, servers: Collection<int, Server>, filters: array<string, mixed>}
      */
     public function listData(Request $request): array
     {
@@ -36,14 +39,16 @@ class IncidentController extends Controller
         }
 
         $filters = $request->validate([
-            'status' => ['sometimes', 'nullable', Rule::in(['open', 'resolved', 'all'])],
+            'status' => ['sometimes', 'nullable', Rule::in(['open', 'acknowledged', 'resolved', 'all'])],
             'severity' => ['sometimes', 'nullable', Rule::in(['info', 'warning', 'critical', 'all'])],
             'server' => ['sometimes', 'nullable', 'uuid'],
+            'type' => ['sometimes', 'nullable', Rule::in(['all', 'security', 'server', 'site'])],
         ]);
 
         $status = $filters['status'] ?? 'open';
         $severity = $filters['severity'] ?? 'all';
         $serverId = $filters['server'] ?? null;
+        $type = $filters['type'] ?? 'all';
 
         if ($serverId && ! $servers->contains('id', $serverId)) {
             abort(404);
@@ -70,6 +75,7 @@ class IncidentController extends Controller
                 'server' => $incident->server,
                 'site' => null,
                 'href' => route('servers.manage', ['server' => $incident->server_id, 'tab' => 'monitoring']),
+                'security' => null,
             ]);
 
         $siteIncidents = SiteMonitorIncident::query()
@@ -106,11 +112,46 @@ class IncidentController extends Controller
                 'href' => $incident->site_id
                     ? route('sites.show', ['site' => $incident->site_id]).'?tab=monitoring'
                     : null,
+                'security' => null,
+            ]);
+
+        $securityIncidents = SecurityIncident::query()
+            ->accessibleTo($user)
+            ->with(['server:id,name', 'site:id,domain,server_id', 'firewallRule'])
+            ->when($status !== 'all', function ($query) use ($status) {
+                return $status === 'open'
+                    ? $query->whereIn('status', ['open', 'acknowledged'])
+                    : $query->where('status', $status);
+            })
+            ->when($serverId, fn ($query) => $query->where('server_id', $serverId))
+            ->when($severity !== 'all', fn ($query) => $query->where('severity', $severity))
+            ->latest('last_seen_at')
+            ->limit(100)
+            ->get()
+            ->map(fn (SecurityIncident $incident) => [
+                'id' => $incident->id,
+                'source' => 'security',
+                'message' => $incident->title,
+                'status' => $incident->status,
+                'severity' => $incident->severity,
+                'detail' => $incident->rule_name
+                    .($incident->source_ip ? ' · '.$incident->source_ip : '')
+                    .' · '.$incident->occurrence_count.' occurrences',
+                'started_at' => $incident->first_seen_at,
+                'resolved_at' => $incident->resolved_at,
+                'server' => $incident->server,
+                'site' => $incident->site,
+                'href' => $incident->site
+                    ? route('sites.show', $incident->site)
+                    : ($incident->server ? route('servers.manage', $incident->server) : null),
+                'security' => $incident,
             ]);
 
         /** @var Collection<int, array<string, mixed>> $incidents */
         $incidents = $alertIncidents
             ->concat($siteIncidents)
+            ->concat($securityIncidents)
+            ->when($type !== 'all', fn (Collection $rows) => $rows->where('source', $type))
             ->sortByDesc(fn (array $row) => $row['started_at']?->timestamp ?? 0)
             ->values()
             ->take(100);
@@ -122,6 +163,7 @@ class IncidentController extends Controller
                 'status' => $status,
                 'severity' => $severity,
                 'server' => $serverId,
+                'type' => $type,
             ],
         ];
     }

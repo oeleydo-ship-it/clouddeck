@@ -42,6 +42,8 @@ Opt-in per site from the site Monitoring tab. When enabled, `DispatchSiteChecksJ
 
 Resolved site monitor incidents follow the same retention as server alert incidents. Probe timeout defaults to `MONITORING_SITE_PROBE_TIMEOUT` (10 seconds).
 
+Customers review the fleet list under **Notifications → Incidents** (`/notifications`), with filters for status, severity, and server. Account-wide email recipients for operational events (including `backup_failed` and monitoring events) live on the same page under **Email recipients**. Per-server Slack, Discord, and Telegram channels remain on each server’s Monitoring controls.
+
 ## Retention and workers
 
 `MONITORING_RETENTION_DAYS` defaults to 30. Resolved server and site incidents use `MONITORING_INCIDENT_RETENTION_DAYS`, which defaults to 180. A daily task deletes expired records. Open incidents are never pruned.

@@ -3,6 +3,7 @@
 @php
     $sections = [
         ['id' => 'getting-started', 'label' => 'Getting started'],
+        ['id' => 'whats-new', 'label' => "What's new"],
         ['id' => 'providers', 'label' => 'Providers & IPs'],
         ['id' => 'ssh-keys', 'label' => 'SSH keys'],
         ['id' => 'provisioning', 'label' => 'Provisioning'],
@@ -12,10 +13,13 @@
         ['id' => 'databases', 'label' => 'Databases'],
         ['id' => 'workers', 'label' => 'Workers & cron'],
         ['id' => 'monitoring', 'label' => 'Monitoring'],
+        ['id' => 'security-detection', 'label' => 'Security detection'],
+        ['id' => 'notifications', 'label' => 'Notifications'],
         ['id' => 'firewall', 'label' => 'Firewall'],
         ['id' => 'backups', 'label' => 'Backups'],
         ['id' => 'staging', 'label' => 'Staging sites'],
         ['id' => 'remote', 'label' => 'Remote management'],
+        ['id' => 'maintenance', 'label' => 'Server maintenance'],
         ['id' => 'dns', 'label' => 'DNS'],
         ['id' => 'teams', 'label' => 'Teams & API'],
         ['id' => 'plans', 'label' => 'Plans & billing'],
@@ -72,8 +76,24 @@
 
                 <div class="mt-5 rounded-xl bg-slate-50 p-4 text-sm muted dark:bg-white/5">
                     <p><strong class="heading">What you own:</strong> cloud accounts, VMs, and domains stay in your name. {{ $branding['name'] }} orchestrates SSH and provider APIs; stopping the panel does not delete your servers.</p>
-                    <p class="mt-2">Need a nudge while working? Use the floating <strong class="heading">AI guide</strong> (bottom-right) when a superadmin has enabled it.</p>
+                    <p class="mt-2">Need a nudge while working? Use the floating <strong class="heading">AI guide</strong> (bottom-right) when a superadmin has enabled it. Use <strong class="heading">View website</strong> in the sidebar to open the public marketing site in a new tab.</p>
                 </div>
+            </section>
+
+            {{-- What's new --}}
+            <section id="whats-new" class="panel scroll-mt-8">
+                <h2 class="section-title">What's new</h2>
+                <p class="mt-3 text-sm muted">Recent console updates for customers. Jump to a section for the full walkthrough.</p>
+                <ul class="mt-4 list-inside list-disc space-y-2 text-sm muted">
+                    <li><a class="link-action" href="#firewall">Firewall</a> — manage per-server UFW allow/deny rules from the sidebar.</li>
+                    <li><a class="link-action" href="#notifications">Notifications</a> — fleet incidents plus account-wide email recipients (including backup failure alerts).</li>
+                    <li><a class="link-action" href="#teams">Teams</a> — invite Edit / Resend / Delete, plus Viewer, Operator, Admin, and Owner privileges.</li>
+                    <li><a class="link-action" href="#workers">Cron presets</a> — one-click Laravel <code>schedule:run</code> on site and server Cron tabs.</li>
+                    <li><a class="link-action" href="#sites">PHP 8.5</a> — available when creating sites; new servers install 8.5 (plus 8.4/8.3/8.2) with 8.5 as the default.</li>
+                    <li><a class="link-action" href="#backups">Backups</a> — schedule, run now, restore/download databases, DigitalOcean snapshots, storage disk, and BYO limits.</li>
+                    <li><a class="link-action" href="#maintenance">Server maintenance</a> — software hardening, Ubuntu package updates, and major release upgrades from Services.</li>
+                    <li><a class="link-action" href="#password">Google sign-in</a> — use <strong class="heading">Continue with Google</strong> on login/register when the platform enables it.</li>
+                </ul>
             </section>
 
             {{-- Providers & IPs --}}
@@ -235,6 +255,16 @@
                 <h3 class="mt-6 text-sm font-semibold heading">Cron jobs</h3>
                 <p class="mt-2 text-sm muted">Add schedules on the site <strong class="heading">Cron</strong> tab or at the server level. Jobs sync to the host crontab and can be toggled without deleting them.</p>
 
+                <h3 class="mt-6 text-sm font-semibold heading">Laravel scheduler presets</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>Open the site’s <strong class="heading">Cron</strong> tab (preferred for app schedules) or the server’s <strong class="heading">Cron</strong> tab.</li>
+                    <li>Choose the <strong class="heading">Laravel scheduler</strong> preset instead of Custom.</li>
+                    <li>{{ $branding['name'] }} fills name, <code>* * * * *</code>, and <code>cd /var/www/{domain}/current &amp;&amp; php artisan schedule:run</code> for that site.</li>
+                    <li>On the server Cron tab, pick a Laravel site from the preset chips (or add a site first if none appear).</li>
+                    <li>Submit the job — it syncs to the host like any other cron entry.</li>
+                </ol>
+                <p class="mt-3 text-sm muted">Prefer the site Cron tab for Laravel schedulers so the entry stays bound to that site. Server-level cron runs as root and is unattached to a site.</p>
+
                 <h3 class="mt-6 text-sm font-semibold heading">Queue workers</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
                     <li>Open <strong class="heading">Queue &amp; Reverb</strong> on a Laravel site.</li>
@@ -275,6 +305,46 @@
                     <li>Laravel sites also get periodic queue-health checks for failed jobs.</li>
                     <li>Recovery notifications fire when probes succeed again.</li>
                 </ol>
+                <p class="mt-3 text-sm muted">Open incidents across your fleet also appear under <a class="link-action" href="{{ route('notifications.index') }}">Notifications → Incidents</a>.</p>
+            </section>
+
+            {{-- Security detection --}}
+            <section id="security-detection" class="panel scroll-mt-8">
+                <h2 class="section-title">Security detection</h2>
+                <p class="mt-3 text-sm muted">The <a class="link-action" href="{{ route('security.index') }}">Security</a> page runs read-only checks over managed SSH and turns threshold breaches into tenant-scoped incidents.</p>
+                <ul class="mt-4 list-inside list-disc space-y-2 text-sm muted">
+                    <li><strong class="heading">Server signals:</strong> failed SSH authentication, administrative user changes, known miner processes and ports, and hash changes to cron, SSH keys, web roots, and <code>.env</code> files.</li>
+                    <li><strong class="heading">Site signals:</strong> login and POST bursts, rapid route scans, known scanner user agents, Fail2ban/WAF blocks, malware signatures, and unexpected admin actions.</li>
+                    <li><strong class="heading">Configuration:</strong> detection is on by default. In <a class="link-action" href="{{ route('security.index') }}">Security → Detection settings</a>, team owners and administrators can change each rule's enabled state, threshold, window, and severity for the active workspace.</li>
+                    <li>Deployment configuration supplies recommended defaults; database-backed workspace overrides take precedence. Use <strong class="heading">Reset to recommended defaults</strong> to remove all overrides. Keep detection enabled and tune only after observing a normal baseline.</li>
+                    <li>Scans run every five minutes through the monitoring queue. The first integrity scan creates a protected host-side hash baseline and does not alert.</li>
+                    <li>Incidents can be open, acknowledged, resolved, or reopened. Every state and mitigation change is audit logged.</li>
+                    <li><strong class="heading">Block IP</strong> is manual only. It rejects private, reserved, loopback, and server-owned addresses, then queues a normal UFW deny rule that can be removed from the incident.</li>
+                </ul>
+                <p class="mt-3 text-sm muted">Generic application login/admin events require the signed security-event endpoint or an app/agent integration. This feature is pragmatic detection and response, not a replacement for endpoint protection or a SIEM.</p>
+            </section>
+
+            {{-- Notifications --}}
+            <section id="notifications" class="panel scroll-mt-8">
+                <h2 class="section-title">Notifications and incidents</h2>
+                <p class="mt-3 text-sm muted">Open <a class="link-action" href="{{ route('notifications.index') }}">Notifications</a> in the sidebar (below Firewall). The page has two tabs: <strong class="heading">Incidents</strong> and <strong class="heading">Email recipients</strong>.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Incidents</h3>
+                <p class="mt-2 text-sm muted">A single list of open and resolved events across your servers and sites — uptime, DNS mismatch, metric alerts, and similar operational signals.</p>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>Filter by status (open / resolved / all), severity, and server.</li>
+                    <li>Each row shows the message, severity, source, start/resolve times, and links back to the related server or site when available.</li>
+                    <li>Incidents open from monitoring rules and site probes; they resolve automatically when health returns to normal.</li>
+                </ul>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Email recipients</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>Switch to <strong class="heading">Email recipients</strong>.</li>
+                    <li>Add a name and optional address (blank uses your account email).</li>
+                    <li>Optionally tick which events to receive — leave every box clear to get all of them.</li>
+                    <li>Recipients are account-wide, not tied to a single server.</li>
+                </ol>
+                <p class="mt-3 text-sm muted">With no recipients configured, operational email goes to your account address. Event types include server provisioned, server down, disk full, site added, website down/recovered, DNS mismatch, deploy complete, SSL issued/expiring, queue failed, <strong class="heading">backup failed</strong>, and auto-heal actions. Per-server Slack, Discord, and Telegram channels still live on each server’s Monitoring controls.</p>
             </section>
 
             {{-- Firewall --}}
@@ -310,24 +380,38 @@
             {{-- Backups --}}
             <section id="backups" class="panel scroll-mt-8">
                 <h2 class="section-title">Backups and restores</h2>
-                <p class="mt-3 text-sm muted">Schedule recovery points from the server manage page under backups.</p>
+                <p class="mt-3 text-sm muted">Open a ready server → <strong class="heading">Backups</strong> tab to schedule recovery points, run them on demand, and restore or download databases.</p>
 
-                <h3 class="mt-6 text-sm font-semibold heading">Database policies</h3>
+                <h3 class="mt-6 text-sm font-semibold heading">Automated policies</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>Create a policy with a name, type (database export or provider snapshot), frequency (daily / weekly / monthly), local run time, and timezone.</li>
+                    <li>For database exports, pick the managed database and a private <strong class="heading">storage disk</strong> (local or S3-compatible disks configured for the platform).</li>
+                    <li>Set how many recovery points to keep; older ready exports are pruned by count and by the platform retention window.</li>
+                    <li>Use <strong class="heading">Run now</strong>, <strong class="heading">Pause</strong> / <strong class="heading">Enable</strong>, or <strong class="heading">Remove</strong> on each policy card.</li>
+                </ol>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Database recovery</h3>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
-                    <li>Daily, weekly, or monthly SQL exports at a local wall-clock time and timezone.</li>
-                    <li>Count-based retention; older exports expire and are removed.</li>
-                    <li>Restore requires typing the exact database name as confirmation.</li>
+                    <li>Ready exports appear under <strong class="heading">Database recovery points</strong>.</li>
+                    <li><strong class="heading">Download</strong> pulls the SQL dump from the stored disk.</li>
+                    <li><strong class="heading">Restore database</strong> requires typing the exact database name as confirmation. Restore does not delete the source recovery point.</li>
                 </ul>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Server snapshots (DigitalOcean)</h3>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
-                    <li>Create on-demand or scheduled Droplet snapshots via the provider API.</li>
+                    <li>Create on-demand or scheduled Droplet snapshots via the provider API when the server has a cloud provider ID.</li>
                     <li>Restore replaces the Droplet disk — confirm with the exact hostname.</li>
                     <li>External DNS, object storage, and resources outside the VM are not restored by a snapshot.</li>
                 </ul>
 
+                <h3 class="mt-6 text-sm font-semibold heading">BYO / custom servers</h3>
+                <p class="mt-2 text-sm muted">Connected custom (bring-your-own) servers support <strong class="heading">database export policies only</strong>. Provider snapshots require a DigitalOcean Droplet. The Backups tab explains this when snapshots are unavailable.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Failure alerts</h3>
+                <p class="mt-2 text-sm muted">Failed database exports, snapshot create/refresh failures, and restore failures send a <strong class="heading">Backup failed</strong> email. Subscribe under <a class="link-action" href="{{ route('notifications.index') }}">Notifications → Email recipients</a>.</p>
+
                 <h3 class="mt-6 text-sm font-semibold heading">WordPress backups</h3>
-                <p class="mt-2 text-sm muted">WordPress sites have a dedicated Backups tab for application-level recovery points before plugin or core updates.</p>
+                <p class="mt-2 text-sm muted">WordPress sites have a dedicated Backups tab for application-level recovery points before plugin or core updates. Those archives stay on the VPS.</p>
             </section>
 
             {{-- Staging --}}
@@ -365,7 +449,22 @@
                 <p class="mt-2 text-sm muted">Run allowlisted programs (<code>php</code>, <code>composer</code>, <code>git</code>, <code>npm</code>, <code>node</code>, and common read tools) as <code>www-data</code> from the current release. Shell operators and absolute path tricks are rejected.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Server operations</h3>
-                <p class="mt-2 text-sm muted">From the server console, restart allowlisted services (Nginx, PHP-FPM, MySQL, Redis, Supervisor), manage PHP extensions, and review operation logs.</p>
+                <p class="mt-2 text-sm muted">From the server console, restart allowlisted services (Nginx, PHP-FPM, MySQL, Redis, Supervisor), manage PHP extensions, and review operation logs. For package updates and hardening, see <a class="link-action" href="#maintenance">Server maintenance</a>.</p>
+            </section>
+
+            {{-- Server maintenance --}}
+            <section id="maintenance" class="panel scroll-mt-8">
+                <h2 class="section-title">Server maintenance</h2>
+                <p class="mt-3 text-sm muted">On a ready server, open the <strong class="heading">Services</strong> tab → <strong class="heading">Maintenance</strong>. Each action queues an allowlisted script over SSH and records output in the server’s operation history.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Software hardening</h3>
+                <p class="mt-2 text-sm muted">Re-applies baseline hardening: UFW and Fail2Ban present, additive UFW baseline (OpenSSH + Nginx Full — does not reset or remove console firewall rules), SSH password auth off when keys are in use, Fail2Ban sshd jail, and sysctl drop-ins. Confirm before running.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Update Ubuntu packages</h3>
+                <p class="mt-2 text-sm muted">Runs package update and upgrade (plus autoremove) with apt-lock retries. Prefer this for routine maintenance. Services may briefly restart.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Major release upgrade</h3>
+                <p class="mt-2 text-sm muted">Runs a noninteractive Ubuntu release upgrade (<code>do-release-upgrade</code>). It can break PHP, Nginx, or MySQL packages and usually requires a reboot. Expand the warning panel, type the exact hostname to confirm, and only use this when you intentionally need a new Ubuntu LTS. Prefer package updates otherwise.</p>
             </section>
 
             {{-- DNS --}}
@@ -384,12 +483,21 @@
                 <h2 class="section-title">Teams and API tokens</h2>
 
                 <h3 class="mt-4 text-sm font-semibold heading">Teams</h3>
+                <p class="mt-2 text-sm muted">Open <a class="link-action" href="{{ route('teams.index') }}">Teams</a> to create a workspace, invite colleagues, and switch the active team when collaborating across workspaces. Seat counts count against your plan.</p>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
-                    <li>Open <a class="link-action" href="{{ route('teams.index') }}">Teams</a> to create a workspace.</li>
-                    <li>Invite members by email as <strong class="heading">member</strong> or <strong class="heading">admin</strong>.</li>
-                    <li>Invitations expire and can be used once; seat counts count against your plan.</li>
-                    <li>Switch the active team from the teams page when collaborating across workspaces.</li>
+                    <li>Create a team and invite members by email with a role: <strong class="heading">Viewer</strong>, <strong class="heading">Operator</strong>, or <strong class="heading">Admin</strong>.</li>
+                    <li>Invitations expire (typically after 7 days) and can be used once.</li>
+                    <li>On pending invitations: <strong class="heading">Edit</strong> changes the role before acceptance, <strong class="heading">Resend</strong> sends the email again (rate-limited), and <strong class="heading">Delete</strong> cancels the invite.</li>
+                    <li>After acceptance, owners and admins can change a member’s role or remove them (the owner cannot be demoted or removed by others).</li>
                 </ol>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Role privileges</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li><strong class="heading">Owner</strong> — full control of the team and its servers; manage members and invitations; transfer and delete team servers. Cannot be removed or demoted by other members.</li>
+                    <li><strong class="heading">Admin</strong> — invite, edit, resend, and cancel invitations; change roles and remove members; view, operate, transfer, and delete team servers. Cannot remove or demote the owner.</li>
+                    <li><strong class="heading">Operator</strong> — view and operate team servers (deploy, configure). Cannot manage members or invitations, or transfer/delete servers.</li>
+                    <li><strong class="heading">Viewer</strong> — read-only access to shared infrastructure. Cannot deploy, change servers, or manage members.</li>
+                </ul>
 
                 <h3 class="mt-6 text-sm font-semibold heading">API tokens</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
@@ -436,13 +544,8 @@
                 <h3 class="mt-6 text-sm font-semibold heading">Forgot password</h3>
                 <p class="mt-2 text-sm muted">From the login screen, use the password reset link. A reset email is sent when mail is configured.</p>
 
-                <h3 class="mt-6 text-sm font-semibold heading">Google Sign-In</h3>
-                <p class="mt-2 text-sm muted">When a superadmin enables Google Auth under <strong class="heading">Admin → Google Auth</strong>, login and register show <strong class="heading">Continue with Google</strong>. Verified Google emails can create a customer account or link to an existing password account. New OAuth users are never granted administrator roles. Two-factor authentication still applies after Google sign-in when enabled.</p>
-                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
-                    <li>In Google Cloud Console, create an OAuth 2.0 Client ID (Web application).</li>
-                    <li>Set the authorized redirect URI to <code class="rounded bg-slate-100 px-1 dark:bg-white/10">{{ url('/auth/google/callback') }}</code> (also shown on the admin page).</li>
-                    <li>Save Client ID and Client Secret under Admin → Google Auth, and enable Google sign-in. Optional <code class="rounded bg-slate-100 px-1 dark:bg-white/10">.env</code> fallbacks: <code class="rounded bg-slate-100 px-1 dark:bg-white/10">GOOGLE_CLIENT_ID</code>, <code class="rounded bg-slate-100 px-1 dark:bg-white/10">GOOGLE_CLIENT_SECRET</code>, <code class="rounded bg-slate-100 px-1 dark:bg-white/10">GOOGLE_AUTH_ENABLED</code>.</li>
-                </ol>
+                <h3 class="mt-6 text-sm font-semibold heading">Google sign-in</h3>
+                <p class="mt-2 text-sm muted">When the platform enables Google sign-in, login and register show <strong class="heading">Continue with Google</strong>. Use that button to create a customer account or link to an existing password account with the same verified Google email. If the button is missing, Google sign-in is not enabled for this install. Two-factor authentication still applies after Google sign-in when you have enabled it.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Stronger account security</h3>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">

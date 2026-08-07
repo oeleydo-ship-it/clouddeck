@@ -3,8 +3,17 @@
     <label class="min-w-[10rem] text-sm heading">Status
         <select class="field" name="status" onchange="this.form.submit()">
             <option value="open" @selected($filters['status'] === 'open')>Open</option>
+            <option value="acknowledged" @selected($filters['status'] === 'acknowledged')>Acknowledged</option>
             <option value="resolved" @selected($filters['status'] === 'resolved')>Resolved</option>
             <option value="all" @selected($filters['status'] === 'all')>All</option>
+        </select>
+    </label>
+    <label class="min-w-[10rem] text-sm heading">Type
+        <select class="field" name="type" onchange="this.form.submit()">
+            <option value="all" @selected($filters['type'] === 'all')>All</option>
+            <option value="security" @selected($filters['type'] === 'security')>Security</option>
+            <option value="server" @selected($filters['type'] === 'server')>Server metric</option>
+            <option value="site" @selected($filters['type'] === 'site')>Site monitor</option>
         </select>
     </label>
     <label class="min-w-[10rem] text-sm heading">Severity
@@ -33,7 +42,7 @@
                 'warning' => 'amber',
                 default => 'slate',
             };
-            $statusOpen = $incident['status'] === 'open';
+            $statusOpen = $incident['status'] !== 'resolved';
         @endphp
         <article class="panel flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="min-w-0 grow">
@@ -64,6 +73,34 @@
                         <span>{{ $incident['site']->domain }}</span>
                     @endif
                 </div>
+                @if($incident['security'])
+                    <details class="mt-3">
+                        <summary class="cursor-pointer text-xs font-medium text-sky-700 dark:text-sky-300">Sanitized evidence</summary>
+                        <p class="mt-2 text-sm muted">{{ $incident['security']->summary }}</p>
+                        <pre class="mt-2 max-h-48 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-200">{{ json_encode($incident['security']->evidence, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                    </details>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        @foreach(['acknowledged' => 'Acknowledge', 'resolved' => 'Resolve', 'open' => 'Reopen'] as $status => $label)
+                            @if($incident['status'] !== $status)
+                                <form method="POST" action="{{ route('security.incidents.status', $incident['security']) }}">@csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="{{ $status }}">
+                                    <button class="button-secondary !px-3 !py-1.5 text-xs">{{ $label }}</button>
+                                </form>
+                            @endif
+                        @endforeach
+                        @if($incident['security']->source_ip && ! $incident['security']->firewall_rule_id)
+                            <form method="POST" action="{{ route('security.incidents.block', $incident['security']) }}" onsubmit="return confirm('Block this public IP on the affected server?')">@csrf
+                                <input type="hidden" name="confirm" value="1">
+                                <button class="button-secondary !px-3 !py-1.5 text-xs text-rose-600">Block IP</button>
+                            </form>
+                        @elseif($incident['security']->firewall_rule_id)
+                            <form method="POST" action="{{ route('security.incidents.unblock', $incident['security']) }}" onsubmit="return confirm('Remove the incident-managed firewall block?')">@csrf @method('DELETE')
+                                <input type="hidden" name="confirm" value="1">
+                                <button class="button-secondary !px-3 !py-1.5 text-xs">Unblock IP</button>
+                            </form>
+                        @endif
+                    </div>
+                @endif
             </div>
             @if($incident['href'])
                 <a href="{{ $incident['href'] }}" class="button-secondary shrink-0 !px-3 !py-1.5 text-xs whitespace-nowrap">

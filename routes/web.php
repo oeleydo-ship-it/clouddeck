@@ -39,11 +39,14 @@ use App\Http\Controllers\PhpMyAdminController;
 use App\Http\Controllers\QueueWorkerController;
 use App\Http\Controllers\RemoteManagementController;
 use App\Http\Controllers\RetryServerProvisioningController;
+use App\Http\Controllers\RobotsController;
+use App\Http\Controllers\SecurityController;
 use App\Http\Controllers\ServerManagementController;
 use App\Http\Controllers\ServerOperationController;
 use App\Http\Controllers\ServerTeamController;
 use App\Http\Controllers\SiteConfigurationController;
 use App\Http\Controllers\SiteController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SitePackageController;
 use App\Http\Controllers\SshKeyController;
 use App\Http\Controllers\SslCertificateController;
@@ -62,6 +65,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/install', [InstallController::class, 'show'])->name('install');
 Route::post('/install', [InstallController::class, 'store'])->middleware('throttle:10,1');
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');
+Route::get('/robots.txt', RobotsController::class)->name('robots');
 // Every public-facing page sits behind one switch, so turning the marketing site off in
 // settings cannot leave one of them reachable by its own URL.
 Route::middleware(EnsurePublicSiteEnabled::class)->group(function () {
@@ -156,6 +161,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/firewall/rules/{firewallRule}', [FirewallController::class, 'destroy'])->name('firewall.rules.destroy');
     Route::post('/firewall/servers/{server}/sync', [FirewallController::class, 'sync'])->middleware('throttle:20,1')->name('firewall.sync');
     Route::post('/firewall/servers/{server}/refresh', [FirewallController::class, 'refresh'])->middleware('throttle:20,1')->name('firewall.refresh');
+
+    Route::get('/security', [SecurityController::class, 'index'])->name('security.index');
+    Route::get('/security/status', [SecurityController::class, 'scanStatus'])->name('security.status');
+    Route::post('/security/scan', [SecurityController::class, 'scan'])->middleware('throttle:10,1')->name('security.scan');
+    Route::put('/security/settings', [SecurityController::class, 'settings'])->name('security.settings.update');
+    Route::delete('/security/settings', [SecurityController::class, 'resetSettings'])->name('security.settings.reset');
+    Route::patch('/security/incidents/{securityIncident}/status', [SecurityController::class, 'status'])->name('security.incidents.status');
+    Route::post('/security/incidents/{securityIncident}/block', [SecurityController::class, 'block'])->middleware('throttle:10,1')->name('security.incidents.block');
+    Route::delete('/security/incidents/{securityIncident}/block', [SecurityController::class, 'unblock'])->middleware('throttle:10,1')->name('security.incidents.unblock');
 
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
     Route::get('/notifications', [NotificationSettingsController::class, 'index'])->name('notifications.index');

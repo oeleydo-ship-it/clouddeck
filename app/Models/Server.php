@@ -29,7 +29,27 @@ class Server extends Model
             'last_seen_at' => 'datetime',
             'phpmyadmin_enabled' => 'boolean',
             'firewall_synced_at' => 'datetime',
+            'security_scanned_at' => 'datetime',
         ];
+    }
+
+    public function securityScanIsBusy(): bool
+    {
+        return in_array($this->security_scan_status, ['queued', 'running'], true);
+    }
+
+    public function markSecurityScan(string $status, ?string $message = null, bool $touchScannedAt = false): void
+    {
+        $attributes = [
+            'security_scan_status' => $status,
+            'security_scan_message' => $message,
+        ];
+
+        if ($touchScannedAt) {
+            $attributes['security_scanned_at'] = now();
+        }
+
+        $this->forceFill($attributes)->save();
     }
 
     public function user()
@@ -103,6 +123,11 @@ class Server extends Model
     public function alertIncidents()
     {
         return $this->hasMany(AlertIncident::class);
+    }
+
+    public function securityIncidents()
+    {
+        return $this->hasMany(SecurityIncident::class);
     }
 
     public function backupPolicies()

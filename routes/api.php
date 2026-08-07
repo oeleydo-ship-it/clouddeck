@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\DeploymentController;
 use App\Http\Controllers\Api\ManagedDatabaseController;
 use App\Http\Controllers\Api\MetricController;
 use App\Http\Controllers\Api\MetricIngestionController;
+use App\Http\Controllers\Api\SecurityEventIngestionController;
 use App\Http\Controllers\Api\ServerController;
 use App\Http\Controllers\Api\SiteController;
 use App\Http\Controllers\Api\SslCertificateController;
@@ -14,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::post('monitoring/{server}/metrics', MetricIngestionController::class)->middleware('throttle:120,1');
+Route::post('monitoring/{server}/security-events', SecurityEventIngestionController::class)->middleware('throttle:120,1');
 Route::post('billing/stripe/webhook', StripeWebhookController::class)->middleware('throttle:120,1');
 
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {

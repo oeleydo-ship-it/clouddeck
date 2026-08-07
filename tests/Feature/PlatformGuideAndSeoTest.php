@@ -35,6 +35,8 @@ class PlatformGuideAndSeoTest extends TestCase
 
         $this->actingAs($admin)->put('/admin/settings/seo', [
             'seo_default_description' => 'Custom meta for search.',
+            'seo_default_title' => 'Custom platform title',
+            'seo_title_template' => '{page} | {site}',
             'seo_robots' => 'index,follow',
         ])->assertSessionHas('status');
 
@@ -55,6 +57,8 @@ class PlatformGuideAndSeoTest extends TestCase
         $settings = app(SystemSettings::class);
         $this->assertSame('Ship with confidence.', $settings->landing()['hero_headline']);
         $this->assertSame('Custom meta for search.', $settings->seo()['description']);
+        $this->assertSame('Custom platform title', $settings->seo()['title']);
+        $this->assertSame('{page} | {site}', $settings->seo()['title_template']);
         $this->assertSame('G-TEST12345', $settings->analytics()['ga_measurement_id']);
         $this->assertSame('abc_verify_token', $settings->analytics()['gsc_verification']);
         $this->assertTrue($settings->aiGuideEnabled());

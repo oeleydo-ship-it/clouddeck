@@ -5,6 +5,7 @@ use App\Jobs\Monitoring\CheckOfflineServersJob;
 use App\Jobs\Monitoring\DispatchSiteChecksJob;
 use App\Jobs\Monitoring\NotifyExpiringCertificatesJob;
 use App\Jobs\Operations\InstallSslCertificateJob;
+use App\Jobs\Security\DispatchSecurityScansJob;
 use App\Models\AlertIncident;
 use App\Models\DatabaseBackup;
 use App\Models\FileOperation;
@@ -23,6 +24,7 @@ Artisan::command('inspire', function () {
 Schedule::command('horizon:snapshot')->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new CheckOfflineServersJob, 'monitoring')->everyMinute()->withoutOverlapping();
 Schedule::job(new DispatchSiteChecksJob, 'monitoring')->everyMinute()->name('dispatch-site-checks')->withoutOverlapping();
+Schedule::job(new DispatchSecurityScansJob, 'monitoring')->everyFiveMinutes()->name('dispatch-security-scans')->withoutOverlapping();
 Schedule::job(new DispatchDueBackupsJob, 'operations')->everyMinute()->name('dispatch-due-backups')->withoutOverlapping();
 Schedule::call(function () {
     ServerMetric::where('recorded_at', '<', now()->subDays(config('monitoring.metric_retention_days')))->delete();

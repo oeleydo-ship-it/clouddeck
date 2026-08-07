@@ -9,6 +9,7 @@
         $analytics = $analytics ?? ['ga_measurement_id' => null, 'gsc_verification' => null];
         $pageTitle = $title ?? ($branding['name'] ?? config('app.name', 'Uplary'));
         $pageDescription = $metaDescription ?? ($seo['description'] ?? null);
+        $pageOgImage = $ogImage ?? ($seo['og_image'] ?? null);
     @endphp
     <title>{{ $pageTitle }}</title>
     @if($pageDescription)
@@ -24,8 +25,8 @@
     <meta property="og:title" content="{{ $pageTitle }}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
-    @if(! empty($seo['og_image']))
-        <meta property="og:image" content="{{ $seo['og_image'] }}">
+    @if(! empty($pageOgImage))
+        <meta property="og:image" content="{{ $pageOgImage }}">
     @endif
     @if(! empty($analytics['gsc_verification']))
         <meta name="google-site-verification" content="{{ $analytics['gsc_verification'] }}">
@@ -80,6 +81,7 @@
             ['href' => route('servers.index'), 'label' => 'Servers', 'match' => 'servers*', 'icon' => 'M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5ZM4 16a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3ZM8 7h.01M8 18h.01'],
             ['href' => route('sites.index'), 'label' => 'Sites', 'match' => 'sites*', 'icon' => 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z'],
             ['href' => route('firewall.index'), 'label' => 'Firewall', 'match' => 'firewall*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9.5 12h5M12 9.5v5'],
+            ['href' => route('security.index'), 'label' => 'Security', 'match' => 'security*', 'icon' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10ZM9 12l2 2 4-4'],
             ['href' => route('notifications.index'), 'label' => 'Notifications', 'match' => 'notifications*', 'icon' => 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9ZM10.3 21a1.94 1.94 0 0 0 3.4 0'],
             ['href' => route('cloud-accounts'), 'label' => 'Providers', 'match' => 'cloud-accounts*', 'icon' => 'M17.5 19a4.5 4.5 0 0 0 .5-8.97A6 6 0 0 0 6.2 9.4 4.5 4.5 0 0 0 6.5 19h11Z'],
         ];

@@ -37,6 +37,7 @@ class NotificationChannel extends Model
         'queue_failed' => 'Queue failed',
         'backup_failed' => 'Backup failed',
         'auto_heal' => 'Auto-heal action',
+        'security_incident' => 'Security incident',
     ];
 
     public function wantsEvent(string $event): bool

@@ -3,6 +3,7 @@
 namespace App\Jobs\Operations;
 
 use App\Models\FirewallRule;
+use App\Models\SecurityIncident;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -56,6 +57,9 @@ class SyncFirewallRuleJob implements ShouldQueue
                 'status_message' => null,
             ]);
         }
+        SecurityIncident::where('firewall_rule_id', $rule->id)->update([
+            'mitigation_status' => $removing ? 'removed' : 'active',
+        ]);
 
         $server->update([
             'firewall_status' => 'ok',
@@ -79,6 +83,7 @@ class SyncFirewallRuleJob implements ShouldQueue
             'status' => 'failed',
             'status_message' => $this->shortMessage($e->getMessage()),
         ]);
+        SecurityIncident::where('firewall_rule_id', $rule->id)->update(['mitigation_status' => 'failed']);
     }
 
     private function markUfwMissing(FirewallRule $rule, $server, string $message): void
