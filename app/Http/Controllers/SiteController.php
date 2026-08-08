@@ -20,6 +20,7 @@ use App\Models\Deployment;
 use App\Models\Site;
 use App\Models\SiteMonitorIncident;
 use App\Notifications\OperationalEventNotification;
+use App\Rules\GitRepositoryUrl;
 use App\Services\AuditLogger;
 use App\Services\EnvironmentFile;
 use App\Services\QuotaManager;
@@ -222,7 +223,7 @@ class SiteController extends Controller
     public function update(Request $request, Site $site): RedirectResponse
     {
         $this->authorize('update', $site);
-        $data = $request->validate(['repository_url' => ['required', 'string', 'max:2048', 'regex:/^(https:\/\/[^\s]+|git@[^\s:]+:[^\s]+)$/'], 'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'], 'php_version' => ['required', Rule::in(config('clouddeck.php_versions'))], 'deployment_script' => ['nullable', 'string', 'max:30000'], 'auto_deploy' => ['sometimes', 'boolean'], 'zero_downtime' => ['sometimes', 'boolean']]);
+        $data = $request->validate(['repository_url' => ['required', 'string', 'max:2048', new GitRepositoryUrl], 'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'], 'php_version' => ['required', Rule::in(config('clouddeck.php_versions'))], 'deployment_script' => ['nullable', 'string', 'max:30000'], 'auto_deploy' => ['sometimes', 'boolean'], 'zero_downtime' => ['sometimes', 'boolean']]);
         $site->update([...$data, 'auto_deploy' => $request->boolean('auto_deploy'), 'zero_downtime' => $request->boolean('zero_downtime')]);
 
         return back()->with('status', 'Deployment settings updated.');

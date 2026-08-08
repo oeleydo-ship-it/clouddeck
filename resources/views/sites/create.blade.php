@@ -52,7 +52,10 @@
 
         <template x-if="platform === 'laravel'">
             <div class="mt-5 grid gap-5 sm:grid-cols-2">
-                <label class="text-sm heading sm:col-span-2">Git repository<input class="field" name="repository_url" value="{{ old('repository_url') }}" placeholder="https://github.com/acme/app.git"></label>
+                <label class="text-sm heading sm:col-span-2">Git repository
+                    <input class="field" name="repository_url" value="{{ old('repository_url') }}" placeholder="https://gitlab.com/acme/app.git">
+                    <span class="mt-1 block text-xs muted">GitHub, GitLab, or Bitbucket — HTTPS or SSH (<code>git@…</code> / <code>ssh://git@…</code>).</span>
+                </label>
                 <label class="text-sm heading">Branch<input class="field" name="branch" value="{{ old('branch', 'main') }}"></label>
                 <div class="flex items-end gap-5 pb-3">
                     <label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_deploy" value="1" @checked(old('auto_deploy'))>Auto deploy</label>

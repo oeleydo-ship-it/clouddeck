@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\ServerStatus;
+use App\Rules\GitRepositoryUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -39,7 +40,7 @@ class StoreSiteRequest extends FormRequest
             'platform' => ['required', Rule::in(['laravel', 'wordpress'])],
             // WordPress is downloaded from wordpress.org rather than cloned, so a repository
             // is required for Laravel and meaningless for WordPress.
-            'repository_url' => ['required_if:platform,laravel', 'nullable', 'string', 'max:2048', 'regex:/^(https:\/\/[^\s]+|git@[^\s:]+:[^\s]+)$/'],
+            'repository_url' => ['required_if:platform,laravel', 'nullable', 'string', 'max:2048', new GitRepositoryUrl],
             'branch' => ['required_if:platform,laravel', 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
             'auto_deploy' => ['sometimes', 'boolean'],
             'zero_downtime' => ['sometimes', 'boolean'],

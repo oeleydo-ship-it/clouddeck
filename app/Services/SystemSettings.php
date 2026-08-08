@@ -287,19 +287,183 @@ final class SystemSettings
         ];
     }
 
-    public function aiGuideEnabled(): bool
+    public const AI_PROVIDER_OPENAI = 'openai';
+
+    public const AI_PROVIDER_MOONSHOT = 'moonshot';
+
+    /**
+     * @return list<string>
+     */
+    public static function aiProviders(): array
     {
-        return $this->boolean('ai_guide_enabled', false) && filled($this->openaiApiKey());
+        return [self::AI_PROVIDER_OPENAI, self::AI_PROVIDER_MOONSHOT];
     }
 
-    public function openaiApiKey(): ?string
+    public function aiGuideEnabled(): bool
+    {
+        return $this->boolean('ai_guide_enabled', false) && filled($this->aiApiKey());
+    }
+
+    /**
+     * Superadmin blog auto-drafts. Shares the AI key/model with the guide; toggled separately
+     * so the customer-facing chat can stay off while admins still generate posts.
+     */
+    public function aiBlogEnabled(): bool
+    {
+        return $this->boolean('ai_blog_enabled', false) && filled($this->aiApiKey());
+    }
+
+    /**
+     * Phrases the blog generator must avoid (AI clichés). One phrase per line in settings;
+     * empty setting falls back to built-in defaults.
+     *
+     * @return list<string>
+     */
+    public function aiBlogAvoidPhrases(): array
+    {
+        $raw = (string) ($this->get('ai_blog_avoid_phrases') ?? '');
+        $lines = $this->linesFromSetting($raw);
+        if ($lines !== []) {
+            return $lines;
+        }
+
+        return self::defaultAiBlogAvoidPhrases();
+    }
+
+    /**
+     * Optional words/phrases the draft should weave in naturally (training hints).
+     *
+     * @return list<string>
+     */
+    public function aiBlogInsertWords(): array
+    {
+        return $this->linesFromSetting((string) ($this->get('ai_blog_insert_words') ?? ''));
+    }
+
+    /**
+     * Free-form voice notes for blog drafts (tone, audience, house style).
+     */
+    public function aiBlogStyleNotes(): ?string
+    {
+        $notes = $this->get('ai_blog_style_notes');
+
+        return filled($notes) ? (string) $notes : null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function defaultAiBlogAvoidPhrases(): array
+    {
+        return [
+            'digital world',
+            "In today's fast-paced digital landscape",
+            "In today's digital age",
+            "In today's fast-paced world",
+            'delve into',
+            'dive into',
+            'unlock the power',
+            "it's important to note",
+            'it is important to note',
+            'in conclusion',
+            'game-changer',
+            'game changer',
+            'cutting-edge',
+            'cutting edge',
+            'leverage synergies',
+            'ever-evolving',
+            'at the end of the day',
+            'when it comes to',
+            'nestled',
+            'tapestry',
+            'realm of',
+            'landscape of',
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function linesFromSetting(string $raw): array
+    {
+        return collect(preg_split('/\r\n|\r|\n/', $raw) ?: [])
+            ->map(fn (string $line) => trim($line))
+            ->filter()
+            ->unique(fn (string $line) => mb_strtolower($line))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * OpenAI-compatible provider used by the guide and blog draft generators.
+     */
+    public function aiProvider(): string
+    {
+        $provider = $this->get('ai_provider', self::AI_PROVIDER_OPENAI) ?: self::AI_PROVIDER_OPENAI;
+
+        return in_array($provider, self::aiProviders(), true) ? $provider : self::AI_PROVIDER_OPENAI;
+    }
+
+    /**
+     * Encrypted API key (stored under openai_api_key for backwards compatibility).
+     */
+    public function aiApiKey(): ?string
     {
         return $this->get('openai_api_key');
     }
 
+    public function aiModel(): string
+    {
+        $stored = $this->get('openai_model');
+
+        return filled($stored) ? $stored : $this->defaultAiModel($this->aiProvider());
+    }
+
+    /**
+     * Chat Completions base URL without a trailing slash. Optional ai_base_url overrides the
+     * provider default (e.g. https://api.moonshot.cn/v1 for China region).
+     */
+    public function aiBaseUrl(): string
+    {
+        $custom = $this->get('ai_base_url');
+        if (filled($custom)) {
+            return rtrim((string) $custom, '/');
+        }
+
+        return $this->defaultAiBaseUrl($this->aiProvider());
+    }
+
+    public function aiChatCompletionsUrl(): string
+    {
+        return $this->aiBaseUrl().'/chat/completions';
+    }
+
+    public function defaultAiModel(string $provider): string
+    {
+        return match ($provider) {
+            self::AI_PROVIDER_MOONSHOT => 'kimi-k3',
+            default => 'gpt-4o-mini',
+        };
+    }
+
+    public function defaultAiBaseUrl(string $provider): string
+    {
+        return match ($provider) {
+            self::AI_PROVIDER_MOONSHOT => 'https://api.moonshot.ai/v1',
+            default => 'https://api.openai.com/v1',
+        };
+    }
+
+    /** @deprecated Prefer aiApiKey() — kept for callers that still use the OpenAI-named helpers. */
+    public function openaiApiKey(): ?string
+    {
+        return $this->aiApiKey();
+    }
+
+    /** @deprecated Prefer aiModel(). */
     public function openaiModel(): string
     {
-        return $this->get('openai_model') ?: 'gpt-4o-mini';
+        return $this->aiModel();
     }
 
     public function aiGuideSystemPrompt(): string

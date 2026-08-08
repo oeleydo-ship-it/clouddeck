@@ -28,15 +28,26 @@ Environment values, provider tokens, TOTP secrets, and managed SSH private keys 
 
 Authorized users can view decrypted environment values in the site editor. Application logs and deployment scripts must never print secrets.
 
+## Repository URLs
+
+Laravel sites accept provider-agnostic clone URLs:
+
+- HTTPS: `https://github.com/acme/app.git`, `https://gitlab.com/group/subgroup/app.git`, `https://bitbucket.org/workspace/app.git`
+- SCP-style SSH: `git@gitlab.com:group/app.git`, `git@bitbucket.org:workspace/app.git`
+- URI-style SSH: `ssh://git@bitbucket.org/workspace/app.git`
+
+Private clones require Git credentials (deploy key or token) already available on the managed server.
+
 ## Webhooks
 
 The endpoint is displayed on the site's Webhook tab.
 
-- GitHub and Bitbucket: send `X-Hub-Signature-256: sha256=<HMAC>` over the exact raw request body.
+- GitHub: `X-Hub-Signature-256: sha256=<HMAC>` over the exact raw request body.
+- Bitbucket Cloud: `X-Hub-Signature: sha256=<HMAC>` over the exact raw request body.
 - GitLab: send the site's secret as `X-Gitlab-Token`.
 - Custom integrations may use `X-Uplary-Signature` with the same SHA-256 HMAC format.
 
-Only the configured branch is accepted. Previously queued, running, or successful commit hashes are ignored. Webhook endpoints are exempt from CSRF protection but remain signature-validated and rate-limited.
+Only the configured branch is accepted. Deleted-branch pushes (all-zero commit hash) and previously queued, running, or successful commit hashes are ignored. Webhook endpoints are exempt from CSRF protection but remain signature-validated and rate-limited.
 
 ## Failure and rollback
 

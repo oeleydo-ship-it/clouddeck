@@ -302,6 +302,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/audit', [AdminDashboardController::class, 'audit'])->name('audit');
         Route::get('/posts', [AdminPostController::class, 'index'])->name('posts');
         Route::post('/posts', [AdminPostController::class, 'store'])->name('posts.store');
+        Route::post('/posts/ai/suggest-topics', [AdminPostController::class, 'suggestTopics'])->middleware('throttle:10,1')->name('posts.ai.suggest');
+        Route::post('/posts/ai/generate', [AdminPostController::class, 'generate'])->middleware('throttle:6,1')->name('posts.ai.generate');
         Route::patch('/posts/{post}', [AdminPostController::class, 'update'])->name('posts.update');
         Route::patch('/posts/{post}/publish', [AdminPostController::class, 'publish'])->name('posts.publish');
         Route::delete('/posts/{post}', [AdminPostController::class, 'destroy'])->name('posts.destroy');

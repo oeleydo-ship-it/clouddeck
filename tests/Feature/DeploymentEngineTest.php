@@ -134,6 +134,100 @@ class DeploymentEngineTest extends TestCase
         Queue::assertPushed(DeployLaravelJob::class);
     }
 
+    public function test_gitlab_token_webhook_queues_matching_branch(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+        $site = $this->site($user, $server, [
+            'repository_url' => 'https://gitlab.com/acme/group/app.git',
+            'auto_deploy' => true,
+            'webhook_secret' => 'gitlab-webhook-secret',
+        ]);
+        $body = json_encode([
+            'ref' => 'refs/heads/main',
+            'checkout_sha' => str_repeat('b', 40),
+            'commits' => [['message' => 'GitLab push']],
+        ]);
+
+        $this->call('POST', "/webhooks/sites/{$site->id}", [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_GITLAB_TOKEN' => 'wrong-token',
+        ], $body)->assertForbidden();
+
+        $this->call('POST', "/webhooks/sites/{$site->id}", [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_GITLAB_TOKEN' => 'gitlab-webhook-secret',
+        ], $body)->assertAccepted()->assertJsonStructure(['deployment_id']);
+
+        $this->assertDatabaseHas('deployments', [
+            'site_id' => $site->id,
+            'trigger' => 'webhook',
+            'commit_hash' => str_repeat('b', 40),
+            'commit_message' => 'GitLab push',
+        ]);
+        Queue::assertPushed(DeployLaravelJob::class);
+    }
+
+    public function test_bitbucket_signed_webhook_queues_matching_branch(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+        $site = $this->site($user, $server, [
+            'repository_url' => 'git@bitbucket.org:acme/app.git',
+            'auto_deploy' => true,
+            'webhook_secret' => 'bitbucket-webhook-secret',
+        ]);
+        $body = json_encode([
+            'push' => [
+                'changes' => [[
+                    'new' => [
+                        'name' => 'main',
+                        'target' => [
+                            'hash' => str_repeat('c', 40),
+                            'message' => 'Bitbucket push',
+                        ],
+                    ],
+                ]],
+            ],
+        ]);
+        $signature = 'sha256='.hash_hmac('sha256', $body, 'bitbucket-webhook-secret');
+
+        $this->call('POST', "/webhooks/sites/{$site->id}", [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_HUB_SIGNATURE' => 'sha256=invalid',
+        ], $body)->assertForbidden();
+
+        $this->call('POST', "/webhooks/sites/{$site->id}", [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_HUB_SIGNATURE' => $signature,
+        ], $body)->assertAccepted()->assertJsonStructure(['deployment_id']);
+
+        $this->assertDatabaseHas('deployments', [
+            'site_id' => $site->id,
+            'trigger' => 'webhook',
+            'commit_hash' => str_repeat('c', 40),
+            'commit_message' => 'Bitbucket push',
+        ]);
+        Queue::assertPushed(DeployLaravelJob::class);
+    }
+
+    public function test_webhook_ignores_deleted_branch_pushes(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+        $site = $this->site($user, $server, ['auto_deploy' => true, 'webhook_secret' => 'webhook-secret']);
+        $body = json_encode(['ref' => 'refs/heads/main', 'after' => str_repeat('0', 40)]);
+        $signature = 'sha256='.hash_hmac('sha256', $body, 'webhook-secret');
+
+        $this->call('POST', "/webhooks/sites/{$site->id}", [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_X_HUB_SIGNATURE_256' => $signature,
+        ], $body)->assertOk()->assertJson(['message' => 'Deleted branch ignored.']);
+
+        $this->assertSame(0, $site->deployments()->count());
+        Queue::assertNotPushed(DeployLaravelJob::class);
+    }
+
     public function test_successful_release_can_be_queued_for_rollback(): void
     {
         Queue::fake();
@@ -195,7 +289,65 @@ class DeploymentEngineTest extends TestCase
             'php_version' => '8.4',
         ])->assertSessionHasErrors('repository_url');
 
+        $this->actingAs($user)->patch("/sites/{$site->id}", [
+            'repository_url' => 'http://gitlab.com/acme/app.git',
+            'branch' => 'main',
+            'php_version' => '8.4',
+        ])->assertSessionHasErrors('repository_url');
+
         $this->assertSame('https://github.com/acme/app.git', $site->fresh()->repository_url);
+    }
+
+    public function test_repository_url_accepts_github_gitlab_and_bitbucket_clone_forms(): void
+    {
+        [$user, $server] = $this->infrastructure();
+        $site = $this->site($user, $server);
+
+        $accepted = [
+            'https://github.com/acme/app.git',
+            'git@github.com:acme/app.git',
+            'https://gitlab.com/acme/group/app.git',
+            'git@gitlab.com:acme/group/app.git',
+            'https://bitbucket.org/acme/app.git',
+            'git@bitbucket.org:acme/app.git',
+            'ssh://git@bitbucket.org/acme/app.git',
+            'ssh://git@gitlab.example.com:2222/team/app.git',
+        ];
+
+        foreach ($accepted as $url) {
+            $this->actingAs($user)->patch("/sites/{$site->id}", [
+                'repository_url' => $url,
+                'branch' => 'main',
+                'php_version' => '8.4',
+            ])->assertSessionHas('status');
+
+            $this->assertSame($url, $site->fresh()->repository_url);
+        }
+    }
+
+    public function test_site_creation_accepts_gitlab_and_bitbucket_repository_urls(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+
+        $this->actingAs($user)->post('/sites', [
+            'server_id' => $server->id,
+            'domain' => 'gitlab.example.com',
+            'php_version' => '8.4',
+            'repository_url' => 'https://gitlab.com/acme/app.git',
+            'branch' => 'main',
+        ])->assertRedirect();
+
+        $this->actingAs($user)->post('/sites', [
+            'server_id' => $server->id,
+            'domain' => 'bitbucket.example.com',
+            'php_version' => '8.4',
+            'repository_url' => 'ssh://git@bitbucket.org/acme/app.git',
+            'branch' => 'develop',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('sites', ['domain' => 'gitlab.example.com', 'repository_url' => 'https://gitlab.com/acme/app.git']);
+        $this->assertDatabaseHas('sites', ['domain' => 'bitbucket.example.com', 'repository_url' => 'ssh://git@bitbucket.org/acme/app.git']);
     }
 
     public function test_queue_panel_renders_worker_state_and_failed_job_count(): void

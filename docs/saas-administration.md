@@ -80,15 +80,19 @@ Staging is off until a superadmin enables **Staging sites** under Admin â†’
 
 Staging is a separate site on the same server (own nginx vhost, release root, and environment). Laravel staging seeds `APP_ENV=staging`. **Promote to production** copies the staging repository, branch, script, and PHP version onto the linked production site and queues a production deployment. Create and promote routes return 404 while the platform toggle is off.
 
-## Landing page, SEO, AI guide, and insert code
+## Landing page, SEO, AI, and insert code
 
-Dedicated admin sections (sidebar): **Pages**, **SEO**, **Analytics**, **Webmaster**, **Insert code**, **AI guide**. A superadmin can:
+Dedicated admin sections (sidebar): **Pages**, **SEO**, **Analytics**, **Webmaster**, **Insert code**, **AI**. A superadmin can:
 
 - Edit homepage hero, steps intro, and closing CTA copy (blank fields keep built-in defaults).
 - Configure SEO under **Admin → SEO**: default title and `{page} | {site}` title template, default meta description / keywords / Open Graph image / meta robots, homepage and marketing-page overrides, and a full **robots.txt** body. Public routes serve `/sitemap.xml` (marketing pages + published posts) and `/robots.txt`. Per-post `meta_title` / `meta_description` are editable on Blog create/edit.
 - Set Google Analytics (GA4 measurement ID) and Google Search Console verification under **Analytics** / **Webmaster**. Tags are injected in the shared layout head.
 - Paste custom HTML/JS (**Insert code**) for chat widgets and similar embeds into head/body. Defaults to marketing/public pages; console injection is optional. Raw markup is intentional for trusted operators only. Iframe-based widgets also need the widget host to allow framing â€” if that host is a site on this platform, enable **Allow embedding in iframes** under the siteâ€™s Remote â†’ Nginx settings.
-- Enable an **AI platform guide** with an encrypted OpenAI API key and optional system prompt. When enabled, signed-in users see a floating chat helper that answers how-to questions about the console (throttled at `/guide/chat`).
+- Under **Admin → AI**, choose a provider (**OpenAI** or **Moonshot / Kimi**), save an encrypted API key and model, optionally override the OpenAI-compatible base URL, then enable features independently:
+  - **OpenAI** — default model `gpt-4o-mini`, base URL `https://api.openai.com/v1`.
+  - **Moonshot (Kimi)** — default model `kimi-k3` (also `kimi-k2.6`, `kimi-k2.5`, etc.); international base URL `https://api.moonshot.ai/v1`, China region `https://api.moonshot.cn/v1` via the optional Base URL field. Keys from [platform.kimi.ai](https://platform.kimi.ai/console/api-keys).
+  - **AI platform guide** — signed-in users see a floating chat helper for console how-tos (throttled at `/guide/chat`). Optional custom system prompt.
+  - **AI blog drafts** — on **Admin → Blog**, use **Suggest topics** / **Generate draft** to fill a new-post form with platform-aware plain-text content (servers, sites, deployments, staging, monitoring, etc.). Drafts are never auto-published; endpoints are throttled under `/admin/posts/ai/*` and require the blog toggle plus API key. Under **Admin → AI** you can train voice with **phrases to avoid** (defaults ban clichés like “digital world” / “fast-paced digital landscape”), optional **words to weave in**, and free-form **style notes**. Matching avoid-phrases are scrubbed from generated drafts.
 
 Stripe API keys and the webhook signing secret are configured under **Admin → Payments** (see `docs/stripe-billing.md`).
 
@@ -117,4 +121,4 @@ Per-server UFW rules are managed from the customer console **Firewall** page (si
 - Set a secure `APP_KEY`, HTTPS cookies, trusted proxies, mail transport, and a persistent sessions table.
 - Apply feature middleware to paid or staged surfaces according to the product policy.
 - Back up subscription, audit, and team tables and define retention requirements before launch.
-- Configure landing/SEO/analytics/insert-code and, if desired, the OpenAI guide key before launch.
+- Configure landing/SEO/analytics/insert-code and, if desired, an AI provider key (guide and/or blog drafts) before launch.

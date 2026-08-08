@@ -49,6 +49,7 @@ class PlatformGuideAndSeoTest extends TestCase
         ])->assertSessionHas('status');
 
         $this->actingAs($admin)->put('/admin/settings/ai', [
+            'ai_provider' => 'openai',
             'ai_guide_enabled' => '1',
             'openai_api_key' => 'sk-test-key',
             'openai_model' => 'gpt-4o-mini',
@@ -62,6 +63,7 @@ class PlatformGuideAndSeoTest extends TestCase
         $this->assertSame('G-TEST12345', $settings->analytics()['ga_measurement_id']);
         $this->assertSame('abc_verify_token', $settings->analytics()['gsc_verification']);
         $this->assertTrue($settings->aiGuideEnabled());
+        $this->assertSame('openai', $settings->aiProvider());
         $this->assertSame('sk-test-key', SystemSetting::whereKey('openai_api_key')->value('value'));
     }
 
@@ -102,6 +104,34 @@ class PlatformGuideAndSeoTest extends TestCase
 
         Http::assertSent(fn ($request) => $request->hasHeader('Authorization', 'Bearer sk-live')
             && str_contains($request['messages'][0]['content'] ?? '', 'guide'));
+    }
+
+    public function test_ai_guide_uses_moonshot_base_url_when_configured(): void
+    {
+        $user = $this->customer();
+        $settings = app(SystemSettings::class);
+        $settings->put('ai_guide_enabled', '1', 'boolean', true);
+        $settings->put('ai_provider', 'moonshot', 'string', true);
+        $settings->put('openai_api_key', 'msk-live', 'string', false);
+        $settings->put('openai_model', 'kimi-k3', 'string', true);
+
+        Http::fake([
+            'https://api.moonshot.ai/v1/chat/completions' => Http::response([
+                'choices' => [['message' => ['content' => 'Use Servers → Add server.']]],
+            ], 200),
+        ]);
+
+        $this->actingAs($user)->postJson('/guide/chat', ['message' => 'How do I add a server?'])
+            ->assertOk()
+            ->assertJson(['reply' => 'Use Servers → Add server.']);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.moonshot.ai/v1/chat/completions'
+                && $request->hasHeader('Authorization', 'Bearer msk-live')
+                && ($request['model'] ?? null) === 'kimi-k3'
+                && ($request['reasoning_effort'] ?? null) === 'low'
+                && ! array_key_exists('temperature', $request->data());
+        });
     }
 
     public function test_customers_cannot_change_admin_landing_settings(): void

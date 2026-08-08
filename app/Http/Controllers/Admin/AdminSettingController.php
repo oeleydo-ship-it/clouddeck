@@ -249,29 +249,52 @@ class AdminSettingController extends Controller
 
     public function ai(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
     {
+        if ($request->input('ai_base_url') === '') {
+            $request->merge(['ai_base_url' => null]);
+        }
+
         $data = $request->validate([
             'ai_guide_enabled' => ['sometimes', 'boolean'],
+            'ai_blog_enabled' => ['sometimes', 'boolean'],
+            'ai_provider' => ['required', Rule::in(SystemSettings::aiProviders())],
             'openai_api_key' => ['nullable', 'string', 'max:255'],
             'openai_model' => ['nullable', 'string', 'max:80'],
+            'ai_base_url' => ['nullable', 'string', 'max:255', 'url'],
             'ai_guide_system_prompt' => ['nullable', 'string', 'max:4000'],
+            'ai_blog_avoid_phrases' => ['nullable', 'string', 'max:4000'],
+            'ai_blog_insert_words' => ['nullable', 'string', 'max:2000'],
+            'ai_blog_style_notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
+        $provider = (string) $data['ai_provider'];
+        $settings->put('ai_provider', $provider, 'string', true);
         $settings->put('ai_guide_enabled', $request->boolean('ai_guide_enabled') ? '1' : '0', 'boolean', true);
+        $settings->put('ai_blog_enabled', $request->boolean('ai_blog_enabled') ? '1' : '0', 'boolean', true);
 
         if (filled($data['openai_api_key'] ?? null)) {
             $settings->put('openai_api_key', (string) $data['openai_api_key'], 'string', false);
         }
 
-        $settings->put('openai_model', (string) ($data['openai_model'] ?? 'gpt-4o-mini'), 'string', true);
+        $model = filled($data['openai_model'] ?? null)
+            ? (string) $data['openai_model']
+            : $settings->defaultAiModel($provider);
+        $settings->put('openai_model', $model, 'string', true);
+        $settings->put('ai_base_url', (string) ($data['ai_base_url'] ?? ''), 'string', true);
         $settings->put('ai_guide_system_prompt', (string) ($data['ai_guide_system_prompt'] ?? ''), 'string', false);
+        $settings->put('ai_blog_avoid_phrases', (string) ($data['ai_blog_avoid_phrases'] ?? ''), 'string', true);
+        $settings->put('ai_blog_insert_words', (string) ($data['ai_blog_insert_words'] ?? ''), 'string', true);
+        $settings->put('ai_blog_style_notes', (string) ($data['ai_blog_style_notes'] ?? ''), 'string', true);
 
         $audit->record($request, 'settings.ai_updated', null, [], [
             'enabled' => $request->boolean('ai_guide_enabled'),
-            'model' => $data['openai_model'] ?? null,
+            'blog_enabled' => $request->boolean('ai_blog_enabled'),
+            'provider' => $provider,
+            'model' => $model,
+            'base_url' => $data['ai_base_url'] ?? null,
             'key_updated' => filled($data['openai_api_key'] ?? null),
         ]);
 
-        return back()->with('status', 'AI guide settings saved.');
+        return back()->with('status', 'AI settings saved.');
     }
 
     public function googleAuth(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse

@@ -5,24 +5,69 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Services\AuditLogger;
+use App\Services\BlogPostGenerator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use RuntimeException;
 
 class AdminPostController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, BlogPostGenerator $generator): View
     {
         return view('admin.posts', [
+            'aiBlogEnabled' => $generator->enabled(),
             'posts' => Post::with('author')
                 ->when($request->query('search'), fn ($query, $search) => $query->where('title', 'like', '%'.$search.'%'))
                 ->latest('created_at')
                 ->paginate(15)
                 ->withQueryString(),
         ]);
+    }
+
+    /**
+     * Suggest SEO-friendly topics grounded in the platform (JSON for the admin Alpine panel).
+     */
+    public function suggestTopics(Request $request, BlogPostGenerator $generator): JsonResponse
+    {
+        abort_unless($generator->enabled(), 404);
+
+        $data = $request->validate([
+            'keyword' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        try {
+            $topics = $generator->suggestTopics($data['keyword'] ?? null);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['topics' => $topics]);
+    }
+
+    /**
+     * Generate a draft matching Post fields (plain-text body). Does not persist — admin reviews first.
+     */
+    public function generate(Request $request, BlogPostGenerator $generator): JsonResponse
+    {
+        abort_unless($generator->enabled(), 404);
+
+        $data = $request->validate([
+            'topic' => ['nullable', 'string', 'max:200'],
+            'keyword' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        try {
+            $draft = $generator->generate($data['topic'] ?? null, $data['keyword'] ?? null);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['draft' => $draft]);
     }
 
     public function store(Request $request, AuditLogger $audit): RedirectResponse

@@ -205,13 +205,17 @@
                     <li>Shared <code>.env</code> and <code>storage</code> persist across releases.</li>
                 </ol>
 
+                <h3 class="mt-6 text-sm font-semibold heading">Repository URL</h3>
+                <p class="mt-2 text-sm muted">Laravel sites accept HTTPS or SSH clone URLs from GitHub, GitLab, Bitbucket, or self-hosted Git (for example <code>https://gitlab.com/group/app.git</code>, <code>git@bitbucket.org:workspace/app.git</code>, or <code>ssh://git@github.com/acme/app.git</code>). Private repos need Git credentials on the managed server.</p>
+
                 <h3 class="mt-6 text-sm font-semibold heading">Automatic deploy (webhooks)</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
                     <li>Enable <strong class="heading">Automatic deployments</strong> on the Deployment settings tab.</li>
                     <li>Open the <strong class="heading">Webhook</strong> tab and copy the endpoint and secret.</li>
-                    <li>GitHub / Bitbucket: configure a push webhook with HMAC signature (<code>X-Hub-Signature-256</code>).</li>
-                    <li>GitLab: send the secret as <code>X-Gitlab-Token</code>.</li>
-                    <li>Only pushes to the configured branch deploy; duplicate commit hashes are ignored.</li>
+                    <li>GitHub: push webhook with HMAC (<code>X-Hub-Signature-256</code>).</li>
+                    <li>Bitbucket: push webhook with HMAC (<code>X-Hub-Signature</code>, <code>sha256=…</code>).</li>
+                    <li>GitLab: push webhook with the secret as <code>X-Gitlab-Token</code>.</li>
+                    <li>Only pushes to the configured branch deploy; duplicate commit hashes and deleted branches are ignored.</li>
                 </ol>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Zero downtime and rollback</h3>
