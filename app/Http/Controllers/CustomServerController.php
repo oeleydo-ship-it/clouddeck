@@ -61,6 +61,7 @@ class CustomServerController extends Controller
             'ssh_port' => $data['ssh_port'],
             'status' => ServerStatus::Pending,
             'current_step' => 'Waiting to verify the connection',
+            'provisioning_source' => 'custom',
         ]);
 
         ConnectCustomServerJob::dispatch($server->id)->onQueue('provisioning');

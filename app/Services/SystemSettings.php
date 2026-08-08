@@ -91,6 +91,88 @@ final class SystemSettings
     }
 
     /**
+     * Platform-provided VMs (not BYOS). Off until a superadmin enables the feature and
+     * saves a cloud API token that Uplary uses to create Droplets for customers.
+     */
+    public function managedServersEnabled(): bool
+    {
+        return $this->boolean('managed_servers_enabled', false);
+    }
+
+    public function managedCloudProvider(): string
+    {
+        $provider = $this->get('managed_cloud_provider', 'digitalocean') ?: 'digitalocean';
+
+        return $provider === 'digitalocean' ? 'digitalocean' : 'digitalocean';
+    }
+
+    public function managedCloudToken(): ?string
+    {
+        return $this->get('managed_cloud_token');
+    }
+
+    /**
+     * Toggle on and a non-empty platform token — ready for customer managed provision.
+     */
+    public function managedServersReady(): bool
+    {
+        return $this->managedServersEnabled() && filled($this->managedCloudToken());
+    }
+
+    /**
+     * Default percentage markup applied over the provider's raw infra cost when a size has
+     * no explicit override in managedSizePrices(). Lets an admin price every configuration
+     * (1 GB, 4 GB, 8 GB, …) above cost without pricing each one by hand.
+     */
+    public function managedMarkupPercent(): float
+    {
+        $value = $this->get('managed_markup_percent', '0');
+
+        return max(0.0, (float) $value);
+    }
+
+    /**
+     * Per-size customer price overrides, keyed by provider size slug (e.g. `s-1vcpu-4gb`).
+     * A size present here is billed at this exact monthly price regardless of the markup
+     * percentage — the 4 GB and 8 GB tiers rarely carry the same margin.
+     *
+     * @return array<string, float>
+     */
+    public function managedSizePrices(): array
+    {
+        $raw = $this->get('managed_size_prices', '[]') ?: '[]';
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded)
+            ? collect($decoded)->map(fn ($price) => round((float) $price, 2))->all()
+            : [];
+    }
+
+    public function saveManagedSizePrices(array $prices): void
+    {
+        $this->put('managed_size_prices', json_encode($prices), 'json', false);
+    }
+
+    /**
+     * The price a customer is billed for a given provider size: an explicit override when
+     * set, otherwise the platform's markup percentage applied over the raw infra cost.
+     *
+     * @param  array{slug?: string, price_monthly?: float|int}  $size
+     */
+    public function managedServerPrice(array $size): float
+    {
+        $slug = (string) ($size['slug'] ?? '');
+        $infra = (float) ($size['price_monthly'] ?? 0);
+        $overrides = $this->managedSizePrices();
+
+        if ($slug !== '' && array_key_exists($slug, $overrides)) {
+            return $overrides[$slug];
+        }
+
+        return round($infra * (1 + $this->managedMarkupPercent() / 100), 2);
+    }
+
+    /**
      * Where someone who is not signed in should land. With the marketing pages turned off
      * the site starts at the sign-in form.
      */

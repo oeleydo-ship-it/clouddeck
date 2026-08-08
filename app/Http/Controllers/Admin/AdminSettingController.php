@@ -67,6 +67,58 @@ class AdminSettingController extends Controller
         return back()->with('status', 'System settings updated.');
     }
 
+    public function managedServers(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'managed_servers_enabled' => ['sometimes', 'boolean'],
+            'managed_cloud_provider' => ['required', Rule::in(['digitalocean'])],
+            'managed_cloud_token' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $settings->put('managed_servers_enabled', $request->boolean('managed_servers_enabled') ? '1' : '0', 'boolean', true);
+        $settings->put('managed_cloud_provider', (string) $data['managed_cloud_provider'], 'string', true);
+        if (filled($data['managed_cloud_token'] ?? null)) {
+            $settings->put('managed_cloud_token', (string) $data['managed_cloud_token'], 'string', false);
+        }
+
+        $audit->record($request, 'settings.managed_servers_updated', null, [], [
+            'enabled' => $request->boolean('managed_servers_enabled'),
+            'provider' => $data['managed_cloud_provider'],
+            'token_updated' => filled($data['managed_cloud_token'] ?? null),
+        ]);
+
+        return back()->with('status', 'Managed server settings saved.');
+    }
+
+    /**
+     * Customer-facing pricing for each managed server configuration: a default markup
+     * percentage over the provider's raw infra cost, plus optional per-size overrides so
+     * the 4 GB and 8 GB tiers (etc.) can each be priced independently.
+     */
+    public function managedServerPricing(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'markup_percent' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'prices' => ['nullable', 'array'],
+            'prices.*' => ['nullable', 'numeric', 'min:0', 'max:100000'],
+        ]);
+
+        $settings->put('managed_markup_percent', (string) ($data['markup_percent'] ?? 0), 'string', true);
+
+        $prices = collect($data['prices'] ?? [])
+            ->filter(fn ($price) => $price !== null && $price !== '')
+            ->map(fn ($price) => round((float) $price, 2))
+            ->all();
+        $settings->saveManagedSizePrices($prices);
+
+        $audit->record($request, 'settings.managed_server_pricing_updated', null, [], [
+            'markup_percent' => $data['markup_percent'] ?? 0,
+            'overrides' => count($prices),
+        ]);
+
+        return back()->with('status', 'Managed server pricing saved.');
+    }
+
     public function logo(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
     {
         $request->validate([

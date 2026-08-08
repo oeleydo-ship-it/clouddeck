@@ -23,7 +23,7 @@ class RefreshServerRestoreJob implements ShouldQueue
     public function handle(CloudProviderManager $providers): void
     {
         $server = Server::with('cloudAccount')->findOrFail($this->serverId);
-        $action = $providers->for($server->cloudAccount)->actionStatus($server->provider_id, $this->actionId);
+        $action = $providers->forServer($server)->actionStatus($server->provider_id, $this->actionId);
         if (($action['status'] ?? null) === 'in-progress') {
             $this->release(30);
 

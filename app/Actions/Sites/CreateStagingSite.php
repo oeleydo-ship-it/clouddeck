@@ -40,7 +40,8 @@ final class CreateStagingSite
             throw ValidationException::withMessages(['staging' => 'This site already has a staging environment.']);
         }
 
-        $this->quotas->assertCanCreate($production->user, 'sites');
+        $production->loadMissing('server');
+        $this->quotas->assertCanCreateSite($production->user, $production->server);
 
         $source = $input['domain_source'];
         $domain = $this->resolveDomain($production, $source, $input);

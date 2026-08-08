@@ -163,4 +163,14 @@ class Server extends Model
     {
         return $this->hasMany(ServerSnapshot::class);
     }
+
+    public function isManaged(): bool
+    {
+        return ($this->provisioning_source ?? 'byos') === 'managed';
+    }
+
+    public function isByos(): bool
+    {
+        return ! $this->isManaged();
+    }
 }

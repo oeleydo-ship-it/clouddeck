@@ -56,8 +56,10 @@ use App\Http\Controllers\TwoFactorChallengeController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\WordPressController;
 use App\Http\Middleware\EnsureDnsEnabled;
+use App\Http\Middleware\EnsureManagedServersEnabled;
 use App\Http\Middleware\EnsurePublicSiteEnabled;
 use App\Http\Middleware\EnsureStagingSitesEnabled;
+use App\Livewire\ManagedServerProvisionWizard;
 use App\Livewire\ServerProvisionWizard;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
@@ -191,7 +193,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('/servers', [ServerManagementController::class, 'index'])->name('servers.index');
-    Route::get('/servers/create', ServerProvisionWizard::class)->name('servers.create');
+    Route::middleware('feature:providers')->group(function () {
+        Route::get('/servers/create', ServerProvisionWizard::class)->name('servers.create');
+    });
+    Route::middleware(['feature:managed_servers', EnsureManagedServersEnabled::class])->group(function () {
+        Route::get('/servers/managed', ManagedServerProvisionWizard::class)->name('servers.managed');
+    });
     Route::get('/servers/custom', [CustomServerController::class, 'create'])->name('servers.custom');
     Route::post('/servers/custom', [CustomServerController::class, 'store'])->middleware('throttle:10,1')->name('servers.custom.store');
     Route::get('/servers/{server}/manage', [ServerManagementController::class, 'show'])->name('servers.manage');
@@ -286,6 +293,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/billing-review', [AdminDashboardController::class, 'billing'])->name('billing');
         Route::get('/payments', [AdminDashboardController::class, 'payments'])->name('payments');
         Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');
+        Route::get('/managed-servers', [AdminDashboardController::class, 'managedServers'])->name('managed-servers');
         Route::get('/pages', [AdminDashboardController::class, 'pages'])->name('pages');
         Route::get('/seo', [AdminDashboardController::class, 'seo'])->name('seo');
         Route::get('/analytics', [AdminDashboardController::class, 'analytics'])->name('analytics');
@@ -318,6 +326,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/feature-flags/{featureFlag}', [AdminFeatureFlagController::class, 'update'])->name('flags.update');
         Route::patch('/billing-requests/{billingRequest}', [AdminBillingRequestController::class, 'update'])->name('billing-requests.update');
         Route::put('/settings', [AdminSettingController::class, 'update'])->name('settings.update');
+        Route::put('/settings/managed-servers', [AdminSettingController::class, 'managedServers'])->name('settings.managed-servers');
+        Route::put('/settings/managed-servers/pricing', [AdminSettingController::class, 'managedServerPricing'])->name('settings.managed-servers.pricing');
         Route::put('/settings/landing', [AdminSettingController::class, 'landing'])->name('settings.landing');
         Route::put('/settings/seo', [AdminSettingController::class, 'seo'])->name('settings.seo');
         Route::put('/settings/analytics', [AdminSettingController::class, 'analytics'])->name('settings.analytics');

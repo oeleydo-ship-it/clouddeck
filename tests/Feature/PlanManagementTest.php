@@ -22,7 +22,7 @@ class PlanManagementTest extends TestCase
         return [
             'name' => 'Pro', 'slug' => 'pro', 'currency' => 'usd',
             'monthly_price' => 29, 'yearly_price' => 290, 'sort_order' => 20,
-            'servers' => 10, 'sites' => 50, 'databases' => 50, 'api_tokens' => 10,
+            'servers' => 10, 'managed_servers' => 3, 'sites' => 50, 'managed_sites' => 30, 'databases' => 50, 'api_tokens' => 10,
             'teams' => 3, 'team_members' => 20,
             'active' => '1', 'public' => '1', 'feature_monitoring' => '1',
             ...$overrides,

@@ -1,15 +1,18 @@
 <?php
 
 /**
- * Plan entitlement catalog. Resource counts (servers, sites, databases, …) live on
- * plans.limits only. These booleans gate optional console modules and site capabilities.
+ * Plan entitlement catalog. Resource counts (servers, managed_servers, sites, …) live on
+ * plans.limits. These booleans gate optional console modules and site capabilities.
+ *
+ * servers = BYOS (customer cloud / custom SSH). managed_servers = platform-provided VMs.
  */
 return [
     'labels' => [
         'firewall' => 'Firewall',
         'security' => 'Security detection',
         'notifications' => 'Notifications',
-        'providers' => 'Cloud providers',
+        'providers' => 'Cloud providers (BYOS)',
+        'managed_servers' => 'Managed servers',
         'dns' => 'DNS',
         'ssh' => 'SSH keys',
         'monitoring' => 'Monitoring and alerts',
@@ -22,17 +25,13 @@ return [
         'redis' => 'Queue workers (Redis)',
     ],
 
-    /*
-    |--------------------------------------------------------------------------
-    | Default feature maps by seeded plan slug
-    |--------------------------------------------------------------------------
-    */
     'defaults' => [
         'free' => [
             'firewall' => false,
             'security' => false,
             'notifications' => true,
             'providers' => true,
+            'managed_servers' => false,
             'dns' => false,
             'ssh' => true,
             'monitoring' => true,
@@ -49,6 +48,7 @@ return [
             'security' => true,
             'notifications' => true,
             'providers' => true,
+            'managed_servers' => true,
             'dns' => true,
             'ssh' => true,
             'monitoring' => true,
@@ -65,6 +65,7 @@ return [
             'security' => true,
             'notifications' => true,
             'providers' => true,
+            'managed_servers' => true,
             'dns' => true,
             'ssh' => true,
             'monitoring' => true,

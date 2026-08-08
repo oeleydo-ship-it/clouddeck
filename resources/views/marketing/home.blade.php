@@ -176,15 +176,30 @@
 <section id="pricing" class="border-y border-slate-200 bg-slate-50 py-20 dark:border-white/10 dark:bg-white/[.02] lg:py-28"
          x-data="{ annual: true }">
     @php
-        $limitLabels = [
-            'servers' => 'servers',
-            'sites' => 'sites',
-            'databases' => 'databases',
-            'api_tokens' => 'API tokens',
-            'teams' => 'teams',
-            'team_members' => 'team members',
-        ];
-        $featureLabels = \App\Services\FeatureManager::catalog();
+        // When platform managed servers are off, hide those quotas from public pricing so
+        // the page only advertises BYOS infrastructure customers can actually use.
+        $managedServersEnabled = $managedServersEnabled ?? false;
+        $limitLabels = $managedServersEnabled
+            ? [
+                'servers' => 'BYOS servers',
+                'managed_servers' => 'managed servers',
+                'sites' => 'BYOS sites',
+                'managed_sites' => 'managed sites',
+                'databases' => 'databases',
+                'api_tokens' => 'API tokens',
+                'teams' => 'teams',
+                'team_members' => 'team members',
+            ]
+            : [
+                'servers' => 'servers',
+                'sites' => 'sites',
+                'databases' => 'databases',
+                'api_tokens' => 'API tokens',
+                'teams' => 'teams',
+                'team_members' => 'team members',
+            ];
+        // managed_servers is a quota above (when enabled); never repeat it as a feature row.
+        $featureLabels = collect(\App\Services\FeatureManager::catalog())->except('managed_servers')->all();
         $featuredPlan = $plans->firstWhere('slug', 'pro') ?? $plans->get(1);
         $money = fn (int $cents, string $currency) => $cents === 0
             ? 'Free'

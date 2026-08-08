@@ -83,7 +83,7 @@ class ServerManagementController extends Controller
 
         if ($server->provider_id) {
             try {
-                $providers->for($server->cloudAccount)->deleteServer($server->provider_id);
+                $providers->forServer($server)->deleteServer($server->provider_id);
             } catch (Throwable $e) {
                 return back()->withErrors(['server' => 'Unable to remove the provider Droplet: '.$e->getMessage()]);
             }

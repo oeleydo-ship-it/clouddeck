@@ -61,7 +61,8 @@ class SiteController extends Controller
 
     public function store(StoreSiteRequest $request, QuotaManager $quotas): RedirectResponse
     {
-        $quotas->assertCanCreate($request->user(), 'sites');
+        $server = $request->user()->accessibleServers()->whereKey($request->validated('server_id'))->firstOrFail();
+        $quotas->assertCanCreateSite($request->user(), $server);
         $site = DB::transaction(function () use ($request) {
             $site = $request->user()->sites()->create([
                 ...$request->validated(),

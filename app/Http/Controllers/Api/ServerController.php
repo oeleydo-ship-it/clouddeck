@@ -44,7 +44,7 @@ class ServerController extends Controller
     {
         $this->authorize('update', $server);
         $data = $request->validate(['action' => ['required', 'in:reboot,shutdown,power_on,snapshot'], 'name' => ['nullable', 'string', 'max:100']]);
-        $manager->for($server->cloudAccount)->action($server->provider_id, $data['action'], $data['name'] ? ['name' => $data['name']] : []);
+        $manager->forServer($server)->action($server->provider_id, $data['action'], $data['name'] ? ['name' => $data['name']] : []);
 
         return new ServerResource($server);
     }
@@ -53,8 +53,9 @@ class ServerController extends Controller
     {
         $this->authorize('delete', $server);
         if ($server->provider_id) {
-            $manager->for($server->cloudAccount)->deleteServer($server->provider_id);
-        }$server->delete();
+            $manager->forServer($server)->deleteServer($server->provider_id);
+        }
+        $server->delete();
 
         return response()->noContent();
     }

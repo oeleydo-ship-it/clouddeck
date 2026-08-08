@@ -22,7 +22,7 @@ class DeleteServerSnapshotJob implements ShouldQueue
         $snapshot = ServerSnapshot::with('server.cloudAccount')->findOrFail($this->snapshotId);
         $snapshot->update(['status' => 'deleting']);
         if ($snapshot->provider_snapshot_id) {
-            $providers->for($snapshot->server->cloudAccount)->deleteSnapshot($snapshot->provider_snapshot_id);
+            $providers->forServer($snapshot->server)->deleteSnapshot($snapshot->provider_snapshot_id);
         }
         $snapshot->delete();
     }

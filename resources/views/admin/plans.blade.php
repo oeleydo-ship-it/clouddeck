@@ -3,8 +3,11 @@
 @section('admin-description', 'Pricing, limits, and entitlements offered to customers.')
 @section('admin')
     @php
-        $limitKeys = ['servers' => 'Servers', 'sites' => 'Sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members'];
+        $limitKeys = ['servers' => 'BYOS servers', 'managed_servers' => 'Managed servers', 'sites' => 'BYOS sites', 'managed_sites' => 'Managed sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members'];
         $featureKeys = \App\Services\FeatureManager::catalog();
+        // The plan card badges already show the managed_servers limit above; drop it from this
+        // badge row so it is not repeated. The edit form below still exposes the real toggle.
+        $displayFeatureKeys = collect($featureKeys)->except('managed_servers')->all();
         $amount = fn (int $cents, string $currency) => $cents === 0 ? 'Free' : Str::upper($currency).' '.number_format($cents / 100, ($cents % 100 === 0) ? 0 : 2);
         $limit = fn ($value) => $value === -1 ? 'Unlimited' : (int) $value;
     @endphp
@@ -42,17 +45,28 @@
                         </div>
                     </div>
 
-                    <dl class="mt-5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
-                        @foreach($limitKeys as $key => $label)
-                            <div>
-                                <dt class="text-xs muted">{{ $label }}</dt>
-                                <dd class="heading">{{ $limit($plan->limits[$key] ?? 0) }}</dd>
+                    <div class="mt-5 grid gap-2 sm:grid-cols-2">
+                        @foreach(['servers' => 'bg-slate-50 dark:bg-white/[.03]', 'managed_servers' => 'bg-cyan-50/60 dark:bg-cyan-400/[.06]', 'sites' => 'bg-slate-50 dark:bg-white/[.03]', 'managed_sites' => 'bg-cyan-50/60 dark:bg-cyan-400/[.06]'] as $key => $tint)
+                            <div class="flex items-center justify-between gap-2 rounded-xl {{ $tint }} p-3">
+                                <dt class="text-xs font-medium heading">{{ $limitKeys[$key] }}</dt>
+                                <dd class="text-sm font-semibold heading">{{ $limit($plan->limits[$key] ?? 0) }}</dd>
                             </div>
+                        @endforeach
+                    </div>
+
+                    <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
+                        @foreach($limitKeys as $key => $label)
+                            @if(! in_array($key, ['servers', 'managed_servers', 'sites', 'managed_sites'], true))
+                                <div>
+                                    <dt class="text-xs muted">{{ $label }}</dt>
+                                    <dd class="heading">{{ $limit($plan->limits[$key] ?? 0) }}</dd>
+                                </div>
+                            @endif
                         @endforeach
                     </dl>
 
                     <div class="mt-4 flex flex-wrap gap-2">
-                        @foreach($featureKeys as $key => $label)
+                        @foreach($displayFeatureKeys as $key => $label)
                             <span @class([
                                 'badge',
                                 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300' => $plan->features[$key] ?? false,

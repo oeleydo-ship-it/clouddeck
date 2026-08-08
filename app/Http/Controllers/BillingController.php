@@ -18,10 +18,22 @@ class BillingController extends Controller
 {
     public function index(Request $request, EntitlementService $entitlements, QuotaManager $quotas): View
     {
-        $resources = ['servers', 'sites', 'databases', 'api_tokens', 'teams', 'team_members'];
+        $managedServersEnabled = app(\App\Services\SystemSettings::class)->managedServersEnabled();
+        $resources = $managedServersEnabled
+            ? ['servers', 'managed_servers', 'sites', 'managed_sites', 'databases', 'api_tokens', 'teams', 'team_members']
+            : ['servers', 'sites', 'databases', 'api_tokens', 'teams', 'team_members'];
         $plan = $entitlements->plan($request->user());
 
-        return view('billing.index', ['plan' => $plan, 'subscription' => $entitlements->subscription($request->user()), 'plans' => Plan::where('active', true)->where('public', true)->orderBy('sort_order')->get(), 'usage' => collect($resources)->mapWithKeys(fn ($resource) => [$resource => ['used' => $quotas->usage($request->user(), $resource), 'limit' => $entitlements->limit($request->user(), $resource)]])->all(), 'requests' => $request->user()->billingRequests()->with('plan')->latest()->limit(10)->get(), 'invoices' => $request->user()->billingInvoices()->latest()->limit(20)->get(), 'stripeEnabled' => (bool) config('services.stripe.secret')]);
+        return view('billing.index', [
+            'plan' => $plan,
+            'subscription' => $entitlements->subscription($request->user()),
+            'plans' => Plan::where('active', true)->where('public', true)->orderBy('sort_order')->get(),
+            'usage' => collect($resources)->mapWithKeys(fn ($resource) => [$resource => ['used' => $quotas->usage($request->user(), $resource), 'limit' => $entitlements->limit($request->user(), $resource)]])->all(),
+            'requests' => $request->user()->billingRequests()->with('plan')->latest()->limit(10)->get(),
+            'invoices' => $request->user()->billingInvoices()->latest()->limit(20)->get(),
+            'stripeEnabled' => (bool) config('services.stripe.secret'),
+            'managedServersEnabled' => $managedServersEnabled,
+        ]);
     }
 
     public function requestPlan(Request $request, AuditLogger $audit): RedirectResponse

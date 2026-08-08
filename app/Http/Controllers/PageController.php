@@ -28,6 +28,7 @@ class PageController extends Controller
                 ->orderBy('monthly_price')
                 ->get(),
             'landing' => app(SystemSettings::class)->landing(),
+            'managedServersEnabled' => app(SystemSettings::class)->managedServersEnabled(),
             'title' => $seo['title'],
             'metaDescription' => $seo['description'],
             'ogImage' => $seo['og_image'],

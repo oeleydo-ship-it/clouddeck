@@ -142,7 +142,7 @@ class SaasAdministrationTest extends TestCase
         $this->actingAs($admin)->patch("/admin/plans/{$plan->id}", [
             'name' => 'Starter Plus', 'slug' => 'starter-plus', 'currency' => 'usd',
             'monthly_price' => 19, 'yearly_price' => 190, 'sort_order' => 15,
-            'servers' => 3, 'sites' => 12, 'databases' => 5, 'api_tokens' => 4,
+            'servers' => 3, 'managed_servers' => 1, 'sites' => 12, 'managed_sites' => 8, 'databases' => 5, 'api_tokens' => 4,
             'teams' => 1, 'team_members' => 8, 'active' => '1', 'public' => '1',
             'feature_monitoring' => '1', 'feature_teams' => '1',
         ])->assertSessionHas('status');
@@ -153,6 +153,7 @@ class SaasAdministrationTest extends TestCase
         $this->assertSame(1900, $plan->monthly_price);
         $this->assertSame(19000, $plan->yearly_price);
         $this->assertSame(3, $plan->limits['servers']);
+        $this->assertSame(1, $plan->limits['managed_servers']);
         $this->assertTrue($plan->features['monitoring']);
         $this->assertFalse($plan->features['remote_management']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'plan.updated', 'auditable_id' => $plan->id]);

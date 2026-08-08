@@ -22,7 +22,7 @@ class RestoreServerSnapshotJob implements ShouldQueue
         $snapshot = ServerSnapshot::with('server.cloudAccount')->findOrFail($this->snapshotId);
         $server = $snapshot->server;
         $server->update(['status' => 'provisioning', 'progress' => 10, 'current_step' => 'Restoring provider snapshot']);
-        $action = $providers->for($server->cloudAccount)->action($server->provider_id, 'restore', ['image' => $snapshot->provider_snapshot_id]);
+        $action = $providers->forServer($server)->action($server->provider_id, 'restore', ['image' => $snapshot->provider_snapshot_id]);
         $server->update(['progress' => 25, 'current_step' => 'Provider restore accepted', 'metadata' => [...($server->metadata ?? []), 'restore_action_id' => (string) $action['id'], 'restore_snapshot_id' => $snapshot->id]]);
         RefreshServerRestoreJob::dispatch($server->id, (string) $action['id'])->delay(now()->addSeconds(30))->onQueue('operations');
     }

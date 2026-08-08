@@ -27,7 +27,7 @@ class RefreshServerSnapshotJob implements ShouldQueue
         if ($snapshot->status !== 'processing') {
             return;
         }
-        $provider = $providers->for($snapshot->server->cloudAccount);
+        $provider = $providers->forServer($snapshot->server);
         $action = $provider->actionStatus($snapshot->server->provider_id, $snapshot->provider_action_id);
         $snapshot->update(['last_checked_at' => now()]);
         if (($action['status'] ?? null) === 'in-progress') {

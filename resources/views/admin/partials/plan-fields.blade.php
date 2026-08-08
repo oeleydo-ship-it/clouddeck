@@ -24,9 +24,19 @@
 <fieldset class="mt-5">
     <legend class="text-sm font-medium heading">Limits</legend>
     <p class="mt-1 text-xs muted">Use <code>-1</code> for unlimited.</p>
+
+    <div class="mt-3 grid gap-3 rounded-xl border border-slate-200 p-3 dark:border-white/10 sm:grid-cols-2">
+        <label class="text-xs heading">BYOS servers<span class="mt-0.5 block font-normal muted">Customer's own cloud account</span><input class="field mt-1" type="number" min="-1" name="servers" value="{{ old('servers', $plan?->limits['servers'] ?? 1) }}" required></label>
+        <label class="text-xs heading">Managed servers<span class="mt-0.5 block font-normal muted">Platform-hosted, billed within this plan</span><input class="field mt-1" type="number" min="-1" name="managed_servers" value="{{ old('managed_servers', $plan?->limits['managed_servers'] ?? 0) }}" required></label>
+        <label class="text-xs heading">BYOS sites<span class="mt-0.5 block font-normal muted">Sites on BYOS / custom servers</span><input class="field mt-1" type="number" min="-1" name="sites" value="{{ old('sites', $plan?->limits['sites'] ?? 1) }}" required></label>
+        <label class="text-xs heading">Managed sites<span class="mt-0.5 block font-normal muted">Sites on platform-managed servers</span><input class="field mt-1" type="number" min="-1" name="managed_sites" value="{{ old('managed_sites', $plan?->limits['managed_sites'] ?? 0) }}" required></label>
+    </div>
+
     <div class="mt-3 grid gap-3 sm:grid-cols-3">
         @foreach($limitKeys as $key => $label)
-            <label class="text-xs muted">{{ $label }}<input class="field" type="number" min="-1" name="{{ $key }}" value="{{ old($key, $plan?->limits[$key] ?? 1) }}" required></label>
+            @if(! in_array($key, ['servers', 'managed_servers', 'sites', 'managed_sites'], true))
+                <label class="text-xs muted">{{ $label }}<input class="field" type="number" min="-1" name="{{ $key }}" value="{{ old($key, $plan?->limits[$key] ?? 1) }}" required></label>
+            @endif
         @endforeach
     </div>
 </fieldset>

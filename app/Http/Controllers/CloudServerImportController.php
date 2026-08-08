@@ -93,6 +93,7 @@ final class CloudServerImportController extends Controller
                 'progress' => 30,
                 'current_step' => 'Imported; waiting for bootstrap',
                 'metadata' => [...$droplet, 'imported_at' => now()->toIso8601String()],
+                'provisioning_source' => 'byos',
             ]);
         });
 

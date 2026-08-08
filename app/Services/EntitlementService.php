@@ -25,7 +25,19 @@ final class EntitlementService
         }
 
         $plan = $this->plan($user);
+        if (! $plan) {
+            return -1;
+        }
 
-        return $plan ? (int) ($plan->limits[$resource] ?? 0) : -1;
+        $limits = $plan->limits ?? [];
+
+        // Pre-split plans only had a single `sites` pool. Until an admin saves
+        // managed_sites, keep the old shared ceiling so existing customers are not
+        // suddenly blocked from adding sites on managed hosts.
+        if ($resource === 'managed_sites' && ! array_key_exists('managed_sites', $limits)) {
+            return (int) ($limits['sites'] ?? 0);
+        }
+
+        return (int) ($limits[$resource] ?? 0);
     }
 }

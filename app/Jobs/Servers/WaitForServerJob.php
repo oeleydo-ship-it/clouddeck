@@ -24,7 +24,7 @@ class WaitForServerJob implements ShouldQueue
     {
         $server = Server::with('cloudAccount')->findOrFail($this->serverId);
         $this->progress($server, 25, 'Waiting for public IP');
-        $droplet = $manager->for($server->cloudAccount)->server($server->provider_id);
+        $droplet = $manager->forServer($server)->server($server->provider_id);
         if (($droplet['status'] ?? null) !== 'active') {
             $this->release(10);
 

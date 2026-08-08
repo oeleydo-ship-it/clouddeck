@@ -6,13 +6,20 @@ Uplary includes a super-administrator control center at `/admin` and customer bi
 
 Plans store monthly and yearly prices as integer cents, per-resource limits, and feature entitlements. A limit of `-1` means unlimited. The entitlement resolver selects an active or trialing subscription whose period has not expired, then falls back to the active `free` plan. When no plans exist, limits are intentionally unmetered so fresh developer and test installations remain usable.
 
-The quota manager is enforced when customers create servers, sites, managed databases, API tokens, teams, or team members. Both web and API entry points use the same quota service. New registrations automatically receive the active free plan when one exists.
+The quota manager is enforced when customers create BYOS servers, managed servers, sites, managed databases, API tokens, teams, or team members. Both web and API entry points use the same quota service. New registrations automatically receive the active free plan when one exists.
 
-Boolean plan features (catalog in `config/plan-features.php`) gate console modules and site capabilities sold with a plan. **Servers and sites are quotas only** (`plans.limits`) — they are not duplicated as feature checkboxes.
+Boolean plan features (catalog in `config/plan-features.php`) gate console modules and site capabilities sold with a plan. **BYOS servers and managed servers are priced separately**, and **site quotas are also split by host type**:
+
+- **BYOS** — customer connects their own cloud (`providers`) and provisions through it, or adds a server by SSH; counts against the `servers` limit. Sites on those hosts count against `sites` (BYOS sites). Both `/cloud-accounts` and `/servers/create` (the provision-with-your-cloud wizard) require the `providers` feature; `/servers/custom` (add existing server by SSH) does not, since it needs no provider connection
+- **Managed servers** — platform creates the VPS on the control-plane cloud API token; requires Admin → Managed servers (enabled + token), plan feature `managed_servers`, and the `managed_servers` limit. Sites on those hosts count against `managed_sites`. Gated the same way as BYOS: `feature:managed_servers` plus `EnsureManagedServersEnabled` on `/servers/managed`, vs `feature:providers` on `/servers/create`
+
+A Free plan can therefore allow e.g. **1 BYOS site** and **5 managed sites** independently. When **Admin → Managed servers** is disabled, public pricing (landing page) and the customer billing plan cards hide managed server/site quotas entirely so the product is not advertised while the platform feature is off.
 
 | Key | Gates |
 | --- | --- |
-| `firewall`, `security`, `notifications`, `providers`, `dns`, `ssh` | Matching sidebar entries and route groups |
+| `providers` | Cloud accounts and the BYOS provision wizard (`/cloud-accounts`, `/servers/create`) |
+| `managed_servers` | Platform-provided VPS provision UI (`/servers/managed`) |
+| `firewall`, `security`, `notifications`, `dns`, `ssh` | Matching sidebar entries and route groups |
 | `monitoring` | Server and site monitoring actions |
 | `remote_management` | Remote configuration, files, and terminal |
 | `teams` | `/teams` and the account menu link |
@@ -70,6 +77,19 @@ Super admins can open **Admin â†’ Platform services** (`/admin/platform-ser
   - **Windows / local `artisan serve`:** Start/Stop N/A for TLS. If `APP_URL` is still `http://localhost`, the card explains that local serve is HTTP-only. Pointing `APP_URL` at a remote `https://` origin still shows live certificate status.
 
 Horizon dashboard auth is unchanged: super admins always pass the gate; optional extra emails use `HORIZON_ALLOWED_EMAILS`.
+
+## Managed servers
+
+Managed servers are platform-billed VPS (separate from BYOS), configured on their own **Admin → Managed servers** tab. Off until a superadmin enables **Managed servers**, chooses DigitalOcean, and saves a platform API token (encrypted). Customers with the plan feature `managed_servers` and remaining `managed_servers` quota open `/servers/managed`, pick region/size/image, and provision without connecting their own cloud account. Created servers store `provisioning_source=managed` and use `CloudProviderManager::forPlatform()` / `forServer()` for create, wait, destroy, and snapshots. BYOS (`servers` limit) and managed quotas are counted separately.
+
+### Markup pricing
+
+The same **Admin → Managed servers** tab lists every size the platform cloud account offers (1 GB, 4 GB, 8 GB, …) alongside its raw infra cost. Two ways to price them for customers:
+
+- **Default markup %** — applied over infra cost for any size without an explicit override (`SystemSettings::managedMarkupPercent()`).
+- **Per-size price override** — an exact customer price for one configuration, stored in `managed_size_prices` (JSON keyed by provider size slug), read via `SystemSettings::managedSizePrices()`.
+
+`SystemSettings::managedServerPrice($size)` resolves the final customer price (override, else infra × (1 + markup%)). The managed-server wizard shows this price to the customer and stores both `infra_price_monthly` and `customer_price_monthly` on the server's `metadata` at deploy time.
 
 ## Staging sites
 

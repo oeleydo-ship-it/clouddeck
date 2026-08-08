@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Cloud\CloudProviderManager;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\BillingRequest;
@@ -10,8 +11,10 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\SystemSettings;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Throwable;
 
 /**
  * Each administrative section is its own page rather than a tab in one document. The tabbed
@@ -71,6 +74,27 @@ class AdminDashboardController extends Controller
     public function settings(): View
     {
         return view('admin.settings', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function managedServers(CloudProviderManager $providers, SystemSettings $systemSettings): View
+    {
+        $ready = $systemSettings->managedServersReady();
+        $managedSizes = [];
+        if ($ready) {
+            try {
+                $managedSizes = collect($providers->forPlatform()->sizes())->sortBy('price_monthly')->values()->all();
+            } catch (Throwable) {
+                $managedSizes = [];
+            }
+        }
+
+        return view('admin.managed-servers', [
+            'settings' => SystemSetting::all()->keyBy('key'),
+            'ready' => $ready,
+            'managedSizes' => $managedSizes,
+            'managedMarkupPercent' => $systemSettings->managedMarkupPercent(),
+            'managedSizePrices' => $systemSettings->managedSizePrices(),
+        ]);
     }
 
     public function pages(): View

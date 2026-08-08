@@ -22,7 +22,7 @@ class CreateServerSnapshotJob implements ShouldQueue
     {
         $snapshot = ServerSnapshot::with('server.cloudAccount')->findOrFail($this->snapshotId);
         $snapshot->update(['status' => 'creating']);
-        $action = $providers->for($snapshot->server->cloudAccount)->action($snapshot->server->provider_id, 'snapshot', ['name' => $snapshot->name]);
+        $action = $providers->forServer($snapshot->server)->action($snapshot->server->provider_id, 'snapshot', ['name' => $snapshot->name]);
         $snapshot->update(['status' => 'processing', 'provider_action_id' => (string) $action['id'], 'last_checked_at' => now()]);
         RefreshServerSnapshotJob::dispatch($snapshot->id)->delay(now()->addSeconds(30))->onQueue('operations');
     }

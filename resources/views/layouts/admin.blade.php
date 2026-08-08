@@ -5,6 +5,7 @@
         ['route' => 'admin.dashboard', 'label' => 'Overview', 'icon' => 'M3 12h4l3 8 4-16 3 8h4'],
         ['route' => 'admin.users', 'label' => 'Users', 'icon' => 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 7a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm13 14v-2a4 4 0 0 0-3-3.87'],
         ['route' => 'admin.plans', 'label' => 'Plans', 'icon' => 'M20 12V8H6a2 2 0 0 1 0-4h12v4M4 6v12a2 2 0 0 0 2 2h14v-4M18 12a2 2 0 0 0 0 4h4v-4Z'],
+        ['route' => 'admin.managed-servers', 'label' => 'Managed servers', 'icon' => 'M2 2h20v8H2ZM2 14h20v8H2ZM6 6h.01M6 18h.01'],
         ['route' => 'admin.features', 'label' => 'Feature flags', 'icon' => 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7'],
         ['route' => 'admin.posts', 'label' => 'Blog', 'icon' => 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z'],
         ['route' => 'admin.billing', 'label' => 'Billing review', 'icon' => 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],

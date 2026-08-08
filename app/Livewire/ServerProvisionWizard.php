@@ -91,6 +91,7 @@ class ServerProvisionWizard extends Component
             'image' => $this->image,
             'status' => ServerStatus::Pending,
             'current_step' => 'Queued',
+            'provisioning_source' => 'byos',
         ]);
         $provision->execute($server);
         session()->flash('status', 'Server provisioning has started.');

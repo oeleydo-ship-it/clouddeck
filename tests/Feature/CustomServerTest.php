@@ -32,6 +32,29 @@ class CustomServerTest extends TestCase
         return ['name' => 'production', 'public_ip' => '203.0.113.10', 'ssh_port' => 22, 'image' => 'ubuntu-24-04-x64', ...$overrides];
     }
 
+    public function test_provision_with_your_cloud_is_gated_by_the_providers_feature_like_cloud_accounts(): void
+    {
+        $plan = Plan::create([
+            'name' => 'No BYOS Provider',
+            'slug' => 'no-byos-provider',
+            'monthly_price' => 0,
+            'yearly_price' => 0,
+            'currency' => 'USD',
+            'limits' => ['servers' => 5, 'sites' => 5, 'databases' => 5, 'api_tokens' => 5, 'teams' => 1, 'team_members' => 5],
+            'features' => array_merge(array_fill_keys(array_keys(config('plan-features.labels')), true), ['providers' => false]),
+            'active' => true,
+            'public' => true,
+        ]);
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        Subscription::create(['user_id' => $user->id, 'plan_id' => $plan->id, 'provider' => 'system', 'status' => 'active']);
+
+        // BYOS provider connections and the provision-with-your-cloud wizard share the
+        // same gate; adding an existing server by SSH does not need a provider connection.
+        $this->actingAs($user)->get('/cloud-accounts')->assertForbidden();
+        $this->actingAs($user)->get('/servers/create')->assertForbidden();
+        $this->actingAs($user)->get('/servers/custom')->assertOk();
+    }
+
     public function test_the_page_shows_a_command_carrying_the_operators_own_public_key(): void
     {
         $user = $this->user();

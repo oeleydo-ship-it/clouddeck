@@ -24,7 +24,7 @@ class CreateDropletJob implements ShouldQueue
     {
         $server = Server::with(['cloudAccount', 'sshKey'])->findOrFail($this->serverId);
         $this->progress($server, 10, 'Creating cloud server', ServerStatus::Creating);
-        $provider = $manager->for($server->cloudAccount);
+        $provider = $manager->forServer($server);
         $providerKeyId = $server->sshKey ? $provider->ensureSshKey($server->sshKey->name, $server->sshKey->public_key, $server->sshKey->fingerprint) : null;
         $droplet = $provider->createServer(new CreateServerData($server->hostname, $server->region, $server->size, $server->image, array_filter([$providerKeyId])));
         $server->update(['provider_id' => (string) $droplet['id'], 'metadata' => $droplet]);
