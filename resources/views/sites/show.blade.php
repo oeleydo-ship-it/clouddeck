@@ -179,20 +179,68 @@
     @endif
     <div x-cloak x-show="tab==='environment'" class="mt-6"><form method="POST" action="{{ route('sites.environment',$site) }}" class="panel">@csrf @method('PUT')<h2 class="font-semibold heading">Encrypted environment</h2><p class="mt-2 text-sm muted">Values are encrypted at rest and written only to the server's shared release directory.</p><textarea class="field mt-5 min-h-[28rem] font-mono text-xs leading-6" name="environment" spellcheck="false">{{ $environment }}</textarea><button class="button-primary mt-5">Save environment</button></form></div>
     <div x-cloak x-show="tab==='deploy'" class="mt-6"><form method="POST" action="{{ route('sites.update',$site) }}" class="panel">@csrf @method('PATCH')<div class="grid gap-5 sm:grid-cols-2"><label class="text-sm heading sm:col-span-2">Repository URL<input class="field font-mono text-xs" name="repository_url" value="{{ $site->repository_url }}" placeholder="https://bitbucket.org/acme/app.git"><span class="mt-1 block text-xs muted">GitHub, GitLab, or Bitbucket — HTTPS or SSH.</span></label><label class="text-sm heading">Branch<input class="field" name="branch" value="{{ $site->branch }}"></label><label class="text-sm heading">PHP version<select class="field" name="php_version">@foreach(config('clouddeck.php_versions') as $version)<option @selected($site->php_version===$version)>{{ $version }}</option>@endforeach</select></label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_deploy" value="1" @checked($site->auto_deploy)>Automatic deployments</label><label class="flex gap-2 text-sm heading"><input type="checkbox" name="zero_downtime" value="1" @checked($site->zero_downtime)>Zero-downtime releases</label><label class="text-sm heading sm:col-span-2">Custom post-build script<textarea class="field min-h-44 font-mono text-xs" name="deployment_script">{{ $site->deployment_script }}</textarea></label></div><button class="button-primary mt-5">Save settings</button></form></div>
-    <div x-cloak x-show="tab==='ssl'" class="mt-6">
-        @php $certificate = $site->sslCertificates->sortByDesc('created_at')->first(); @endphp
+    <div x-cloak x-show="tab==='ssl'" class="mt-6 space-y-6">
+        @php
+            $certificate = $site->sslCertificates->sortByDesc('created_at')->first();
+            $isCustomSsl = $certificate?->provider === 'custom';
+            $providerLabel = $isCustomSsl ? 'Custom' : 'Let’s Encrypt';
+        @endphp
         <section class="panel">
             <div class="flex flex-wrap items-start justify-between gap-4">
-                <div><h2 class="font-semibold heading">{{ $site->domain }}</h2><p class="mt-1 text-sm muted">{{ $certificate ? ucfirst($certificate->status) : 'No certificate' }}@if($certificate?->expires_at) · expires {{ $certificate->expires_at->toFormattedDateString() }}@endif</p></div>
+                <div>
+                    <h2 class="font-semibold heading">{{ $site->domain }}</h2>
+                    <p class="mt-1 text-sm muted">
+                        {{ $certificate ? ucfirst($certificate->status) : 'No certificate' }}
+                        @if($certificate) · {{ $providerLabel }}@endif
+                        @if($certificate?->expires_at) · expires {{ $certificate->expires_at->toFormattedDateString() }}@endif
+                    </p>
+                </div>
                 @if($certificate?->status === 'active')<span class="text-sm font-medium text-emerald-600 dark:text-emerald-300">Secure</span>@endif
             </div>
-            <form method="POST" action="{{ route('ssl.store',$site) }}" class="mt-5 flex flex-wrap items-center gap-4">@csrf
-                <label class="flex gap-2 text-sm heading"><input type="checkbox" name="force_https" value="1" @checked($certificate?->force_https ?? true)>Force HTTPS</label>
-                <label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_renew" value="1" @checked($certificate?->auto_renew ?? true)>Auto renew</label>
-                <button class="button-primary" @disabled($site->status !== 'active')>{{ $certificate ? 'Renew / update' : 'Issue certificate' }}</button>
-            </form>
             @if($certificate?->failure_reason)<p class="mt-3 text-xs text-rose-600 dark:text-rose-300">{{ $certificate->failure_reason }}</p>@endif
-            @if($site->status !== 'active')<p class="mt-3 text-xs muted">The site must finish configuring before a certificate can be issued.</p>@endif
+            @if($site->status !== 'active')<p class="mt-3 text-xs muted">The site must finish configuring before a certificate can be installed.</p>@endif
+        </section>
+
+        <section class="panel">
+            <h3 class="font-semibold heading">Let’s Encrypt</h3>
+            <p class="mt-1 text-sm muted">Free automated certificate. DNS must point at this server before issuing.</p>
+            <form method="POST" action="{{ route('ssl.store',$site) }}" class="mt-5 flex flex-wrap items-center gap-4">@csrf
+                <input type="hidden" name="_tab" value="ssl">
+                <label class="flex gap-2 text-sm heading"><input type="checkbox" name="force_https" value="1" @checked(($isCustomSsl ? true : $certificate?->force_https) ?? true)>Force HTTPS</label>
+                <label class="flex gap-2 text-sm heading"><input type="checkbox" name="auto_renew" value="1" @checked($isCustomSsl ? true : ($certificate?->auto_renew ?? true))>Auto renew</label>
+                <button class="button-primary" @disabled($site->status !== 'active')>{{ $certificate && ! $isCustomSsl ? 'Renew / update' : 'Issue certificate' }}</button>
+            </form>
+        </section>
+
+        <section class="panel">
+            <h3 class="font-semibold heading">Bring your own certificate</h3>
+            <p class="mt-1 text-sm muted">Upload a PEM fullchain and private key. Files are encrypted at rest and installed on the server under <code class="text-xs">/etc/ssl/clouddeck/</code>.</p>
+            <form method="POST" action="{{ route('ssl.custom',$site) }}" enctype="multipart/form-data" class="mt-5 space-y-4">@csrf
+                <input type="hidden" name="_tab" value="ssl">
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <label class="text-sm heading">Fullchain PEM (file)
+                        <input class="field mt-1" type="file" name="fullchain" accept=".pem,.crt,.cer,text/plain">
+                    </label>
+                    <label class="text-sm heading">Private key PEM (file)
+                        <input class="field mt-1" type="file" name="private_key" accept=".pem,.key,text/plain">
+                    </label>
+                </div>
+                <details class="rounded-xl border border-slate-200 p-3 dark:border-white/10">
+                    <summary class="cursor-pointer text-sm font-medium heading">Or paste PEM text</summary>
+                    <div class="mt-3 grid gap-4 sm:grid-cols-2">
+                        <label class="text-sm heading">Fullchain<textarea class="field mt-1 min-h-36 font-mono text-xs" name="fullchain_pem" spellcheck="false" placeholder="-----BEGIN CERTIFICATE-----">{{ old('fullchain_pem') }}</textarea></label>
+                        <label class="text-sm heading">Private key<textarea class="field mt-1 min-h-36 font-mono text-xs" name="private_key_pem" spellcheck="false" placeholder="-----BEGIN PRIVATE KEY-----">{{ old('private_key_pem') }}</textarea></label>
+                    </div>
+                </details>
+                <div class="flex flex-wrap items-center gap-4">
+                    <label class="flex gap-2 text-sm heading"><input type="checkbox" name="force_https" value="1" @checked(old('force_https', $certificate?->force_https ?? true))>Force HTTPS</label>
+                    <button class="button-primary" @disabled($site->status !== 'active')>Upload &amp; install</button>
+                </div>
+                @error('fullchain')<p class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                @error('private_key')<p class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                @error('fullchain_pem')<p class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                @error('private_key_pem')<p class="text-xs text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+            </form>
         </section>
     </div>
     <div x-cloak x-show="tab==='logs'" class="mt-6">@livewire('log-viewer',['site'=>$site])</div>

@@ -42,6 +42,8 @@ class ApplySiteConfigurationJob implements ShouldQueue
                 'INCLUDE_WWW' => ! empty($settings['include_www']) ? '1' : '0',
                 'ALLOW_IFRAME_EMBEDDING' => ! empty($settings['allow_iframe_embedding']) ? '1' : '0',
                 'SSL_ENABLED' => $activeCertificate ? '1' : '0',
+                'SSL_CERTIFICATE' => $activeCertificate?->remoteCertificatePath() ?? '',
+                'SSL_CERTIFICATE_KEY' => $activeCertificate?->remotePrivateKeyPath() ?? '',
                 'DOCUMENT_ROOT' => $site->documentRoot(),
             ]);
         } else {

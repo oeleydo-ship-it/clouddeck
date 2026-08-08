@@ -7,6 +7,8 @@ STATIC_CACHE={{STATIC_CACHE}}
 INCLUDE_WWW={{INCLUDE_WWW}}
 ALLOW_IFRAME_EMBEDDING={{ALLOW_IFRAME_EMBEDDING}}
 SSL_ENABLED={{SSL_ENABLED}}
+SSL_CERTIFICATE={{SSL_CERTIFICATE}}
+SSL_CERTIFICATE_KEY={{SSL_CERTIFICATE_KEY}}
 DOCUMENT_ROOT={{DOCUMENT_ROOT}}
 ROOT="/var/www/${DOMAIN}"
 TARGET="/etc/nginx/sites-available/${DOMAIN}"
@@ -27,12 +29,15 @@ FRAME_OPTIONS_HEADER='    add_header X-Frame-Options "SAMEORIGIN" always;'
 if [[ "$ALLOW_IFRAME_EMBEDDING" == "1" ]]; then
     FRAME_OPTIONS_HEADER=''
 fi
+# Default to Let's Encrypt live paths when the control plane omits explicit PEM locations.
+[[ -n "$SSL_CERTIFICATE" ]] || SSL_CERTIFICATE="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+[[ -n "$SSL_CERTIFICATE_KEY" ]] || SSL_CERTIFICATE_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
 TLS_LINES=""
 if [[ "$SSL_ENABLED" == "1" ]]; then
     TLS_LINES="listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;"
+    ssl_certificate ${SSL_CERTIFICATE};
+    ssl_certificate_key ${SSL_CERTIFICATE_KEY};"
     cat > "$TEMP" <<NGINX
 server {
     listen 80;

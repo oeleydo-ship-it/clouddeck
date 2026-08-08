@@ -28,13 +28,30 @@ class DeploymentLogStream extends Component
         // Re-render pulls the latest logs/status from the database; the broadcast just wakes it up.
     }
 
+    /**
+     * Keep polling while the run is active. Called from a dedicated poll node so we never
+     * add/remove wire:poll on the component root (that morph was duplicating action buttons).
+     */
+    public function poll(): void
+    {
+        $deployment = Deployment::query()->find($this->deploymentId);
+        if (! $deployment) {
+            return;
+        }
+
+        $active = in_array($deployment->status, [DeploymentStatus::Pending, DeploymentStatus::Running], true);
+        if ($this->wasActive && ! $active) {
+            $this->wasActive = false;
+            $this->dispatch('deployment-settled', status: $deployment->status->value);
+        }
+    }
+
     public function render()
     {
         $deployment = Deployment::with('site')->findOrFail($this->deploymentId);
         $active = in_array($deployment->status, [DeploymentStatus::Pending, DeploymentStatus::Running], true);
 
-        // Once the run settles, tell the surrounding page to drop the "Deployment queued."
-        // flash and swap Cancel for Deploy again — those were rendered outside this component.
+        // Hide the layout "Deployment queued." flash once the run finishes.
         if ($this->wasActive && ! $active) {
             $this->wasActive = false;
             $this->dispatch('deployment-settled', status: $deployment->status->value);

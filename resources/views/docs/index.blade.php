@@ -306,12 +306,22 @@
             {{-- SSL --}}
             <section id="ssl" class="panel scroll-mt-8">
                 <h2 class="section-title">SSL certificates</h2>
-                <p class="mt-3 text-sm muted">From the site’s <strong class="heading">SSL</strong> tab, request a Let’s Encrypt certificate for the primary domain.</p>
-                <ol class="mt-3 list-decimal space-y-2 pl-5 text-sm muted">
+                <p class="mt-3 text-sm muted">From the site’s <strong class="heading">SSL</strong> tab, use Let’s Encrypt or upload your own certificate.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Let’s Encrypt</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
                     <li>Point DNS A/AAAA records at the server’s public IP before requesting.</li>
                     <li>Issue the certificate; {{ $branding['name'] }} configures Nginx for HTTPS.</li>
-                    <li>Optionally force HTTPS redirects and track expiry from the same tab.</li>
+                    <li>Optionally force HTTPS redirects and enable auto renew from the same tab.</li>
                     <li>Renewals run on a schedule — keep DNS correct so Certbot can re-verify.</li>
+                </ol>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Bring your own certificate</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>Upload a PEM <strong class="heading">fullchain</strong> and matching <strong class="heading">private key</strong> (file or paste).</li>
+                    <li>{{ $branding['name'] }} validates the pair, encrypts them at rest, and installs them on the server under <code>/etc/ssl/clouddeck/{domain}/</code>.</li>
+                    <li>Nginx is pointed at those files and reloaded. Custom certificates are not auto-renewed — upload a replacement before expiry.</li>
+                    <li>Issuing Let’s Encrypt later replaces the custom certificate for that site.</li>
                 </ol>
             </section>
 

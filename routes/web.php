@@ -242,6 +242,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::post('/sites/{site}/ssl', [SslCertificateController::class, 'store'])->name('ssl.store');
+    Route::post('/sites/{site}/ssl/custom', [SslCertificateController::class, 'storeCustom'])->name('ssl.custom');
     Route::post('/sites/{site}/cron-jobs', [CronJobController::class, 'storeForSite'])->name('sites.cron-jobs.store');
     Route::post('/sites/{site}/workers', [QueueWorkerController::class, 'store'])->name('workers.store');
     Route::delete('/workers/{queueWorker}', [QueueWorkerController::class, 'destroy'])->name('workers.destroy');

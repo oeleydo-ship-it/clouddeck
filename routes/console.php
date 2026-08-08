@@ -42,10 +42,15 @@ Schedule::call(function () {
     });
 })->dailyAt('03:30')->name('prune-remote-transfers')->withoutOverlapping();
 Schedule::call(function () {
-    SslCertificate::where('auto_renew', true)->where('status', 'active')->where('expires_at', '<=', now()->addDays(30))->each(function (SslCertificate $certificate) {
-        $certificate->update(['status' => 'pending']);
-        InstallSslCertificateJob::dispatch($certificate->id)->onQueue('operations');
-    });
+    SslCertificate::query()
+        ->where('provider', 'letsencrypt')
+        ->where('auto_renew', true)
+        ->where('status', 'active')
+        ->where('expires_at', '<=', now()->addDays(30))
+        ->each(function (SslCertificate $certificate) {
+            $certificate->update(['status' => 'pending']);
+            InstallSslCertificateJob::dispatch($certificate->id)->onQueue('operations');
+        });
 })->dailyAt('02:15')->name('renew-expiring-certificates')->withoutOverlapping();
 
 // Renewal above is automatic but can fail quietly — DNS moved, port 80 closed behind a
