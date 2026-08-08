@@ -16,18 +16,19 @@
                 ])>{{ $ready ? 'Ready' : 'Not configured' }}</span>
             </div>
             @php $managedTokenSaved = filled($settings->get('managed_cloud_token')?->value); @endphp
-            <form method="POST" action="{{ route('admin.settings.managed-servers') }}" class="mt-5 max-w-2xl space-y-4">@csrf @method('PUT')
+            <form method="POST" action="{{ route('admin.settings.managed-servers') }}" class="mt-5 max-w-2xl space-y-4" x-data="{ provider: @js($settings->get('managed_cloud_provider')?->value ?? 'digitalocean') }">@csrf @method('PUT')
                 <label class="flex gap-2 text-sm heading"><input type="checkbox" name="managed_servers_enabled" value="1" @checked(($settings->get('managed_servers_enabled')?->value ?? '0') === '1')>Enable managed servers</label>
                 <p class="text-xs muted">When off, customer managed-provision routes return 404. Existing managed hosts keep running.</p>
                 <label class="text-sm heading">Cloud provider
-                    <select class="field" name="managed_cloud_provider">
-                        <option value="digitalocean" @selected(($settings->get('managed_cloud_provider')?->value ?? 'digitalocean') === 'digitalocean')>DigitalOcean</option>
+                    <select class="field" name="managed_cloud_provider" x-model="provider">
+                        <option value="digitalocean">DigitalOcean</option>
+                        <option value="hetzner">Hetzner Cloud</option>
                     </select>
                 </label>
                 <label class="text-sm heading">Platform API token
-                    <input class="field font-mono text-xs" type="password" name="managed_cloud_token" autocomplete="new-password" placeholder="{{ $managedTokenSaved ? 'Saved — leave blank to keep it' : 'dop_v1_…' }}">
+                    <input class="field font-mono text-xs" type="password" name="managed_cloud_token" autocomplete="new-password" :placeholder="{{ $managedTokenSaved ? "'Saved — leave blank to keep it'" : "provider === 'hetzner' ? 'Hetzner project API token' : 'dop_v1_…'" }}">
                 </label>
-                <p class="text-xs muted">Stored encrypted. Uplary uses this token to create and destroy Droplets for entitled customers. Customers never see it. Also enable <strong>Managed servers</strong> on each plan under Admin → Plans.</p>
+                <p class="text-xs muted">Stored encrypted. Uplary uses this token to create and destroy VPS for entitled customers. Customers never see it. Also enable <strong>Managed servers</strong> on each plan under Admin → Plans.</p>
                 <button class="button-primary">Save managed server settings</button>
             </form>
         </section>
@@ -86,7 +87,7 @@
         <section class="panel">
             <h2 class="font-semibold heading">How this works</h2>
             <ol class="mt-4 space-y-3 text-sm">
-                <li class="flex gap-3"><span class="stat-icon !size-6 shrink-0 bg-cyan-50 text-xs font-semibold text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300">1</span><span class="muted">Enable managed servers above and save a platform DigitalOcean token. This is <em>your</em> cloud account — customers never see or need one.</span></li>
+                <li class="flex gap-3"><span class="stat-icon !size-6 shrink-0 bg-cyan-50 text-xs font-semibold text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300">1</span><span class="muted">Enable managed servers above and save a platform cloud API token (DigitalOcean or Hetzner). This is <em>your</em> cloud account — customers never see or need one.</span></li>
                 <li class="flex gap-3"><span class="stat-icon !size-6 shrink-0 bg-cyan-50 text-xs font-semibold text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300">2</span><span class="muted">Set a default markup % and, optionally, an exact price for each configuration above.</span></li>
                 <li class="flex gap-3"><span class="stat-icon !size-6 shrink-0 bg-cyan-50 text-xs font-semibold text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300">3</span><span class="muted">Turn on the <strong>Managed servers</strong> feature and set a limit on any plan under <a class="underline" href="{{ route('admin.plans') }}">Admin → Plans</a> — it is billed separately from BYOS server limits.</span></li>
                 <li class="flex gap-3"><span class="stat-icon !size-6 shrink-0 bg-cyan-50 text-xs font-semibold text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300">4</span><span class="muted">Entitled customers see <strong>Managed server</strong> on the Servers page and deploy without a cloud account connection.</span></li>

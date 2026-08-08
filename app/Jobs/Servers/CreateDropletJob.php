@@ -27,6 +27,6 @@ class CreateDropletJob implements ShouldQueue
         $provider = $manager->forServer($server);
         $providerKeyId = $server->sshKey ? $provider->ensureSshKey($server->sshKey->name, $server->sshKey->public_key, $server->sshKey->fingerprint) : null;
         $droplet = $provider->createServer(new CreateServerData($server->hostname, $server->region, $server->size, $server->image, array_filter([$providerKeyId])));
-        $server->update(['provider_id' => (string) $droplet['id'], 'metadata' => $droplet]);
+        $server->update(['provider_id' => (string) $droplet['id'], 'metadata' => $server->metadataWithProvider($droplet)]);
     }
 }

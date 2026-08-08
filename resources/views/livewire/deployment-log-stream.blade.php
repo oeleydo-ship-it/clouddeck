@@ -5,11 +5,24 @@
 <div @if($active) wire:poll.2s @endif>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-            <span class="rounded-full px-3 py-1 text-xs font-medium capitalize {{ $deployment->status->value === 'successful' ? 'bg-emerald-50 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-300' : ($deployment->status->value === 'failed' ? 'bg-rose-50 dark:bg-rose-400/10 text-rose-600 dark:text-rose-300' : 'bg-cyan-50 dark:bg-cyan-400/10 text-cyan-600 dark:text-cyan-300') }}">{{ str_replace('_',' ',$deployment->status->value) }}</span>
+            <span class="rounded-full px-3 py-1 text-xs font-medium capitalize {{ $deployment->status->value === 'successful' ? 'bg-emerald-50 dark:bg-emerald-400/10 text-emerald-600 dark:text-emerald-300' : ($deployment->status->value === 'failed' || $deployment->status->value === 'cancelled' ? 'bg-rose-50 dark:bg-rose-400/10 text-rose-600 dark:text-rose-300' : 'bg-cyan-50 dark:bg-cyan-400/10 text-cyan-600 dark:text-cyan-300') }}">{{ str_replace('_',' ',$deployment->status->value) }}</span>
             <span class="text-xs text-slate-500 dark:text-slate-400">{{ $deployment->progress }}%</span>
             @if($active)<span class="flex items-center gap-1.5 text-xs text-cyan-600 dark:text-cyan-300"><span class="size-1.5 animate-pulse rounded-full bg-cyan-500"></span>Live</span>@endif
         </div>
-        <p class="text-xs text-slate-500 dark:text-slate-400">Exit {{ $deployment->exit_code ?? '—' }} · {{ $deployment->duration_for_humans ?? 'running' }}</p>
+        <div class="flex flex-wrap items-center gap-3">
+            <p class="text-xs text-slate-500 dark:text-slate-400">Exit {{ $deployment->exit_code ?? '—' }} · {{ $deployment->duration_for_humans ?? 'running' }}</p>
+            @if($canDeploy)
+                @if($active)
+                    <form method="POST" action="{{ route('deployments.cancel',$deployment) }}" onsubmit="return confirm('Cancel this deployment? The site keeps running its current release.')">@csrf
+                        <button class="button-secondary !px-3 !py-1.5 text-xs !text-rose-600 dark:!text-rose-300">Cancel deployment</button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('deployments.retry',$deployment) }}">@csrf
+                        <button class="button-primary !px-3 !py-1.5 text-xs">Deploy again</button>
+                    </form>
+                @endif
+            @endif
+        </div>
     </div>
     @if($active)
         <div class="mb-3 h-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-500" style="width:{{ max(2, $deployment->progress) }}%"></div></div>

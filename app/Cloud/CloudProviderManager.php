@@ -5,6 +5,7 @@ namespace App\Cloud;
 use App\Cloud\Contracts\CloudProvider;
 use App\Cloud\DigitalOcean\DigitalOceanProvider;
 use App\Cloud\Exceptions\CloudCredentialException;
+use App\Cloud\Hetzner\HetznerProvider;
 use App\Models\CloudAccount;
 use App\Models\Server;
 use App\Services\SystemSettings;
@@ -51,6 +52,7 @@ final class CloudProviderManager
     {
         return match ($provider) {
             'digitalocean' => new DigitalOceanProvider($token),
+            'hetzner' => new HetznerProvider($token),
             default => throw new InvalidArgumentException("Unsupported cloud provider [{$provider}]."),
         };
     }

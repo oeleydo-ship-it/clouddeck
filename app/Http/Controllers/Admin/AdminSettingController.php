@@ -71,7 +71,7 @@ class AdminSettingController extends Controller
     {
         $data = $request->validate([
             'managed_servers_enabled' => ['sometimes', 'boolean'],
-            'managed_cloud_provider' => ['required', Rule::in(['digitalocean'])],
+            'managed_cloud_provider' => ['required', Rule::in(['digitalocean', 'hetzner'])],
             'managed_cloud_token' => ['nullable', 'string', 'max:255'],
         ]);
 

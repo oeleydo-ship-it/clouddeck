@@ -31,7 +31,7 @@ class WaitForServerJob implements ShouldQueue
             return;
         } $ip = collect($droplet['networks']['v4'] ?? [])->firstWhere('type', 'public')['ip_address'] ?? null;
         if (! $ip) {
-            throw new RuntimeException('DigitalOcean did not return a public IPv4 address.');
-        } $server->update(['public_ip' => $ip, 'status' => ServerStatus::Active, 'metadata' => $droplet]);
+            throw new RuntimeException('Cloud provider did not return a public IPv4 address.');
+        } $server->update(['public_ip' => $ip, 'status' => ServerStatus::Active, 'metadata' => $server->metadataWithProvider($droplet)]);
     }
 }

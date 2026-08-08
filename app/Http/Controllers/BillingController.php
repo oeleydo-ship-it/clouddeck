@@ -28,7 +28,10 @@ class BillingController extends Controller
             'plan' => $plan,
             'subscription' => $entitlements->subscription($request->user()),
             'plans' => Plan::where('active', true)->where('public', true)->orderBy('sort_order')->get(),
-            'usage' => collect($resources)->mapWithKeys(fn ($resource) => [$resource => ['used' => $quotas->usage($request->user(), $resource), 'limit' => $entitlements->limit($request->user(), $resource)]])->all(),
+            'usage' => collect($resources)->mapWithKeys(fn ($resource) => [$resource => [
+                'used' => $quotas->usage($request->user(), $resource),
+                'limit' => $entitlements->planLimit($request->user(), $resource),
+            ]])->all(),
             'requests' => $request->user()->billingRequests()->with('plan')->latest()->limit(10)->get(),
             'invoices' => $request->user()->billingInvoices()->latest()->limit(20)->get(),
             'stripeEnabled' => (bool) config('services.stripe.secret'),
@@ -71,6 +74,6 @@ class BillingController extends Controller
 
     public function success(): RedirectResponse
     {
-        return redirect()->route('billing.index')->with('status', 'Checkout completed. Subscription access updates after the signed Stripe webhook is processed.');
+        return redirect()->route('billing.index')->with('status', 'Checkout completed. Your plan updates as soon as Stripe confirms the subscription.');
     }
 }

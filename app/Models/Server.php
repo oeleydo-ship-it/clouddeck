@@ -173,4 +173,30 @@ class Server extends Model
     {
         return ! $this->isManaged();
     }
+
+    /**
+     * Preserve billing / restore keys when provider payloads replace droplet details in metadata.
+     *
+     * @param  array<string, mixed>  $providerPayload
+     * @return array<string, mixed>
+     */
+    public function metadataWithProvider(array $providerPayload): array
+    {
+        $keep = collect($this->metadata ?? [])->only([
+            'platform_provider',
+            'billed_as',
+            'infra_price_monthly',
+            'customer_price_monthly',
+            'payment_status',
+            'paid_at',
+            'stripe_checkout_session_id',
+            'stripe_subscription_id',
+            'stripe_customer_id',
+            'stripe_subscription_status',
+            'restore_action_id',
+            'restore_snapshot_id',
+        ])->all();
+
+        return array_merge($keep, ['provider' => $providerPayload]);
+    }
 }

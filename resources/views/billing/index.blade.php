@@ -1,7 +1,20 @@
 @extends('layouts.app')
 @section('content')
 <div class="app-main">
-    <div><p class="page-eyebrow">Subscription</p><h1 class="page-title">Plans and usage</h1><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Current plan: {{ $plan?->name ?? 'Unmetered legacy account' }} @if($subscription?->current_period_ends_at)/ renews or ends {{ $subscription->current_period_ends_at->toFormattedDateString() }}@endif</p></div>
+    <div>
+        <p class="page-eyebrow">Subscription</p>
+        <h1 class="page-title">Plans and usage</h1>
+        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
+            Current plan:
+            <span class="font-semibold heading">{{ $plan?->name ?? 'Unmetered legacy account' }}</span>
+            @if($subscription?->current_period_ends_at)
+                · {{ $subscription->cancel_at_period_end ? 'ends' : 'renews' }} {{ $subscription->current_period_ends_at->toFormattedDateString() }}
+            @endif
+        </p>
+    </div>
+    @error('billing')
+        <div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $message }}</div>
+    @enderror
     <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">@foreach($usage as $resource=>$value)<div class="panel p-5"><div class="flex justify-between text-sm"><span class="capitalize text-slate-500 dark:text-slate-400">{{ str_replace('_',' ',$resource) }}</span><span>{{ $value['used'] }} / {{ $value['limit'] < 0 ? 'Unlimited' : $value['limit'] }}</span></div>@if($value['limit']>0)<div class="mt-3 h-2 rounded bg-slate-100 dark:bg-white/10"><div class="h-full rounded bg-cyan-400" style="width:{{ min(100,$value['used']*100/$value['limit']) }}%"></div></div>@endif</div>@endforeach</div>
     @php
         $managedServersEnabled = $managedServersEnabled ?? false;
@@ -9,7 +22,7 @@
             ? ['servers' => 'BYOS servers', 'managed_servers' => 'Managed servers', 'sites' => 'BYOS sites', 'managed_sites' => 'Managed sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members']
             : ['servers' => 'Servers', 'sites' => 'Sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members'];
         $serverNotes = [
-            'servers' => 'Provision on your own DigitalOcean, Hetzner, or Vultr account. No infra cost from us.',
+            'servers' => 'Provision on your own cloud account. No infra cost from us.',
             'managed_servers' => 'We create and host the VPS for you — no cloud account needed.',
             'sites' => $managedServersEnabled ? 'Sites hosted on your BYOS / custom servers.' : 'Sites you can host on your servers.',
             'managed_sites' => 'Sites hosted on platform-managed servers.',
@@ -77,15 +90,36 @@
                 @if($current)
                     <p class="mt-6 text-center text-sm muted">This is your current plan.</p>
                 @else
-                    <form method="POST" action="{{ route('billing.request') }}" class="mt-6 space-y-3">@csrf
-                        <input type="hidden" name="plan_id" value="{{ $available->id }}">
-                        <select class="field mt-0" name="billing_cycle" aria-label="Billing cycle for {{ $available->name }}">
-                            <option value="monthly">Monthly billing</option>
-                            @if($available->yearly_price)<option value="yearly">Yearly billing</option>@endif
-                        </select>
-                        <textarea class="field mt-0" name="customer_note" rows="2" placeholder="Billing or purchase-order notes (optional)"></textarea>
-                        <button class="button-primary w-full">Request this plan</button>
-                    </form>
+                    @php
+                        $canCheckout = ($stripeEnabled ?? false)
+                            && ($available->stripe_monthly_price_id || $available->stripe_yearly_price_id);
+                    @endphp
+                    @if($canCheckout)
+                        <form method="POST" action="{{ route('billing.checkout') }}" class="mt-6 space-y-3">@csrf
+                            <input type="hidden" name="plan_id" value="{{ $available->id }}">
+                            <select class="field mt-0" name="billing_cycle" aria-label="Billing cycle for {{ $available->name }}">
+                                @if($available->stripe_monthly_price_id)
+                                    <option value="monthly">{{ $price($available->monthly_price, $available->currency) }} / month</option>
+                                @endif
+                                @if($available->stripe_yearly_price_id)
+                                    <option value="yearly">{{ $price($available->yearly_price, $available->currency) }} / year</option>
+                                @endif
+                            </select>
+                            <button class="button-primary w-full">Pay &amp; subscribe</button>
+                            <p class="text-center text-xs muted">Secure checkout hosted by Stripe — no approval wait.</p>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('billing.request') }}" class="mt-6 space-y-3">@csrf
+                            <input type="hidden" name="plan_id" value="{{ $available->id }}">
+                            <select class="field mt-0" name="billing_cycle" aria-label="Billing cycle for {{ $available->name }}">
+                                <option value="monthly">Monthly billing</option>
+                                @if($available->yearly_price)<option value="yearly">Yearly billing</option>@endif
+                            </select>
+                            <textarea class="field mt-0" name="customer_note" rows="2" placeholder="Billing or purchase-order notes (optional)"></textarea>
+                            <button class="button-primary w-full">Request this plan</button>
+                            <p class="text-center text-xs muted">Online checkout is not mapped for this plan yet — an administrator will review your request.</p>
+                        </form>
+                    @endif
                 @endif
             </article>
         @empty
@@ -96,7 +130,20 @@
         @endforelse
     </div>
 
-    <section class="panel mt-8"><h2 class="font-semibold">Plan requests</h2><div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">@forelse($requests as $change)<div class="flex justify-between py-3 text-sm"><span>{{ $change->plan->name }} / {{ $change->billing_cycle }}</span><span class="capitalize">{{ $change->status }}</span></div>@empty<p class="py-4 text-sm text-slate-500 dark:text-slate-400">No plan change requests.</p>@endforelse</div></section>
+    @if($requests->isNotEmpty())
+        <section class="panel mt-8">
+            <h2 class="font-semibold">Plan requests</h2>
+            <p class="mt-1 text-sm muted">Manual requests for plans that are not mapped to Stripe checkout.</p>
+            <div class="mt-4 divide-y divide-slate-100 dark:divide-white/5">
+                @foreach($requests as $change)
+                    <div class="flex justify-between py-3 text-sm">
+                        <span>{{ $change->plan->name }} / {{ $change->billing_cycle }}</span>
+                        <span class="capitalize">{{ $change->status }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </section>
+    @endif
     @include('billing.partials.stripe')
 </div>
 @endsection

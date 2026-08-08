@@ -289,7 +289,10 @@
                 </div>
 
                 @if(session('status'))
-                    <div class="mx-auto w-full max-w-[1280px] px-4 pt-4 lg:px-7">
+                    <div class="mx-auto w-full max-w-[1280px] px-4 pt-4 lg:px-7"
+                         x-data="{ show: true }"
+                         x-show="show"
+                         @deployment-settled.window="show = false">
                         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">{{ session('status') }}</div>
                     </div>
                 @endif

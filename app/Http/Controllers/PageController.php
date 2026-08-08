@@ -37,12 +37,26 @@ class PageController extends Controller
 
     public function about(): View
     {
-        return $this->marketingPage('about', 'marketing.about');
+        $seo = app(SystemSettings::class)->pageSeo('about');
+
+        return view('marketing.about', [
+            'managedServersEnabled' => app(SystemSettings::class)->managedServersEnabled(),
+            'title' => $seo['title'],
+            'metaDescription' => $seo['description'],
+            'ogImage' => $seo['og_image'],
+        ]);
     }
 
     public function features(): View
     {
-        return $this->marketingPage('features', 'marketing.features');
+        $seo = app(SystemSettings::class)->pageSeo('features');
+
+        return view('marketing.features', [
+            'managedServersEnabled' => app(SystemSettings::class)->managedServersEnabled(),
+            'title' => $seo['title'],
+            'metaDescription' => $seo['description'],
+            'ogImage' => $seo['og_image'],
+        ]);
     }
 
     public function useCases(): View

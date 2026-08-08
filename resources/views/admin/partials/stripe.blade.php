@@ -53,8 +53,9 @@
                     <h3 class="font-semibold">{{ $plan->name }}</h3>
                     <span class="text-xs text-slate-500 dark:text-slate-400">{{ $plan->currency }}</span>
                 </div>
-                <label class="mt-4 block text-sm">Monthly Stripe Price ID<input class="field font-mono" name="stripe_monthly_price_id" value="{{ $plan->stripe_monthly_price_id }}" placeholder="price_..."></label>
-                <label class="mt-4 block text-sm">Yearly Stripe Price ID<input class="field font-mono" name="stripe_yearly_price_id" value="{{ $plan->stripe_yearly_price_id }}" placeholder="price_..."></label>
+                <label class="mt-4 block text-sm">Monthly Stripe Price ID<input class="field font-mono" name="stripe_monthly_price_id" value="{{ $plan->stripe_monthly_price_id }}" placeholder="price_... (interval: month)"></label>
+                <label class="mt-4 block text-sm">Yearly Stripe Price ID<input class="field font-mono" name="stripe_yearly_price_id" value="{{ $plan->stripe_yearly_price_id }}" placeholder="price_... (interval: year)"></label>
+                <p class="mt-2 text-xs muted">Use different Price IDs. Mapping a monthly Price into the yearly field makes Checkout stay monthly.</p>
                 <button class="button-secondary mt-4">Save Stripe mapping</button>
             </form>
         @endforeach

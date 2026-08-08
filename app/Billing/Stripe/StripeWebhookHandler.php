@@ -2,8 +2,10 @@
 
 namespace App\Billing\Stripe;
 
+use App\Actions\Servers\ConfirmManagedServerPayment;
 use App\Models\BillingInvoice;
 use App\Models\Plan;
+use App\Models\Server;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Notifications\BillingPaymentFailedNotification;
@@ -26,6 +28,12 @@ final class StripeWebhookHandler
 
     private function checkoutCompleted(array $object): void
     {
+        if (data_get($object, 'metadata.purpose') === 'managed_server') {
+            app(ConfirmManagedServerPayment::class)->fromCheckoutSession($object, true);
+
+            return;
+        }
+
         $user = User::find(data_get($object, 'metadata.user_id') ?: data_get($object, 'client_reference_id'));
         $plan = Plan::find(data_get($object, 'metadata.plan_id'));
         if (! $user || ! $plan) {
@@ -39,6 +47,13 @@ final class StripeWebhookHandler
 
     private function subscriptionChanged(array $object): void
     {
+        // Managed VPS subscriptions are tracked on server metadata — never as plan entitlements.
+        if (data_get($object, 'metadata.purpose') === 'managed_server') {
+            $this->managedServerSubscriptionChanged($object);
+
+            return;
+        }
+
         $user = $this->user($object);
         $priceId = data_get($object, 'items.data.0.price.id');
         $plan = Plan::find(data_get($object, 'metadata.plan_id')) ?: Plan::where('stripe_monthly_price_id', $priceId)->orWhere('stripe_yearly_price_id', $priceId)->first();
@@ -52,6 +67,29 @@ final class StripeWebhookHandler
         if (in_array($status, ['active', 'trialing'], true)) {
             $user->subscriptions()->whereKeyNot($subscription->id)->whereIn('status', ['active', 'trialing'])->update(['status' => 'ended', 'ended_at' => now()]);
         }
+    }
+
+    private function managedServerSubscriptionChanged(array $object): void
+    {
+        $server = Server::find(data_get($object, 'metadata.server_id'))
+            ?: Server::query()->where('metadata->stripe_subscription_id', data_get($object, 'id'))->first();
+        if (! $server || ! $server->isManaged()) {
+            return;
+        }
+
+        $status = (string) data_get($object, 'status', 'incomplete');
+        $metadata = array_merge($server->metadata ?? [], [
+            'stripe_subscription_id' => data_get($object, 'id'),
+            'stripe_subscription_status' => $status,
+        ]);
+
+        if (in_array($status, ['canceled', 'unpaid', 'incomplete_expired'], true)) {
+            $metadata['payment_status'] = $status;
+        } elseif (in_array($status, ['active', 'trialing'], true)) {
+            $metadata['payment_status'] = 'paid';
+        }
+
+        $server->forceFill(['metadata' => $metadata])->save();
     }
 
     private function invoiceChanged(array $object, string $eventType): void

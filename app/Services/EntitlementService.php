@@ -18,12 +18,24 @@ final class EntitlementService
         return $this->subscription($user)?->plan ?? Plan::where('slug', 'free')->where('active', true)->first();
     }
 
+    /**
+     * Effective create/quota ceiling. Super admins remain uncapped operationally.
+     */
     public function limit(User $user, string $resource): int
     {
         if ($user->isSuperAdmin()) {
             return -1;
         }
 
+        return $this->planLimit($user, $resource);
+    }
+
+    /**
+     * Limits from the entitled plan (Free / Pro / Business, etc.) for billing and dashboard display.
+     * Does not apply the super-admin unlimited bypass.
+     */
+    public function planLimit(User $user, string $resource): int
+    {
         $plan = $this->plan($user);
         if (! $plan) {
             return -1;

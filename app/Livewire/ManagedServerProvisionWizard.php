@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Actions\Servers\ProvisionServer;
+use App\Billing\Stripe\StripeClient;
 use App\Cloud\CloudProviderManager;
 use App\Cloud\Exceptions\CloudCredentialException;
 use App\Enums\ServerStatus;
@@ -12,12 +13,15 @@ use App\Services\SshKeyGenerator;
 use App\Services\SystemSettings;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use RuntimeException;
 use Throwable;
 
 /**
  * Provision a VPS on the platform cloud account — no customer provider connection required.
+ * Paid managed sizes collect the monthly amount via Stripe Checkout before provisioning starts.
  */
 #[Layout('layouts.app')]
 class ManagedServerProvisionWizard extends Component
@@ -66,7 +70,7 @@ class ManagedServerProvisionWizard extends Component
         $this->step = max(1, $this->step - 1);
     }
 
-    public function deploy(ProvisionServer $provision, QuotaManager $quotas): mixed
+    public function deploy(QuotaManager $quotas, StripeClient $stripe, ProvisionServer $provision): mixed
     {
         $this->validate($this->rules());
         abort_unless(app(SystemSettings::class)->managedServersReady(), 404);
@@ -79,6 +83,9 @@ class ManagedServerProvisionWizard extends Component
 
         $settings = app(SystemSettings::class);
         $sizeCatalog = collect($this->sizes)->firstWhere('slug', $this->size) ?? [];
+        $customerPrice = (float) $settings->managedServerPrice($sizeCatalog);
+        $amountCents = (int) round($customerPrice * 100);
+        $platform = $settings->branding()['name'];
 
         $server = Auth::user()->servers()->create([
             'team_id' => Auth::user()->currentTeam?->memberships()->where('user_id', Auth::id())->whereNotNull('accepted_at')->exists() ? Auth::user()->current_team_id : null,
@@ -90,19 +97,54 @@ class ManagedServerProvisionWizard extends Component
             'region' => $this->region,
             'size' => $this->size,
             'image' => $this->image,
-            'status' => ServerStatus::Pending,
-            'current_step' => 'Queued',
+            'status' => $amountCents > 0 ? ServerStatus::AwaitingPayment : ServerStatus::Pending,
+            'current_step' => $amountCents > 0 ? 'Awaiting payment' : 'Queued',
             'metadata' => [
                 'platform_provider' => $settings->managedCloudProvider(),
                 'billed_as' => 'managed',
                 'infra_price_monthly' => (float) ($sizeCatalog['price_monthly'] ?? 0),
-                'customer_price_monthly' => $settings->managedServerPrice($sizeCatalog),
+                'customer_price_monthly' => $customerPrice,
+                'payment_status' => $amountCents > 0 ? 'unpaid' : 'waived',
             ],
         ]);
-        $provision->execute($server);
-        session()->flash('status', 'Managed server provisioning has started.');
 
-        return redirect()->route('servers.manage', $server);
+        // Zero-priced managed configs (admin override) skip Checkout and provision immediately.
+        if ($amountCents <= 0) {
+            $provision->execute($server);
+            session()->flash('status', 'Managed server provisioning has started.');
+
+            return redirect()->route('servers.manage', $server);
+        }
+
+        if (! config('services.stripe.secret')) {
+            $server->delete();
+            throw ValidationException::withMessages([
+                'billing' => 'Managed servers require Stripe payment. Ask an administrator to configure Stripe under Admin → Payments.',
+            ]);
+        }
+
+        try {
+            $session = $stripe->checkoutManagedServer(
+                Auth::user(),
+                $server,
+                $amountCents,
+                $platform.' managed server · '.$server->name,
+            );
+        } catch (RuntimeException $e) {
+            $server->delete();
+            throw ValidationException::withMessages(['billing' => $e->getMessage()]);
+        } catch (Throwable $e) {
+            $server->delete();
+            throw ValidationException::withMessages(['billing' => 'Unable to start checkout. Please try again or contact support.']);
+        }
+
+        $server->forceFill([
+            'metadata' => array_merge($server->metadata ?? [], [
+                'stripe_checkout_session_id' => $session['id'] ?? null,
+            ]),
+        ])->save();
+
+        return redirect()->away($session['url']);
     }
 
     private function loadCatalog(CloudProviderManager $providers): void
@@ -169,16 +211,21 @@ class ManagedServerProvisionWizard extends Component
     {
         $settings = app(SystemSettings::class);
         $selectedSize = collect($this->sizes)->firstWhere('slug', $this->size);
+        $keys = Auth::user()->sshKeys()->latest()->get();
+        $selectedKey = $this->sshKeyId !== ''
+            ? $keys->firstWhere('id', $this->sshKeyId) ?? Auth::user()->sshKeys()->find($this->sshKeyId)
+            : null;
 
         return view('livewire.managed-server-provision-wizard', [
             'branding' => $settings->branding(),
-            'keys' => Auth::user()->sshKeys()->latest()->get(),
+            'keys' => $keys,
             'platform' => $settings->branding()['name'],
             'selectedRegion' => collect($this->regions)->firstWhere('slug', $this->region),
             'selectedSize' => $selectedSize,
             'selectedImage' => collect($this->images)->firstWhere('slug', $this->image),
-            'selectedKey' => Auth::user()->sshKeys()->whereKey($this->sshKeyId)->first(),
+            'selectedKey' => $selectedKey,
             'customerPrice' => $selectedSize ? $settings->managedServerPrice($selectedSize) : null,
+            'stripeEnabled' => (bool) config('services.stripe.secret'),
         ]);
     }
 }

@@ -92,7 +92,7 @@ final class SystemSettings
 
     /**
      * Platform-provided VMs (not BYOS). Off until a superadmin enables the feature and
-     * saves a cloud API token that Uplary uses to create Droplets for customers.
+     * saves a cloud API token that Uplary uses to create VPS for customers.
      */
     public function managedServersEnabled(): bool
     {
@@ -101,9 +101,9 @@ final class SystemSettings
 
     public function managedCloudProvider(): string
     {
-        $provider = $this->get('managed_cloud_provider', 'digitalocean') ?: 'digitalocean';
+        $provider = strtolower((string) ($this->get('managed_cloud_provider', 'digitalocean') ?: 'digitalocean'));
 
-        return $provider === 'digitalocean' ? 'digitalocean' : 'digitalocean';
+        return in_array($provider, ['digitalocean', 'hetzner'], true) ? $provider : 'digitalocean';
     }
 
     public function managedCloudToken(): ?string
@@ -221,18 +221,28 @@ final class SystemSettings
     {
         $name = $this->branding()['name'];
 
+        $managed = $this->managedServersEnabled();
+
         return [
             'hero_eyebrow' => $this->get('landing_hero_eyebrow') ?: $name,
             'hero_headline' => $this->get('landing_hero_headline') ?: 'Provision servers. Deploy sites. Stay in control.',
-            'hero_subcopy' => $this->get('landing_hero_subcopy') ?: "{$name} is the SaaS panel for auto-provisioning your VPS, deploying Laravel and WordPress, and running day-to-day ops — your cloud bill stays with your provider.",
+            'hero_subcopy' => $this->get('landing_hero_subcopy') ?: ($managed
+                ? "{$name} can provision a managed server for you, or connect a VPS you already pay for — deploy Laravel and WordPress and run day-to-day ops from one panel."
+                : "{$name} is the SaaS panel for auto-provisioning your VPS, deploying Laravel and WordPress, and running day-to-day ops — your cloud bill stays with your provider."),
             'hero_cta_primary' => $this->get('landing_hero_cta_primary') ?: 'Create free account',
             'hero_cta_secondary' => $this->get('landing_hero_cta_secondary') ?: 'See how it works',
-            'hero_microcopy' => $this->get('landing_hero_microcopy') ?: 'Works with your VPS · no server lock-in',
+            'hero_microcopy' => $this->get('landing_hero_microcopy') ?: ($managed
+                ? 'Managed servers or bring your own · no lock-in'
+                : 'Works with your VPS · no server lock-in'),
             'steps_eyebrow' => $this->get('landing_steps_eyebrow') ?: 'Getting started',
             'steps_headline' => $this->get('landing_steps_headline') ?: 'Three simple steps.',
-            'steps_subcopy' => $this->get('landing_steps_subcopy') ?: "You do not need to write server scripts by hand. {$name} sets up the common pieces for you.",
+            'steps_subcopy' => $this->get('landing_steps_subcopy') ?: ($managed
+                ? "Pick a managed server or connect your own VPS. {$name} installs the stack so you do not write server scripts by hand."
+                : "You do not need to write server scripts by hand. {$name} sets up the common pieces for you."),
             'cta_headline' => $this->get('landing_cta_headline') ?: 'Ready to try it?',
-            'cta_subcopy' => $this->get('landing_cta_subcopy') ?: "Make an account, connect a server, and deploy your next site with {$name}.",
+            'cta_subcopy' => $this->get('landing_cta_subcopy') ?: ($managed
+                ? "Make an account, provision a managed server or connect your own, and deploy your next site with {$name}."
+                : "Make an account, connect a server, and deploy your next site with {$name}."),
             'cta_button' => $this->get('landing_cta_button') ?: 'Create free account',
         ];
     }

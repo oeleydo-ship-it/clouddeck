@@ -3,18 +3,34 @@
 @section('admin-description', 'Pricing, limits, and entitlements offered to customers.')
 @section('admin')
     @php
-        $limitKeys = ['servers' => 'BYOS servers', 'managed_servers' => 'Managed servers', 'sites' => 'BYOS sites', 'managed_sites' => 'Managed sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members'];
+        $limitKeys = [
+            'servers' => 'BYOS servers',
+            'managed_servers' => 'Managed servers',
+            'sites' => 'BYOS sites',
+            'managed_sites' => 'Managed sites',
+            'databases' => 'Databases',
+            'api_tokens' => 'API tokens',
+            'teams' => 'Teams',
+            'team_members' => 'Team members',
+        ];
         $featureKeys = \App\Services\FeatureManager::catalog();
-        // The plan card badges already show the managed_servers limit above; drop it from this
-        // badge row so it is not repeated. The edit form below still exposes the real toggle.
-        $displayFeatureKeys = collect($featureKeys)->except('managed_servers')->all();
+        // Quotas already show server/site counts above. Hide the matching access toggles from
+        // the module badge list so BYOS / Managed are not listed twice as module names.
+        $displayFeatureKeys = collect($featureKeys)->except(['managed_servers', 'providers'])->all();
         $amount = fn (int $cents, string $currency) => $cents === 0 ? 'Free' : Str::upper($currency).' '.number_format($cents / 100, ($cents % 100 === 0) ? 0 : 2);
         $limit = fn ($value) => $value === -1 ? 'Unlimited' : (int) $value;
+        $quotaGate = [
+            'servers' => 'providers',
+            'sites' => 'providers',
+            'managed_servers' => 'managed_servers',
+            'managed_sites' => 'managed_servers',
+        ];
     @endphp
 
     <div x-data="{ editing: null, creating: false }" class="space-y-6">
-        <div class="flex justify-end">
-            <button type="button" @click="creating = ! creating; editing = null" class="button-primary" x-text="creating ? 'Cancel' : 'New plan'">New plan</button>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <p class="max-w-2xl text-sm muted"><strong class="heading">Quotas</strong> set how many resources a subscriber may create. <strong class="heading">Gated features</strong> turn modules on or off. BYOS and Managed server <em>counts</em> are quotas; access to those flows is toggled under gated features when you edit a plan.</p>
+            <button type="button" @click="creating = ! creating; editing = null" class="button-primary shrink-0" x-text="creating ? 'Cancel' : 'New plan'">New plan</button>
         </div>
 
         {{-- Create --}}
@@ -45,10 +61,24 @@
                         </div>
                     </div>
 
-                    <div class="mt-5 grid gap-2 sm:grid-cols-2">
+                    <p class="mt-5 text-[11px] font-semibold uppercase tracking-[0.12em] muted">Quotas</p>
+                    <div class="mt-2 grid gap-2 sm:grid-cols-2">
                         @foreach(['servers' => 'bg-slate-50 dark:bg-white/[.03]', 'managed_servers' => 'bg-cyan-50/60 dark:bg-cyan-400/[.06]', 'sites' => 'bg-slate-50 dark:bg-white/[.03]', 'managed_sites' => 'bg-cyan-50/60 dark:bg-cyan-400/[.06]'] as $key => $tint)
-                            <div class="flex items-center justify-between gap-2 rounded-xl {{ $tint }} p-3">
-                                <dt class="text-xs font-medium heading">{{ $limitKeys[$key] }}</dt>
+                            @php
+                                $gateKey = $quotaGate[$key] ?? null;
+                                $accessOff = $gateKey !== null && ! ($plan->features[$gateKey] ?? false);
+                            @endphp
+                            <div @class([
+                                'flex items-center justify-between gap-2 rounded-xl p-3',
+                                $tint => ! $accessOff,
+                                'bg-slate-100/80 opacity-60 dark:bg-white/[.04]' => $accessOff,
+                            ])>
+                                <div class="min-w-0">
+                                    <dt class="text-xs font-medium heading">{{ $limitKeys[$key] }}</dt>
+                                    @if($accessOff)
+                                        <p class="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">Access off</p>
+                                    @endif
+                                </div>
                                 <dd class="text-sm font-semibold heading">{{ $limit($plan->limits[$key] ?? 0) }}</dd>
                             </div>
                         @endforeach
@@ -65,7 +95,16 @@
                         @endforeach
                     </dl>
 
-                    <div class="mt-4 flex flex-wrap gap-2">
+                    <p class="mt-5 text-[11px] font-semibold uppercase tracking-[0.12em] muted">Gated features</p>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        {{-- Access gates for BYOS / Managed — short labels, not the quota names. --}}
+                        @foreach(['providers' => 'BYOS access', 'managed_servers' => 'Managed access'] as $gateKey => $gateLabel)
+                            <span @class([
+                                'badge',
+                                'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300' => $plan->features[$gateKey] ?? false,
+                                'bg-slate-100 text-slate-500 line-through dark:bg-white/5 dark:text-slate-500' => ! ($plan->features[$gateKey] ?? false),
+                            ])>{{ $gateLabel }}</span>
+                        @endforeach
                         @foreach($displayFeatureKeys as $key => $label)
                             <span @class([
                                 'badge',

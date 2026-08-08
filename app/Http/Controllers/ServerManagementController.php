@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Servers\ConfirmManagedServerPayment;
+use App\Billing\Stripe\StripeClient;
 use App\Cloud\CloudProviderManager;
+use App\Enums\ServerStatus;
 use App\Models\AlertIncident;
 use App\Models\Server;
 use App\Models\ServerMetric;
@@ -11,7 +14,9 @@ use App\Services\TeamAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use RuntimeException;
 use Throwable;
 
 class ServerManagementController extends Controller
@@ -73,12 +78,98 @@ class ServerManagementController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, Server $server, CloudProviderManager $providers, AuditLogger $audit): RedirectResponse
+    public function checkoutSuccess(Request $request, Server $server, StripeClient $stripe, ConfirmManagedServerPayment $confirm): RedirectResponse
+    {
+        $this->authorize('view', $server);
+
+        $sessionId = (string) $request->query('session_id', '');
+        if ($sessionId !== '' && $server->status === ServerStatus::AwaitingPayment && config('services.stripe.secret')) {
+            try {
+                $session = $stripe->checkoutSession($sessionId);
+                // Bind return URL to this server; reject sessions for a different managed host.
+                if ((string) data_get($session, 'metadata.server_id') === (string) $server->id) {
+                    $confirm->fromCheckoutSession($session);
+                    $server->refresh();
+                }
+            } catch (Throwable) {
+                // Fall through: webhook may still confirm payment shortly.
+            }
+        }
+
+        if ($server->status !== ServerStatus::AwaitingPayment) {
+            return redirect()->route('servers.manage', $server)->with(
+                'status',
+                'Payment confirmed. Managed server provisioning has started.'
+            );
+        }
+
+        return redirect()->route('servers.manage', $server)->with(
+            'status',
+            'Payment received. If provisioning does not start within a minute, open Complete payment again or wait for Stripe webhook confirmation.'
+        );
+    }
+
+    public function checkout(Request $request, Server $server, StripeClient $stripe, ConfirmManagedServerPayment $confirm): RedirectResponse
+    {
+        $this->authorize('update', $server);
+        abort_unless($server->isManaged() && $server->status === ServerStatus::AwaitingPayment, 422, 'This server is not awaiting payment.');
+
+        // If Checkout already succeeded (webhook missed, e.g. local), confirm from the stored session instead of charging again.
+        if ($existingSessionId = data_get($server->metadata, 'stripe_checkout_session_id')) {
+            try {
+                $existing = $stripe->checkoutSession((string) $existingSessionId);
+                if ((string) data_get($existing, 'metadata.server_id') === (string) $server->id
+                    && in_array((string) data_get($existing, 'payment_status'), ['paid', 'no_payment_required'], true)) {
+                    $confirm->fromCheckoutSession($existing);
+
+                    return redirect()->route('servers.manage', $server)->with(
+                        'status',
+                        'Payment already confirmed. Managed server provisioning has started.'
+                    );
+                }
+            } catch (Throwable) {
+                // Create a fresh Checkout session below.
+            }
+        }
+
+        $amountCents = (int) round(((float) data_get($server->metadata, 'customer_price_monthly', 0)) * 100);
+        if ($amountCents < 50) {
+            throw ValidationException::withMessages(['billing' => 'Managed server price must be at least $0.50/mo.']);
+        }
+        if (! config('services.stripe.secret')) {
+            throw ValidationException::withMessages(['billing' => 'Stripe billing is not configured.']);
+        }
+
+        try {
+            $platform = app(\App\Services\SystemSettings::class)->branding()['name'];
+            $session = $stripe->checkoutManagedServer($request->user(), $server, $amountCents, $platform.' managed server · '.$server->name);
+        } catch (RuntimeException $e) {
+            throw ValidationException::withMessages(['billing' => $e->getMessage()]);
+        }
+
+        $server->forceFill([
+            'metadata' => array_merge($server->metadata ?? [], [
+                'stripe_checkout_session_id' => $session['id'] ?? null,
+            ]),
+        ])->save();
+
+        return redirect()->away($session['url']);
+    }
+
+    public function destroy(Request $request, Server $server, CloudProviderManager $providers, AuditLogger $audit, StripeClient $stripe): RedirectResponse
     {
         $this->authorize('delete', $server);
         $request->validate(['confirmation' => ['required', Rule::in([$server->hostname])]]);
         if ($server->sites()->exists()) {
             return back()->withErrors(['server' => 'Delete the attached sites before removing this server.']);
+        }
+
+        if ($subscriptionId = data_get($server->metadata, 'stripe_subscription_id')) {
+            try {
+                $stripe->cancelSubscription((string) $subscriptionId);
+            } catch (Throwable $e) {
+                return back()->withErrors(['server' => 'Unable to cancel the managed server subscription before delete: '.$e->getMessage()]);
+            }
         }
 
         if ($server->provider_id) {

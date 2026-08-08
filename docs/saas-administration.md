@@ -80,7 +80,7 @@ Horizon dashboard auth is unchanged: super admins always pass the gate; optional
 
 ## Managed servers
 
-Managed servers are platform-billed VPS (separate from BYOS), configured on their own **Admin → Managed servers** tab. Off until a superadmin enables **Managed servers**, chooses DigitalOcean, and saves a platform API token (encrypted). Customers with the plan feature `managed_servers` and remaining `managed_servers` quota open `/servers/managed`, pick region/size/image, and provision without connecting their own cloud account. Created servers store `provisioning_source=managed` and use `CloudProviderManager::forPlatform()` / `forServer()` for create, wait, destroy, and snapshots. BYOS (`servers` limit) and managed quotas are counted separately.
+Managed servers are platform-billed VPS (separate from BYOS), configured on their own **Admin → Managed servers** tab. Off until a superadmin enables **Managed servers**, chooses **DigitalOcean** or **Hetzner Cloud**, and saves a platform API token (encrypted). Customers with the plan feature `managed_servers` and remaining `managed_servers` quota open `/servers/managed`, pick region/size/image, and provision without connecting their own cloud account. Created servers store `provisioning_source=managed` and use `CloudProviderManager::forPlatform()` / `forServer()` for create, wait, destroy, and snapshots. BYOS (`servers` limit) and managed quotas are counted separately.
 
 ### Markup pricing
 

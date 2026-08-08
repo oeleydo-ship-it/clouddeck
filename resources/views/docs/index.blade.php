@@ -1,12 +1,15 @@
 @extends('layouts.app')
 @section('content')
 @php
-    $sections = [
+    $managedServersEnabled = $managedServersEnabled ?? false;
+    $stagingSitesEnabled = $stagingSitesEnabled ?? false;
+    $sections = array_values(array_filter([
         ['id' => 'getting-started', 'label' => 'Getting started'],
         ['id' => 'whats-new', 'label' => "What's new"],
+        $managedServersEnabled ? ['id' => 'managed-servers', 'label' => 'Managed servers'] : null,
         ['id' => 'providers', 'label' => 'Providers & IPs'],
         ['id' => 'ssh-keys', 'label' => 'SSH keys'],
-        ['id' => 'provisioning', 'label' => 'Provisioning'],
+        ['id' => 'provisioning', 'label' => 'Provisioning (BYOS)'],
         ['id' => 'sites', 'label' => 'Adding a site'],
         ['id' => 'deployments', 'label' => 'Deployments'],
         ['id' => 'ssl', 'label' => 'SSL certificates'],
@@ -17,7 +20,7 @@
         ['id' => 'notifications', 'label' => 'Notifications'],
         ['id' => 'firewall', 'label' => 'Firewall'],
         ['id' => 'backups', 'label' => 'Backups'],
-        ['id' => 'staging', 'label' => 'Staging sites'],
+        $stagingSitesEnabled ? ['id' => 'staging', 'label' => 'Staging sites'] : null,
         ['id' => 'remote', 'label' => 'Remote management'],
         ['id' => 'maintenance', 'label' => 'Server maintenance'],
         ['id' => 'dns', 'label' => 'DNS'],
@@ -25,7 +28,7 @@
         ['id' => 'plans', 'label' => 'Plans & billing'],
         ['id' => 'password', 'label' => 'Account security'],
         ['id' => 'support', 'label' => 'Getting help'],
-    ];
+    ]));
 @endphp
 <div class="app-main !max-w-6xl" x-data="{ active: 'getting-started' }"
      @scroll.window.throttle.100ms="
@@ -39,7 +42,13 @@
      ">
     <p class="page-eyebrow">Help center</p>
     <h1 class="page-title">Support &amp; documentation</h1>
-    <p class="page-subtitle">{{ $branding['name'] }} is a SaaS control plane. Connect your cloud account or VPS, auto-provision servers, deploy Laravel and WordPress sites, and operate them from one dashboard — your infrastructure stays on your provider bill.</p>
+    <p class="page-subtitle">
+        @if($managedServersEnabled)
+            {{ $branding['name'] }} is a SaaS control plane. Provision a managed server through us, or connect your own cloud account / VPS — then deploy Laravel and WordPress and operate them from one dashboard.
+        @else
+            {{ $branding['name'] }} is a SaaS control plane. Connect your cloud account or VPS, auto-provision servers, deploy Laravel and WordPress sites, and operate them from one dashboard — your infrastructure stays on your provider bill.
+        @endif
+    </p>
 
     <div class="mt-10 grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
         <nav class="lg:sticky lg:top-6 lg:self-start" aria-label="Documentation">
@@ -67,15 +76,23 @@
 
                 <ol class="mt-4 list-decimal space-y-2 pl-5 text-sm muted">
                     <li><strong class="heading">Create an account</strong> — register, verify email if required, and land on the dashboard.</li>
-                    <li><strong class="heading">Connect a provider or VPS</strong> — DigitalOcean for API provisioning, or attach any Ubuntu box by IP.</li>
-                    <li><strong class="heading">Add a managed SSH key</strong> — required to create and bootstrap new servers.</li>
+                    @if($managedServersEnabled)
+                        <li><strong class="heading">Choose how to host</strong> — provision a <a class="link-action" href="#managed-servers">managed server</a> (no cloud account needed), or <a class="link-action" href="#providers">connect a provider / VPS</a> you already pay for (BYOS).</li>
+                    @else
+                        <li><strong class="heading">Connect a provider or VPS</strong> — DigitalOcean for API provisioning, or attach any Ubuntu box by IP.</li>
+                    @endif
+                    <li><strong class="heading">Add a managed SSH key</strong> — required to create and bootstrap new servers@if($managedServersEnabled) (managed provisioning can create one for you)@endif.</li>
                     <li><strong class="heading">Provision or import a server</strong> — {{ $branding['name'] }} installs Nginx, PHP, MySQL/PostgreSQL, Redis, Supervisor, and related services.</li>
                     <li><strong class="heading">Create a site</strong> — Laravel from Git, or WordPress with a managed database.</li>
-                    <li><strong class="heading">Deploy and operate</strong> — SSL, workers, monitoring, backups, and optional staging from the same console.</li>
+                    <li><strong class="heading">Deploy and operate</strong> — SSL, workers, monitoring, backups@if($stagingSitesEnabled), and optional staging@endif from the same console.</li>
                 </ol>
 
                 <div class="mt-5 rounded-xl bg-slate-50 p-4 text-sm muted dark:bg-white/5">
-                    <p><strong class="heading">What you own:</strong> cloud accounts, VMs, and domains stay in your name. {{ $branding['name'] }} orchestrates SSH and provider APIs; stopping the panel does not delete your servers.</p>
+                    @if($managedServersEnabled)
+                        <p><strong class="heading">What you own:</strong> bring-your-own cloud accounts, VMs, and domains stay in your name. Managed servers are created on {{ $branding['name'] }}’s cloud account and billed monthly through the panel; deleting the managed server cancels that VPS subscription. Stopping the panel does not delete BYOS servers.</p>
+                    @else
+                        <p><strong class="heading">What you own:</strong> cloud accounts, VMs, and domains stay in your name. {{ $branding['name'] }} orchestrates SSH and provider APIs; stopping the panel does not delete your servers.</p>
+                    @endif
                     <p class="mt-2">Need a nudge while working? Use the floating <strong class="heading">AI guide</strong> (bottom-right) when a superadmin has enabled it. Use <strong class="heading">View website</strong> in the sidebar to open the public marketing site in a new tab.</p>
                 </div>
             </section>
@@ -85,22 +102,75 @@
                 <h2 class="section-title">What's new</h2>
                 <p class="mt-3 text-sm muted">Recent console updates for customers. Jump to a section for the full walkthrough.</p>
                 <ul class="mt-4 list-inside list-disc space-y-2 text-sm muted">
+                    @if($managedServersEnabled)
+                        <li><a class="link-action" href="#managed-servers">Managed servers</a> — provision a VPS through {{ $branding['name'] }} without connecting your own cloud account. Pick region and size, pay monthly via Stripe when required, then deploy as usual. Quotas are separate from BYOS servers and sites.</li>
+                    @endif
+                    @if($stagingSitesEnabled)
+                        <li><a class="link-action" href="#staging">Staging sites</a> — create a linked staging hostname from production, test safely, then <strong class="heading">Promote to production</strong>.</li>
+                    @endif
+                    <li><a class="link-action" href="#monitoring">Site monitoring &amp; auto-heal</a> — HTTP uptime and DNS mismatch probes per site; optional auto-restart of Nginx, PHP-FPM, MySQL, Redis, or Supervisor when they report down.</li>
+                    <li><a class="link-action" href="#plans">Pay &amp; subscribe</a> — plan upgrades open Stripe Checkout immediately when price IDs are mapped; manage cards and invoices in the Stripe portal.</li>
                     <li><a class="link-action" href="#security-detection">Security detection</a> — sidebar <strong class="heading">Security</strong> page with live scan status (<strong class="heading">Queued</strong> → <strong class="heading">Scanning…</strong> → last scan / Failed), scheduled checks every five minutes, and configurable per-rule detection settings (enabled by default).</li>
                     <li><a class="link-action" href="#firewall">Firewall</a> — manage per-server UFW allow/deny rules from the sidebar.</li>
                     <li><a class="link-action" href="#notifications">Notifications</a> — fleet incidents (including security) plus account-wide email recipients (backup failure and security incident alerts).</li>
                     <li><a class="link-action" href="#teams">Teams</a> — invite Edit / Resend / Delete, plus Viewer, Operator, Admin, and Owner privileges.</li>
                     <li><a class="link-action" href="#workers">Cron presets</a> — one-click Laravel <code>schedule:run</code> on site and server Cron tabs.</li>
                     <li><a class="link-action" href="#sites">PHP 8.5</a> — available when creating sites; new servers install 8.5 (plus 8.4/8.3/8.2) with 8.5 as the default.</li>
-                    <li><a class="link-action" href="#backups">Backups</a> — schedule, run now, restore/download databases, DigitalOcean snapshots, storage disk, and BYO limits.</li>
+                    <li><a class="link-action" href="#backups">Backups</a> — schedule, run now, restore/download databases, provider snapshots, storage disk, and BYO limits.</li>
                     <li><a class="link-action" href="#maintenance">Server maintenance</a> — software hardening, Ubuntu package updates, and major release upgrades from Services.</li>
                     <li><a class="link-action" href="#password">Google sign-in</a> — use <strong class="heading">Continue with Google</strong> on login/register when the platform enables it.</li>
                 </ul>
             </section>
 
+            @if($managedServersEnabled)
+            {{-- Managed servers --}}
+            <section id="managed-servers" class="panel scroll-mt-8">
+                <h2 class="section-title">Managed servers</h2>
+                <p class="mt-3 text-sm muted">When your plan includes <strong class="heading">Managed servers</strong> and the platform has them enabled, {{ $branding['name'] }} creates and hosts the VPS on its own cloud account. You do not connect DigitalOcean, Hetzner, or another provider for that host.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Who this is for</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>You want a ready Ubuntu stack without creating a cloud provider account.</li>
+                    <li>Your plan shows a <strong class="heading">Managed servers</strong> quota on Billing (separate from BYOS servers).</li>
+                    <li>Sites on managed hosts count against <strong class="heading">Managed sites</strong>, not the BYOS site limit.</li>
+                </ul>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Provision a managed server</h3>
+                <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
+                    <li>Open <a class="link-action" href="{{ route('servers.index') }}">Servers</a> (or the dashboard) and choose <strong class="heading">Provision server → Managed server</strong>.</li>
+                    <li>Pick a region, size (vCPU / RAM / monthly price), and Ubuntu image from the platform catalog.</li>
+                    <li>Confirm identity (display name and hostname). A managed SSH key is created automatically if you do not already have one.</li>
+                    <li>On review, deploy. If the size has a monthly price, you are sent to <strong class="heading">Stripe Checkout</strong> first — the server stays <strong class="heading">Awaiting payment</strong> until Checkout succeeds.</li>
+                    <li>After payment (or immediately if there is nothing to charge), provisioning creates the VPS and installs the same stack as BYOS: Nginx, PHP, database, Redis, Supervisor, Certbot, and related services.</li>
+                </ol>
+                <p class="mt-3 rounded-xl bg-slate-50 p-4 text-sm muted dark:bg-white/5">If Checkout completes but the console still shows awaiting payment (common on localhost without webhooks), open the server and use <strong class="heading">Check payment</strong>, or return via the Checkout success URL. Keep a queue worker running so create/wait jobs can finish.</p>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Billing and deletion</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>The managed VPS monthly fee is billed separately from your {{ $branding['name'] }} plan subscription.</li>
+                    <li>Prices shown in the wizard are the customer price set by the platform (infrastructure cost plus markup).</li>
+                    <li>Deleting a managed server cancels its Stripe subscription (when one exists), then destroys the VPS on the platform cloud account.</li>
+                </ul>
+
+                <h3 class="mt-6 text-sm font-semibold heading">Managed vs bring-your-own (BYOS)</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li><strong class="heading">Managed</strong> — no provider token; {{ $branding['name'] }} owns the cloud credentials; monthly VPS fee in the panel; counts toward managed server / managed site quotas.</li>
+                    <li><strong class="heading">BYOS</strong> — connect Providers or attach by IP; you keep the cloud bill; counts toward BYOS server / site quotas. See <a class="link-action" href="#providers">Providers &amp; IPs</a> and <a class="link-action" href="#provisioning">Provisioning (BYOS)</a>.</li>
+                    <li>Deployments, SSL, workers, monitoring, backups, and remote tools work the same on both once the server is Ready.</li>
+                </ul>
+            </section>
+            @endif
+
             {{-- Providers & IPs --}}
             <section id="providers" class="panel scroll-mt-8">
                 <h2 class="section-title">Adding providers and IPs</h2>
-                <p class="mt-3 text-sm muted">Open <a class="link-action" href="{{ route('cloud-accounts') }}">Providers</a> in the sidebar to connect a cloud account. Tokens are validated, then encrypted at rest.</p>
+                <p class="mt-3 text-sm muted">
+                    @if($managedServersEnabled)
+                        Prefer not to manage a cloud account? Use a <a class="link-action" href="#managed-servers">managed server</a> instead. Otherwise open <a class="link-action" href="{{ route('cloud-accounts') }}">Providers</a> to connect a cloud account for BYOS. Tokens are validated, then encrypted at rest.
+                    @else
+                        Open <a class="link-action" href="{{ route('cloud-accounts') }}">Providers</a> in the sidebar to connect a cloud account. Tokens are validated, then encrypted at rest.
+                    @endif
+                </p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">API providers (DigitalOcean)</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
@@ -111,7 +181,7 @@
                 </ol>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Connect by IP (AWS, Hetzner, Vultr, Linode, OCI, UpCloud, Contabo)</h3>
-                <p class="mt-2 text-sm muted">These providers are attached by IP — {{ $branding['name'] }} cannot create VMs through their APIs yet.</p>
+                <p class="mt-2 text-sm muted">These providers are attached by IP for BYOS — {{ $branding['name'] }} cannot create VMs through <em>your</em> API token for them yet.@if($managedServersEnabled) Platform-managed servers may still use Hetzner or DigitalOcean on the control-plane account; that path does not use your Providers connection.@endif</p>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
                     <li>Select the provider and enter a connection name.</li>
                     <li>Enter the server’s public IP and SSH port (default 22).</li>
@@ -133,7 +203,7 @@
                     <li>Click <strong class="heading">Generate key</strong>. {{ $branding['name'] }} creates a keypair and encrypts the private half.</li>
                     <li>Download the private key immediately if offered — the one-time download is not shown again.</li>
                 </ol>
-                <p class="mt-3 text-sm muted">Provisioning workers use the managed private key to reach and bootstrap droplets. Only keys with a stored private key appear in the provision wizard.</p>
+                <p class="mt-3 text-sm muted">Provisioning workers use the managed private key to reach and bootstrap droplets. Only keys with a stored private key appear in the provision wizard.@if($managedServersEnabled) The managed-server wizard can generate a key automatically if none exists.@endif</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Upload a public key</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
@@ -145,8 +215,14 @@
 
             {{-- Provisioning --}}
             <section id="provisioning" class="panel scroll-mt-8">
-                <h2 class="section-title">Provisioning a server</h2>
-                <p class="mt-3 text-sm muted">Use <a class="link-action" href="{{ route('servers.create') }}">Servers → Provision</a> for DigitalOcean (API) servers. Attach existing boxes with <a class="link-action" href="{{ route('servers.custom') }}">Add existing server</a>.</p>
+                <h2 class="section-title">Provisioning a server (BYOS)</h2>
+                <p class="mt-3 text-sm muted">
+                    Use <a class="link-action" href="{{ route('servers.create') }}">Servers → Provision your server</a> for DigitalOcean (API) servers on <em>your</em> cloud account.
+                    Attach existing boxes with <a class="link-action" href="{{ route('servers.custom') }}">Add existing server</a>.
+                    @if($managedServersEnabled)
+                        For platform-hosted VPS without a provider connection, see <a class="link-action" href="#managed-servers">Managed servers</a>.
+                    @endif
+                </p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Five-step wizard</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
@@ -164,13 +240,13 @@
                     <li>When status is ready, you can create sites on the server.</li>
                     <li>If a stage fails, open the server and use <strong class="heading">Retry provisioning</strong> after fixing the cause.</li>
                 </ul>
-                <p class="mt-3 text-sm muted">Your plan’s server quota is checked before deploy. Free capacity on Billing if the action is blocked.</p>
+                <p class="mt-3 text-sm muted">Your plan’s BYOS server quota is checked before deploy. Free capacity on Billing if the action is blocked.</p>
             </section>
 
             {{-- Sites --}}
             <section id="sites" class="panel scroll-mt-8">
                 <h2 class="section-title">Adding a site</h2>
-                <p class="mt-3 text-sm muted">Open <a class="link-action" href="{{ route('sites.create') }}">Sites → Create</a>. At least one ready server is required.</p>
+                <p class="mt-3 text-sm muted">Open <a class="link-action" href="{{ route('sites.create') }}">Sites → Create</a>. At least one ready server is required.@if($managedServersEnabled) Sites on managed hosts count toward <strong class="heading">Managed sites</strong>; sites on BYOS hosts count toward the BYOS site limit.@endif</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Laravel sites</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
@@ -300,7 +376,7 @@
                 </ol>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Auto-heal</h3>
-                <p class="mt-2 text-sm muted">Opt in per server. When Nginx, PHP-FPM, MySQL, Redis, or Supervisor report down for consecutive samples, {{ $branding['name'] }} queues an allowlisted restart (with cooldown) and notifies you.</p>
+                <p class="mt-2 text-sm muted">Opt in per server from Monitoring. When Nginx, PHP-FPM, MySQL, Redis, or Supervisor report down for consecutive samples, {{ $branding['name'] }} queues an allowlisted restart (with cooldown) and notifies you. Remediations appear in the server’s operation history. Disabling monitoring also clears auto-heal state.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Site monitoring</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
@@ -310,7 +386,7 @@
                     <li>Laravel sites also get periodic queue-health checks for failed jobs.</li>
                     <li>Recovery notifications fire when probes succeed again.</li>
                 </ol>
-                <p class="mt-3 text-sm muted">Open incidents across your fleet also appear under <a class="link-action" href="{{ route('notifications.index') }}">Notifications → Incidents</a>.</p>
+                <p class="mt-3 text-sm muted">Open incidents across your fleet also appear under <a class="link-action" href="{{ route('notifications.index') }}">Notifications → Incidents</a>. Site and auto-heal jobs run on the <code>monitoring</code> queue — keep a worker (or Horizon) processing that queue.</p>
             </section>
 
             {{-- Security detection --}}
@@ -438,15 +514,15 @@
                     <li><strong class="heading">Restore database</strong> requires typing the exact database name as confirmation. Restore does not delete the source recovery point.</li>
                 </ul>
 
-                <h3 class="mt-6 text-sm font-semibold heading">Server snapshots (DigitalOcean)</h3>
+                <h3 class="mt-6 text-sm font-semibold heading">Server snapshots</h3>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
-                    <li>Create on-demand or scheduled Droplet snapshots via the provider API when the server has a cloud provider ID.</li>
-                    <li>Restore replaces the Droplet disk — confirm with the exact hostname.</li>
+                    <li>Create on-demand or scheduled full-server snapshots via the provider API when the server has a cloud provider ID (BYOS DigitalOcean or platform-managed hosts that support snapshots).</li>
+                    <li>Restore replaces the Droplet / VPS disk — confirm with the exact hostname.</li>
                     <li>External DNS, object storage, and resources outside the VM are not restored by a snapshot.</li>
                 </ul>
 
                 <h3 class="mt-6 text-sm font-semibold heading">BYO / custom servers</h3>
-                <p class="mt-2 text-sm muted">Connected custom (bring-your-own) servers support <strong class="heading">database export policies only</strong>. Provider snapshots require a DigitalOcean Droplet. The Backups tab explains this when snapshots are unavailable.</p>
+                <p class="mt-2 text-sm muted">Connected custom (bring-your-own by IP) servers support <strong class="heading">database export policies only</strong>. Provider snapshots require a cloud provider ID. The Backups tab explains this when snapshots are unavailable.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Failure alerts</h3>
                 <p class="mt-2 text-sm muted">Failed database exports, snapshot create/refresh failures, and restore failures send a <strong class="heading">Backup failed</strong> email. Subscribe under <a class="link-action" href="{{ route('notifications.index') }}">Notifications → Email recipients</a>.</p>
@@ -455,10 +531,11 @@
                 <p class="mt-2 text-sm muted">WordPress sites have a dedicated Backups tab for application-level recovery points before plugin or core updates. Those archives stay on the VPS.</p>
             </section>
 
+            @if($stagingSitesEnabled)
             {{-- Staging --}}
             <section id="staging" class="panel scroll-mt-8">
                 <h2 class="section-title">Staging sites</h2>
-                <p class="mt-3 text-sm muted">When staging is enabled for the platform, create a linked staging environment from a production site’s Overview tab.</p>
+                <p class="mt-3 text-sm muted">When staging is enabled for your plan and the platform, create a linked staging environment from a production site’s Overview tab.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Hostname options</h3>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
@@ -472,8 +549,10 @@
                     <li>Laravel staging typically seeds <code>APP_ENV=staging</code>.</li>
                     <li><strong class="heading">Promote to production</strong> copies repository, branch, deploy script, and PHP version onto production and queues a production deploy.</li>
                     <li>Point DNS for the staging hostname at the server before requesting SSL.</li>
+                    <li>Create and promote require the plan’s staging feature and the platform staging toggle; otherwise those actions are unavailable.</li>
                 </ul>
             </section>
+            @endif
 
             {{-- Remote management --}}
             <section id="remote" class="panel scroll-mt-8">
@@ -555,19 +634,28 @@
 
                 <h3 class="mt-6 text-sm font-semibold heading">What plans control</h3>
                 <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
-                    <li>Quotas for servers, sites, databases, API tokens, teams, and team members</li>
-                    <li>Feature access such as monitoring, remote management, and team collaboration</li>
+                    @if($managedServersEnabled)
+                        <li>Separate quotas for <strong class="heading">BYOS servers</strong>, <strong class="heading">managed servers</strong>, <strong class="heading">BYOS sites</strong>, and <strong class="heading">managed sites</strong>, plus databases, API tokens, teams, and team members</li>
+                    @else
+                        <li>Quotas for servers, sites, databases, API tokens, teams, and team members</li>
+                    @endif
+                    <li>Feature access such as monitoring, remote management@if($managedServersEnabled), managed servers@endif@if($stagingSitesEnabled), staging@endif, and team collaboration</li>
                     <li>Monthly or yearly pricing when published by an administrator</li>
                 </ul>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Request or change a plan</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
                     <li>Review the plan cards and your current usage bars.</li>
-                    <li>Choose monthly or yearly billing and optionally add a purchase-order note.</li>
-                    <li>Click <strong class="heading">Request this plan</strong>. An administrator reviews manual requests.</li>
-                    <li>If Stripe is configured, you can also checkout or manage the subscription through the customer portal on the same page.</li>
+                    <li>Choose monthly or yearly billing on the plan you want.</li>
+                    <li>Click <strong class="heading">Pay &amp; subscribe</strong> to open Stripe Checkout immediately (no approval wait).</li>
+                    <li>Use <strong class="heading">Manage billing in Stripe</strong> to update cards, invoices, or cancel after you have subscribed.</li>
+                    <li>Plans without a Stripe price mapping still use <strong class="heading">Request this plan</strong> for administrator review.</li>
                 </ol>
-                <p class="mt-3 text-sm muted">Quota errors when creating resources mean the current plan is full — request a higher plan or remove unused resources.</p>
+                @if($managedServersEnabled)
+                    <p class="mt-3 text-sm muted">Managed VPS monthly fees (from the managed-server wizard) are separate Stripe charges from your plan subscription. Quota errors when creating resources mean the current plan is full — upgrade or remove unused resources.</p>
+                @else
+                    <p class="mt-3 text-sm muted">Quota errors when creating resources mean the current plan is full — upgrade or remove unused resources.</p>
+                @endif
             </section>
 
             {{-- Account security --}}
@@ -600,7 +688,7 @@
                 <h2 class="section-title">Getting help</h2>
                 <p class="mt-3 text-sm muted">If something is blocked or unclear after following these guides:</p>
                 <ul class="mt-3 list-inside list-disc space-y-1 text-sm muted">
-                    <li>Check server provisioning status and retry a failed stage from the server page.</li>
+                    <li>Check server provisioning status and retry a failed stage from the server page.@if($managedServersEnabled) For managed servers stuck on payment, use <strong class="heading">Check payment</strong> after Stripe Checkout.@endif</li>
                     <li>Confirm your plan quotas on Billing before creating more servers or sites.</li>
                     <li>Open deployment or operation logs when a job fails — the output is retained for diagnosis.</li>
                     <li>Verify DNS points at the server IP before SSL, site monitoring, or public traffic.</li>

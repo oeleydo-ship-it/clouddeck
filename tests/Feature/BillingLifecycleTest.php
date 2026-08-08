@@ -19,16 +19,141 @@ class BillingLifecycleTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_billing_page_offers_immediate_checkout_for_mapped_plans(): void
+    {
+        config(['services.stripe.secret' => 'sk_test_Uplary']);
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $free = $this->plan('free', 'price_free');
+        $free->forceFill([
+            'stripe_monthly_price_id' => null,
+            'stripe_yearly_price_id' => null,
+            'monthly_price' => 0,
+            'yearly_price' => 0,
+        ])->save();
+        $pro = $this->plan('pro', 'price_monthly');
+        $business = $this->plan('business', 'price_business');
+        $business->forceFill([
+            'stripe_monthly_price_id' => null,
+            'stripe_yearly_price_id' => null,
+        ])->save();
+        $user->subscriptions()->create(['plan_id' => $free->id, 'provider' => 'system', 'status' => 'active']);
+
+        $this->actingAs($user)->get('/billing')
+            ->assertOk()
+            ->assertSee('Pay & subscribe')
+            ->assertSee(route('billing.checkout'), false)
+            ->assertDontSee('Continue to secure checkout')
+            ->assertSee('Request this plan');
+    }
+
+    public function test_billing_usage_shows_subscribed_plan_limits_for_super_admins(): void
+    {
+        config(['services.stripe.secret' => 'sk_test_Uplary']);
+        $admin = User::factory()->create(['email_verified_at' => now(), 'role' => 'super_admin']);
+        $pro = Plan::create([
+            'name' => 'Pro',
+            'slug' => 'pro-display',
+            'monthly_price' => 2900,
+            'yearly_price' => 29000,
+            'currency' => 'USD',
+            'limits' => [
+                'servers' => 10,
+                'managed_servers' => 10,
+                'sites' => 50,
+                'managed_sites' => -1,
+                'databases' => 50,
+                'api_tokens' => 10,
+                'teams' => 3,
+                'team_members' => 20,
+            ],
+            'features' => [],
+            'active' => true,
+            'public' => true,
+            'stripe_monthly_price_id' => 'price_monthly',
+            'stripe_yearly_price_id' => 'price_yearly',
+        ]);
+        $admin->subscriptions()->create([
+            'plan_id' => $pro->id,
+            'provider' => 'manual',
+            'status' => 'active',
+            'current_period_ends_at' => now()->addMonth(),
+        ]);
+
+        $this->assertSame(-1, app(\App\Services\EntitlementService::class)->limit($admin, 'servers'));
+        $this->assertSame(10, app(\App\Services\EntitlementService::class)->planLimit($admin, 'servers'));
+
+        $this->actingAs($admin)->get('/billing')
+            ->assertOk()
+            ->assertSee('Current plan:')
+            ->assertSee('Pro')
+            ->assertSee('0 / 10')
+            ->assertSee('0 / 50')
+            ->assertDontSee('0 / Unlimited');
+    }
+
     public function test_hosted_checkout_uses_mapped_price_and_customer_metadata(): void
     {
         config(['services.stripe.secret' => 'sk_test_Uplary', 'services.stripe.automatic_tax' => true]);
-        Http::fake(['https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_test_1', 'url' => 'https://checkout.stripe.com/c/pay/cs_test_1'])]);
+        Http::fake([
+            'https://api.stripe.com/v1/prices/price_monthly' => Http::response([
+                'id' => 'price_monthly',
+                'recurring' => ['interval' => 'month'],
+                'unit_amount' => 2900,
+            ]),
+            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_test_1', 'url' => 'https://checkout.stripe.com/c/pay/cs_test_1']),
+        ]);
         $user = User::factory()->create(['email_verified_at' => now()]);
         $plan = $this->plan();
 
         $this->actingAs($user)->post('/billing/checkout', ['plan_id' => $plan->id, 'billing_cycle' => 'monthly'])->assertRedirect('https://checkout.stripe.com/c/pay/cs_test_1');
 
-        Http::assertSent(fn ($request) => $request['mode'] === 'subscription' && $request['line_items'][0]['price'] === 'price_monthly' && $request['metadata']['user_id'] === (string) $user->id && $request['automatic_tax']['enabled'] === 'true');
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'checkout/sessions')
+            && $request['mode'] === 'subscription'
+            && $request['line_items'][0]['price'] === 'price_monthly'
+            && $request['metadata']['user_id'] === (string) $user->id
+            && $request['metadata']['billing_cycle'] === 'monthly'
+            && $request['automatic_tax']['enabled'] === 'true');
+    }
+
+    public function test_yearly_checkout_uses_yearly_stripe_price_not_monthly(): void
+    {
+        config(['services.stripe.secret' => 'sk_test_Uplary']);
+        Http::fake([
+            'https://api.stripe.com/v1/prices/price_monthly_yearly' => Http::response([
+                'id' => 'price_monthly_yearly',
+                'recurring' => ['interval' => 'year'],
+                'unit_amount' => 29000,
+            ]),
+            'https://api.stripe.com/v1/checkout/sessions' => Http::response(['id' => 'cs_year', 'url' => 'https://checkout.stripe.com/c/pay/cs_year']),
+        ]);
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $plan = $this->plan();
+
+        $this->actingAs($user)->post('/billing/checkout', ['plan_id' => $plan->id, 'billing_cycle' => 'yearly'])
+            ->assertRedirect('https://checkout.stripe.com/c/pay/cs_year');
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'checkout/sessions')
+            && $request['line_items'][0]['price'] === 'price_monthly_yearly'
+            && $request['metadata']['billing_cycle'] === 'yearly');
+    }
+
+    public function test_checkout_rejects_yearly_selection_mapped_to_monthly_stripe_price(): void
+    {
+        config(['services.stripe.secret' => 'sk_test_Uplary']);
+        Http::fake([
+            'https://api.stripe.com/v1/prices/price_monthly_yearly' => Http::response([
+                'id' => 'price_monthly_yearly',
+                'recurring' => ['interval' => 'month'],
+                'unit_amount' => 2900,
+            ]),
+        ]);
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $plan = $this->plan();
+
+        $this->actingAs($user)->from('/billing')->post('/billing/checkout', [
+            'plan_id' => $plan->id,
+            'billing_cycle' => 'yearly',
+        ])->assertRedirect('/billing')->assertSessionHasErrors('billing');
     }
 
     public function test_webhook_rejects_invalid_or_expired_signatures_and_persists_once(): void

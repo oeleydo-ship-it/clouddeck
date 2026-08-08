@@ -1,7 +1,12 @@
 @extends('layouts.app')
 @section('content')
-@php use App\Enums\DeploymentStatus; @endphp
-<div class="app-main !max-w-6xl">
+@php
+    use App\Enums\DeploymentStatus;
+    $active = in_array($deployment->status, [DeploymentStatus::Pending, DeploymentStatus::Running], true);
+@endphp
+<div class="app-main !max-w-6xl"
+     x-data="{ active: {{ $active ? 'true' : 'false' }} }"
+     @deployment-settled.window="active = false">
     <div class="flex flex-wrap items-end justify-between gap-4">
         <div>
             <a class="page-eyebrow" href="{{ route('sites.show',$deployment->site) }}">← {{ $deployment->site->domain }}</a>
@@ -9,24 +14,20 @@
             <p class="mt-2 font-mono text-sm text-slate-500 dark:text-slate-400">{{ $deployment->id }} · {{ $deployment->release ?? 'release pending' }}</p>
         </div>
 
+        {{-- Actions also live inside the Livewire stream so they update over Reverb/poll;
+             this header copy is the SSR fallback for the first paint. --}}
         <div class="flex flex-wrap gap-3">
-            @if(in_array($deployment->status, [DeploymentStatus::Pending, DeploymentStatus::Running], true))
-                {{-- A deployment that never reaches a worker would otherwise block this site
-                     from ever deploying again. --}}
-                <form method="POST" action="{{ route('deployments.cancel',$deployment) }}" onsubmit="return confirm('Cancel this deployment? The site keeps running its current release.')">@csrf
-                    <button class="button-secondary !text-rose-600 dark:!text-rose-300">Cancel deployment</button>
-                </form>
-            @else
-                <form method="POST" action="{{ route('deployments.retry',$deployment) }}">@csrf
-                    <button class="button-primary">Deploy again</button>
-                </form>
-            @endif
+            <form method="POST" action="{{ route('deployments.cancel',$deployment) }}" x-show="active" @if(! $active) style="display: none" @endif onsubmit="return confirm('Cancel this deployment? The site keeps running its current release.')">@csrf
+                <button class="button-secondary !text-rose-600 dark:!text-rose-300">Cancel deployment</button>
+            </form>
+            <form method="POST" action="{{ route('deployments.retry',$deployment) }}" x-show="!active" @if($active) style="display: none" @endif>@csrf
+                <button class="button-primary">Deploy again</button>
+            </form>
         </div>
     </div>
 
-    @if(session('status'))
-        <div class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200">{{ session('status') }}</div>
-    @endif
+    {{-- Session flash for "Deployment queued." is shown by the layout; hide it once the
+         run settles so a successful deploy does not keep advertising a queue state. --}}
     @if($errors->any())
         <div class="mt-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $errors->first() }}</div>
     @endif

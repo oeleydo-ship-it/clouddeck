@@ -14,6 +14,7 @@
         'provisioning' => 'badge-warning',
         'creating' => 'badge-warning',
         'pending' => 'badge-neutral',
+        'awaiting_payment' => 'badge-warning',
         'failed' => 'badge-danger',
         'deleting' => 'badge-danger',
     ];
@@ -38,10 +39,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 5v14M5 12h14"/></svg>
                 Add site
             </a>
-            <a href="{{ route('servers.create') }}" class="button-primary h-12">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 5v14M5 12h14"/></svg>
-                Provision server
-            </a>
+            @include('servers.partials.provision-menu', ['buttonClass' => 'button-primary h-12'])
         </div>
     </header>
 
@@ -100,7 +98,7 @@
                         <p class="font-medium heading">No servers yet</p>
                         <p class="mt-1 text-sm muted">Provision a cloud server or attach one you already run.</p>
                         <div class="mt-5 flex flex-wrap justify-center gap-3">
-                            <a href="{{ route('servers.create') }}" class="button-primary">Provision server</a>
+                            @include('servers.partials.provision-menu')
                             <a href="{{ route('servers.custom') }}" class="button-secondary">Add existing</a>
                         </div>
                     </div>

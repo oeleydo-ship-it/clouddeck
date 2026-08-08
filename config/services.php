@@ -42,6 +42,14 @@ return [
         'automatic_tax' => env('STRIPE_AUTOMATIC_TAX', true),
     ],
 
+    'digitalocean' => [
+        'url' => env('DIGITALOCEAN_API_URL', 'https://api.digitalocean.com/v2'),
+    ],
+
+    'hetzner' => [
+        'url' => env('HETZNER_API_URL', 'https://api.hetzner.cloud/v1'),
+    ],
+
     'google' => [
         // Prefer Admin → Google Auth (system_settings). .env is the fallback for local/dev.
         'enabled' => env('GOOGLE_AUTH_ENABLED', true),

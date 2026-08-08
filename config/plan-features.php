@@ -1,18 +1,22 @@
 <?php
 
 /**
- * Plan entitlement catalog. Resource counts (servers, managed_servers, sites, …) live on
- * plans.limits. These booleans gate optional console modules and site capabilities.
+ * Plan entitlement catalog.
  *
- * servers = BYOS (customer cloud / custom SSH). managed_servers = platform-provided VMs.
+ * Quotas (how many) live on plans.limits — servers, managed_servers, sites, managed_sites,
+ * databases, api_tokens, teams, team_members. They are not listed here.
+ *
+ * These booleans gate optional console modules (can the customer use this at all?).
+ * Example: providers = allow BYOS / connect own cloud; servers limit = how many BYOS hosts.
+ * Example: managed_servers = allow managed provisioning; managed_servers limit = how many.
  */
 return [
     'labels' => [
         'firewall' => 'Firewall',
         'security' => 'Security detection',
         'notifications' => 'Notifications',
-        'providers' => 'Cloud providers (BYOS)',
-        'managed_servers' => 'Managed servers',
+        'providers' => 'BYOS access (connect own cloud)',
+        'managed_servers' => 'Managed server access',
         'dns' => 'DNS',
         'ssh' => 'SSH keys',
         'monitoring' => 'Monitoring and alerts',

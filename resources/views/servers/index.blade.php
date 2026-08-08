@@ -8,26 +8,16 @@
             <p class="page-subtitle">Provision new hosts, or open one to manage databases, SSL, workers, and monitoring.</p>
         </div>
         <div class="flex flex-wrap gap-3">
-            @if(($managedServersReady ?? false) && ($planFeatures['managed_servers'] ?? false))
-                <a href="{{ route('servers.managed') }}" class="button-primary">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 5v14M5 12h14"/></svg>
-                    Managed server
-                </a>
-            @endif
+            @include('servers.partials.provision-menu')
+            @php $canByos = $planFeatures['providers'] ?? true; @endphp
             <a href="{{ route('servers.custom') }}" class="button-secondary">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
                 Add existing server
             </a>
-            @if($planFeatures['providers'] ?? true)
+            @if($canByos)
                 <a href="{{ route('cloud-accounts') }}" class="button-secondary">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
                     Import existing Droplet
-                </a>
-            @endif
-            @if($planFeatures['providers'] ?? true)
-                <a href="{{ route('servers.create') }}" class="button-secondary">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M12 5v14M5 12h14"/></svg>
-                    Provision with your cloud
                 </a>
             @endif
         </div>

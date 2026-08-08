@@ -65,7 +65,7 @@ class DashboardController extends Controller
             'usage' => collect(['servers', 'sites', 'databases'])
                 ->mapWithKeys(fn (string $resource) => [$resource => [
                     'used' => $quotas->usage($request->user(), $resource),
-                    'limit' => $entitlements->limit($request->user(), $resource),
+                    'limit' => $entitlements->planLimit($request->user(), $resource),
                 ]])
                 ->all(),
             // The cheapest public plan that costs more than this one, so the panel can say

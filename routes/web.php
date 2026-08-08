@@ -198,6 +198,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::middleware(['feature:managed_servers', EnsureManagedServersEnabled::class])->group(function () {
         Route::get('/servers/managed', ManagedServerProvisionWizard::class)->name('servers.managed');
+        Route::get('/servers/{server}/managed-checkout/success', [ServerManagementController::class, 'checkoutSuccess'])->name('servers.managed.checkout-success');
+        Route::post('/servers/{server}/managed-checkout', [ServerManagementController::class, 'checkout'])->middleware('throttle:10,1')->name('servers.managed.checkout');
     });
     Route::get('/servers/custom', [CustomServerController::class, 'create'])->name('servers.custom');
     Route::post('/servers/custom', [CustomServerController::class, 'store'])->middleware('throttle:10,1')->name('servers.custom.store');

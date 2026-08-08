@@ -3,6 +3,7 @@
 @php
     $platform = $branding['name'] ?? app(\App\Services\SystemSettings::class)->branding()['name'];
     $landing = $landing ?? app(\App\Services\SystemSettings::class)->landing();
+    $managedServersEnabled = $managedServersEnabled ?? false;
     $providers = ['DigitalOcean', 'Hetzner', 'Vultr', 'Linode', 'AWS', 'UpCloud', 'Contabo', 'Custom VPS'];
 @endphp
 
@@ -49,7 +50,7 @@
                     <div class="p-4 sm:p-5">
                         <div class="flex flex-wrap items-end justify-between gap-3">
                             <div>
-                                <p class="text-xs text-slate-500">DigitalOcean · Amsterdam · 4 vCPU</p>
+                                <p class="text-xs text-slate-500">{{ $managedServersEnabled ? 'Managed · Amsterdam · 4 vCPU' : 'DigitalOcean · Amsterdam · 4 vCPU' }}</p>
                                 <p class="mt-1 font-display text-lg font-semibold text-white">production-api</p>
                             </div>
                             <p class="font-mono text-xs text-sky-300">203.0.113.42</p>
@@ -81,8 +82,17 @@
 {{-- Providers --}}
 <section class="border-b border-slate-200 bg-white py-10 dark:border-white/10 dark:bg-slate-950">
     <div class="mx-auto max-w-7xl px-5">
-        <p class="text-center text-xs font-semibold uppercase tracking-[0.18em] muted">Use the provider or VPS you already pay for</p>
+        <p class="text-center text-xs font-semibold uppercase tracking-[0.18em] muted">
+            @if($managedServersEnabled)
+                Managed servers from {{ $platform }} — or bring your own provider
+            @else
+                Use the provider or VPS you already pay for
+            @endif
+        </p>
         <div class="mt-6 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            @if($managedServersEnabled)
+                <span class="font-display text-sm font-semibold text-sky-600 dark:text-sky-300">Managed server</span>
+            @endif
             @foreach($providers as $provider)
                 <span class="font-display text-sm font-semibold text-slate-400 transition hover:text-slate-700 dark:hover:text-slate-200">{{ $provider }}</span>
             @endforeach
@@ -100,7 +110,9 @@
 
     <ol class="mt-14 grid gap-10 lg:grid-cols-3">
         @foreach([
-            ['01', 'Add a server', "Create one on DigitalOcean, or connect an Ubuntu VPS with its IP. {$platform} installs Nginx, PHP, Redis, and your database."],
+            ['01', 'Add a server', $managedServersEnabled
+                ? "Provision a managed server in a few clicks, or connect your own Ubuntu VPS. {$platform} installs Nginx, PHP, Redis, and your database."
+                : "Create one on DigitalOcean, or connect an Ubuntu VPS with its IP. {$platform} installs Nginx, PHP, Redis, and your database."],
             ['02', 'Add a site', 'Pick Laravel or WordPress, set the domain, and link your Git repo if you use one.'],
             ['03', 'Deploy', 'Click deploy or push code. If something goes wrong, you can roll back to an earlier release.'],
         ] as [$step, $stepTitle, $stepCopy])
@@ -123,7 +135,8 @@
         </div>
 
         <div class="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach([
+            @foreach(array_values(array_filter([
+                $managedServersEnabled ? ['Managed servers', "We create and host the VPS on {$platform}'s cloud account. Pick a size, pay monthly, and deploy — no provider API key required."] : null,
                 ['Laravel apps', 'Install packages, run migrations, queues, the scheduler, Horizon, and workers from the panel.'],
                 ['WordPress sites', 'Install WordPress with a database and SSL. Uploads and plugins stay safe between deploys.'],
                 ['Free SSL', "Get Let's Encrypt certificates and keep HTTPS on. Renewals are handled for you."],
@@ -133,7 +146,8 @@
                 ['Server health', 'Watch CPU, memory, and disk. Get alerts by email, Slack, Discord, or Telegram.'],
                 ['Backups', 'Schedule database backups and provider snapshots. Restores ask for confirmation first.'],
                 ['Remote tools', 'Edit files, change PHP or Nginx settings, and run safe commands from the browser.'],
-        ] as [$featureTitle, $featureCopy])
+                $managedServersEnabled ? null : ['Bring your own VPS', 'Connect DigitalOcean, Hetzner, or any Ubuntu server by IP and keep billing with your provider.'],
+        ])) as [$featureTitle, $featureCopy])
                 <article>
                     <div class="mb-4 h-1 w-10 rounded-full bg-sky-500"></div>
                     <h3 class="font-display text-lg font-semibold heading">{{ $featureTitle }}</h3>
@@ -157,7 +171,9 @@
     </div>
     <div class="mt-14 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         @foreach([
-            ['Your servers stay yours', 'We connect to your provider or VPS. You keep the account, the IP, and the billing.'],
+            $managedServersEnabled
+                ? ['Managed or bring-your-own', "Provision a managed server through {$platform}, or connect your own provider. Same panel, same deploy tools either way."]
+                : ['Your servers stay yours', 'We connect to your provider or VPS. You keep the account, the IP, and the billing.'],
             ['Clear status', 'See what is running, what failed, and the log output — not a blank spinner.'],
             ['Ready out of the box', 'Nginx, PHP, MySQL or PostgreSQL, Redis, Supervisor, Node, Composer, firewall, and Certbot.'],
             ['Safer deploys', 'New code builds in a separate folder, then goes live only when it succeeds. Old releases stay for rollback.'],
@@ -176,9 +192,6 @@
 <section id="pricing" class="border-y border-slate-200 bg-slate-50 py-20 dark:border-white/10 dark:bg-white/[.02] lg:py-28"
          x-data="{ annual: true }">
     @php
-        // When platform managed servers are off, hide those quotas from public pricing so
-        // the page only advertises BYOS infrastructure customers can actually use.
-        $managedServersEnabled = $managedServersEnabled ?? false;
         $limitLabels = $managedServersEnabled
             ? [
                 'servers' => 'BYOS servers',
@@ -211,7 +224,13 @@
             <div class="max-w-2xl">
                 <p class="text-sm font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-sky-300">Pricing</p>
                 <h2 class="mt-3 font-display text-3xl font-bold tracking-tight heading sm:text-4xl">Simple plans. Clear limits.</h2>
-                <p class="mt-4 text-lg muted">You pay {{ $platform }} for the panel. Your cloud provider bills you for the servers.</p>
+                <p class="mt-4 text-lg muted">
+                    @if($managedServersEnabled)
+                        You pay {{ $platform }} for the panel. Managed servers are billed separately each month; bring-your-own servers stay on your cloud provider.
+                    @else
+                        You pay {{ $platform }} for the panel. Your cloud provider bills you for the servers.
+                    @endif
+                </p>
             </div>
 
             <div class="inline-flex w-fit rounded-xl border border-slate-200 bg-white p-1 dark:border-white/10 dark:bg-slate-900" aria-label="Billing cycle">

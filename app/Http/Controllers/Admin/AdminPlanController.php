@@ -34,9 +34,15 @@ class AdminPlanController extends Controller
 
     public function stripe(Request $request, Plan $plan, AuditLogger $audit): RedirectResponse
     {
-        $data = $request->validate(['stripe_monthly_price_id' => ['nullable', 'regex:/^price_[A-Za-z0-9]+$/', 'max:100'], 'stripe_yearly_price_id' => ['nullable', 'regex:/^price_[A-Za-z0-9]+$/', 'max:100']]);
+        $data = $request->validate([
+            'stripe_monthly_price_id' => ['nullable', 'regex:/^price_[A-Za-z0-9]+$/', 'max:100'],
+            'stripe_yearly_price_id' => ['nullable', 'regex:/^price_[A-Za-z0-9]+$/', 'max:100', 'different:stripe_monthly_price_id'],
+        ]);
         $old = $plan->only(['stripe_monthly_price_id', 'stripe_yearly_price_id']);
-        $plan->update($data);
+        $plan->update([
+            'stripe_monthly_price_id' => $data['stripe_monthly_price_id'] ?: null,
+            'stripe_yearly_price_id' => $data['stripe_yearly_price_id'] ?: null,
+        ]);
         $audit->record($request, 'plan.stripe-prices-updated', $plan, $old, $data);
 
         return back()->with('status', 'Stripe price mapping updated.');
