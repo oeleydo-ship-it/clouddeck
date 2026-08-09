@@ -45,6 +45,7 @@ use App\Http\Controllers\ServerManagementController;
 use App\Http\Controllers\ServerOperationController;
 use App\Http\Controllers\ServerTeamController;
 use App\Http\Controllers\SiteConfigurationController;
+use App\Http\Controllers\SiteBackupController;
 use App\Http\Controllers\SiteController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\SitePackageController;
@@ -109,6 +110,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/requests', [BillingController::class, 'requestPlan'])->name('billing.request');
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->middleware('throttle:10,1')->name('billing.checkout');
+    Route::post('/billing/os-backup', [BillingController::class, 'checkoutOsBackup'])->middleware('throttle:10,1')->name('billing.os-backup');
+    Route::get('/billing/os-backup/success', [BillingController::class, 'osBackupSuccess'])->name('billing.os-backup.success');
     Route::post('/billing/portal', [BillingController::class, 'portal'])->middleware('throttle:10,1')->name('billing.portal');
     Route::get('/billing/success', [BillingController::class, 'success'])->name('billing.success');
 
@@ -220,15 +223,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/servers/{server}/operations', [ServerOperationController::class, 'store'])->name('server-operations.store');
     Route::post('/servers/{server}/php-extensions', [PhpExtensionController::class, 'store'])->name('php-extensions.store');
 
-    Route::middleware('feature:backups')->group(function () {
-        Route::post('/servers/{server}/backup-policies', [BackupController::class, 'store'])->name('backup-policies.store');
-        Route::patch('/backup-policies/{backupPolicy}/toggle', [BackupController::class, 'toggle'])->name('backup-policies.toggle');
-        Route::post('/backup-policies/{backupPolicy}/run', [BackupController::class, 'run'])->name('backup-policies.run');
-        Route::delete('/backup-policies/{backupPolicy}', [BackupController::class, 'destroy'])->name('backup-policies.destroy');
+    Route::post('/servers/{server}/backup-policies', [BackupController::class, 'store'])->name('backup-policies.store');
+    Route::patch('/backup-policies/{backupPolicy}/toggle', [BackupController::class, 'toggle'])->name('backup-policies.toggle');
+    Route::post('/backup-policies/{backupPolicy}/run', [BackupController::class, 'run'])->name('backup-policies.run');
+    Route::delete('/backup-policies/{backupPolicy}', [BackupController::class, 'destroy'])->name('backup-policies.destroy');
+
+    Route::middleware('feature:database_backups')->group(function () {
         Route::post('/database-backups/{databaseBackup}/restore', [BackupController::class, 'restoreDatabase'])->name('database-backups.restore');
+    });
+
+    Route::middleware('feature:os_backups')->group(function () {
         Route::post('/servers/{server}/snapshots', [BackupController::class, 'snapshot'])->name('snapshots.store');
         Route::post('/server-snapshots/{serverSnapshot}/restore', [BackupController::class, 'restoreSnapshot'])->name('snapshots.restore');
         Route::delete('/server-snapshots/{serverSnapshot}', [BackupController::class, 'destroySnapshot'])->name('snapshots.destroy');
+    });
+
+    Route::middleware('feature:site_backups')->group(function () {
+        Route::post('/sites/{site}/app-backups', [SiteBackupController::class, 'store'])->name('site-backups.store');
+        Route::get('/site-backups/{siteBackup}/download', [SiteBackupController::class, 'download'])->name('site-backups.download');
+        Route::post('/site-backups/{siteBackup}/full-restore', [SiteBackupController::class, 'restore'])->name('site-backups.restore');
+        Route::delete('/site-backups/{siteBackup}', [SiteBackupController::class, 'destroy'])->name('site-backups.destroy');
     });
 
     Route::middleware('feature:monitoring')->group(function () {
@@ -295,6 +309,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/feature-flags', [AdminDashboardController::class, 'features'])->name('features');
         Route::get('/billing-review', [AdminDashboardController::class, 'billing'])->name('billing');
         Route::get('/payments', [AdminDashboardController::class, 'payments'])->name('payments');
+        Route::get('/storage', [AdminDashboardController::class, 'storage'])->name('storage');
+        Route::get('/mail', [AdminDashboardController::class, 'mail'])->name('mail');
         Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');
         Route::get('/managed-servers', [AdminDashboardController::class, 'managedServers'])->name('managed-servers');
         Route::get('/pages', [AdminDashboardController::class, 'pages'])->name('pages');
@@ -339,6 +355,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/settings/ai', [AdminSettingController::class, 'ai'])->name('settings.ai');
         Route::put('/settings/google-auth', [AdminSettingController::class, 'googleAuth'])->name('settings.google-auth');
         Route::put('/settings/stripe', [AdminSettingController::class, 'stripe'])->name('settings.stripe');
+        Route::put('/settings/object-storage', [AdminSettingController::class, 'objectStorage'])->name('settings.object-storage');
+        Route::post('/settings/object-storage/test', [AdminSettingController::class, 'testObjectStorage'])->middleware('throttle:6,1')->name('settings.object-storage.test');
+        Route::put('/settings/os-backup-pricing', [AdminSettingController::class, 'osBackupPricing'])->name('settings.os-backup-pricing');
         Route::put('/settings/branding', [AdminSettingController::class, 'branding'])->name('settings.branding');
         Route::post('/settings/logo', [AdminSettingController::class, 'logo'])->name('settings.logo');
         Route::delete('/settings/logo', [AdminSettingController::class, 'destroyLogo'])->name('settings.logo.destroy');

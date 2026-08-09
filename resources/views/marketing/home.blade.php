@@ -144,7 +144,7 @@
                 ['SSH keys', "Create a managed key for {$platform}, or upload keys your team already uses."],
                 ['Queues and cron', 'Add queue workers and scheduled jobs in the UI. They sync to the server for you.'],
                 ['Server health', 'Watch CPU, memory, and disk. Get alerts by email, Slack, Discord, or Telegram.'],
-                ['Backups', 'Schedule database backups and provider snapshots. Restores ask for confirmation first.'],
+                ['Backups', 'Schedule database backups and OS provider snapshots — each type can be included per plan.'],
                 ['Remote tools', 'Edit files, change PHP or Nginx settings, and run safe commands from the browser.'],
                 $managedServersEnabled ? null : ['Bring your own VPS', 'Connect DigitalOcean, Hetzner, or any Ubuntu server by IP and keep billing with your provider.'],
         ])) as [$featureTitle, $featureCopy])

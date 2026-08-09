@@ -55,6 +55,8 @@ class WordPressController extends Controller
         $backup = $site->backups()->create([
             'user_id' => $request->user()->id,
             'label' => now()->format('Ymd-His'),
+            'kind' => 'wordpress_local',
+            'source' => 'manual',
             'status' => 'pending',
         ]);
 
@@ -67,6 +69,7 @@ class WordPressController extends Controller
     public function restore(Request $request, SiteBackup $siteBackup, AuditLogger $audit): RedirectResponse
     {
         $this->authorize('update', $siteBackup->site);
+        abort_unless(! $siteBackup->isFullApp(), 422, 'Use full site restore for offloaded application archives.');
         abort_unless($siteBackup->status === 'completed', 422, 'That backup did not finish, so there is nothing to restore.');
 
         RestoreWordPressSiteJob::dispatch($siteBackup->id)->onQueue('operations');

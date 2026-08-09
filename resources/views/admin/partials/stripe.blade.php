@@ -41,6 +41,18 @@
     </section>
 
     <section class="panel">
+        <h2 class="font-semibold heading">OS backup storage add-on</h2>
+        <p class="mt-1 text-sm muted">Customers can buy extra provider-snapshot capacity (GB / month) on Billing. Plans also set an included <code>os_backup_gb</code> quota under Admin → Plans.</p>
+        <form method="POST" action="{{ route('admin.settings.os-backup-pricing') }}" class="mt-5 max-w-md space-y-4">@csrf @method('PUT')
+            <label class="block text-sm heading">Price per GB / month (USD)
+                <input class="field" type="number" step="0.01" min="0.50" name="os_backup_gb_price" value="{{ number_format(app(\App\Services\SystemSettings::class)->osBackupGbPriceCents() / 100, 2, '.', '') }}" required>
+            </label>
+            <p class="text-xs muted">Minimum $0.50. Checkout creates a recurring Stripe subscription with quantity = GB purchased.</p>
+            <button class="button-primary">Save OS backup pricing</button>
+        </form>
+    </section>
+
+    <section class="panel">
         <h2 class="font-semibold heading">Plan price mapping</h2>
         <p class="mt-2 text-sm muted">Add recurring Stripe Price IDs so hosted checkout can sell each plan. Plans without a mapped price stay on the manual billing-request flow.</p>
     </section>

@@ -20,6 +20,7 @@ final class EntitlementService
 
     /**
      * Effective create/quota ceiling. Super admins remain uncapped operationally.
+     * OS backup GB = plan-included capacity plus any active Stripe GB add-on.
      */
     public function limit(User $user, string $resource): int
     {
@@ -27,7 +28,20 @@ final class EntitlementService
             return -1;
         }
 
-        return $this->planLimit($user, $resource);
+        $planLimit = $this->planLimit($user, $resource);
+        if ($resource !== 'os_backup_gb') {
+            return $planLimit;
+        }
+
+        if ($planLimit < 0) {
+            return -1;
+        }
+
+        $addon = in_array($user->os_backup_stripe_subscription_status, ['active', 'trialing'], true)
+            ? (int) $user->os_backup_addon_gb
+            : 0;
+
+        return $planLimit + $addon;
     }
 
     /**

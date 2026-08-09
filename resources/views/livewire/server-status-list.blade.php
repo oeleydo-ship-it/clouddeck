@@ -65,7 +65,9 @@
         <div class="px-6 py-16 text-center">
             <p class="font-medium heading">No servers yet</p>
             <p class="mt-1 text-sm muted">Provision a new host, or import a Droplet you already run.</p>
-            <a href="{{ route('servers.create') }}" class="button-primary mt-5">Provision your first server</a>
+            <div class="mt-5 inline-flex justify-center">
+                @include('servers.partials.provision-menu', ['buttonClass' => 'button-primary'])
+            </div>
         </div>
     @endforelse
 </div>

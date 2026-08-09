@@ -29,6 +29,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'timezone',
         'current_team_id',
         'stripe_customer_id',
+        'os_backup_addon_gb',
+        'os_backup_stripe_subscription_id',
+        'os_backup_stripe_subscription_status',
         'suspended_at',
         'suspension_reason',
     ];

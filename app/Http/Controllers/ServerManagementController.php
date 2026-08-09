@@ -70,10 +70,7 @@ class ServerManagementController extends Controller
                 'backupPolicies.snapshots' => fn ($q) => $q->latest()->limit(1),
                 'snapshots' => fn ($q) => $q->latest()->limit(30),
             ]),
-            'backupDisks' => collect(config('filesystems.disks'))
-                ->reject(fn (array $disk) => ($disk['visibility'] ?? null) === 'public')
-                ->keys()
-                ->values(),
+            'backupDiskOptions' => app(\App\Services\BackupStorage::class)->privateDiskOptions(),
             'transferTeams' => $request->user()->teamMemberships()->with('team')->whereNotNull('accepted_at')->get()->filter(fn ($membership) => $teams->canManage($request->user(), $membership->team))->pluck('team'),
         ]);
     }

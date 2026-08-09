@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\RequireFeature;
 use App\Jobs\Backups\CreateServerSnapshotJob;
 use App\Jobs\Backups\DeleteServerSnapshotJob;
 use App\Jobs\Backups\RestoreDatabaseBackupJob;
@@ -13,14 +14,17 @@ use App\Models\Server;
 use App\Models\ServerSnapshot;
 use App\Services\AuditLogger;
 use App\Services\BackupSchedule;
+use App\Services\FeatureManager;
+use App\Services\QuotaManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 class BackupController extends Controller
 {
-    public function store(Request $request, Server $server, BackupSchedule $schedule, AuditLogger $audit): RedirectResponse
+    public function store(Request $request, Server $server, BackupSchedule $schedule, AuditLogger $audit, QuotaManager $quotas): RedirectResponse|Response
     {
         $this->authorize('update', $server);
         $data = $request->validate([
@@ -35,8 +39,14 @@ class BackupController extends Controller
             'retention_count' => ['required', 'integer', 'between:1,100'],
             'disk' => ['nullable', Rule::in($this->privateDisks())],
         ]);
+
+        if ($denied = $this->denyUnlessBackupType($request, $data['type'])) {
+            return $denied;
+        }
+
         if ($data['type'] === 'snapshot') {
             abort_unless($server->provider_id, 422, 'Server is not active at its provider.');
+            $quotas->assertCanCreate($request->user(), 'os_backup_gb', 1);
         }
         $policy = $server->backupPolicies()->make([...$data, 'user_id' => $request->user()->id, 'enabled' => true]);
         $policy->next_run_at = $schedule->next($policy);
@@ -46,18 +56,26 @@ class BackupController extends Controller
         return back()->with('status', 'Backup policy created.');
     }
 
-    public function toggle(Request $request, BackupPolicy $backupPolicy, BackupSchedule $schedule): RedirectResponse
+    public function toggle(Request $request, BackupPolicy $backupPolicy, BackupSchedule $schedule): RedirectResponse|Response
     {
         $this->authorize('update', $backupPolicy->server);
+        if ($denied = $this->denyUnlessBackupType($request, $backupPolicy->type)) {
+            return $denied;
+        }
+
         $enabled = ! $backupPolicy->enabled;
         $backupPolicy->update(['enabled' => $enabled, 'next_run_at' => $enabled ? $schedule->next($backupPolicy) : null]);
 
         return back()->with('status', $enabled ? 'Backup policy enabled.' : 'Backup policy disabled.');
     }
 
-    public function destroy(Request $request, BackupPolicy $backupPolicy, AuditLogger $audit): RedirectResponse
+    public function destroy(Request $request, BackupPolicy $backupPolicy, AuditLogger $audit): RedirectResponse|Response
     {
         $this->authorize('update', $backupPolicy->server);
+        if ($denied = $this->denyUnlessBackupType($request, $backupPolicy->type)) {
+            return $denied;
+        }
+
         $old = $backupPolicy->only(['name', 'type', 'frequency', 'retention_count']);
         $backupPolicy->delete();
         $audit->record($request, 'backup-policy.deleted', $backupPolicy, $old, []);
@@ -65,13 +83,18 @@ class BackupController extends Controller
         return back()->with('status', 'Backup policy removed. Existing recovery points were preserved.');
     }
 
-    public function run(Request $request, BackupPolicy $backupPolicy): RedirectResponse
+    public function run(Request $request, BackupPolicy $backupPolicy, QuotaManager $quotas): RedirectResponse|Response
     {
         $this->authorize('update', $backupPolicy->server);
+        if ($denied = $this->denyUnlessBackupType($request, $backupPolicy->type)) {
+            return $denied;
+        }
+
         if ($backupPolicy->type === 'database') {
             $backup = $backupPolicy->database->backups()->create(['user_id' => $request->user()->id, 'backup_policy_id' => $backupPolicy->id, 'type' => 'export', 'source' => 'manual', 'disk' => $backupPolicy->disk ?: config('remote_management.database_backup_disk')]);
             ExportDatabaseJob::dispatch($backup->id)->onQueue('operations');
         } else {
+            $quotas->assertCanCreate($request->user(), 'os_backup_gb', 1);
             $snapshot = $backupPolicy->server->snapshots()->create(['user_id' => $request->user()->id, 'backup_policy_id' => $backupPolicy->id, 'name' => $backupPolicy->server->hostname.'-'.now()->utc()->format('Ymd-His')]);
             CreateServerSnapshotJob::dispatch($snapshot->id)->onQueue('operations');
         }
@@ -91,10 +114,11 @@ class BackupController extends Controller
         return back()->with('status', 'Database restore queued.');
     }
 
-    public function snapshot(Request $request, Server $server): RedirectResponse
+    public function snapshot(Request $request, Server $server, QuotaManager $quotas): RedirectResponse
     {
         $this->authorize('update', $server);
         abort_unless($server->provider_id, 422, 'Server is not active at its provider.');
+        $quotas->assertCanCreate($request->user(), 'os_backup_gb', 1);
         $data = $request->validate(['name' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z0-9._-]+$/']]);
         $snapshot = $server->snapshots()->create(['user_id' => $request->user()->id, 'name' => $data['name']]);
         CreateServerSnapshotJob::dispatch($snapshot->id)->onQueue('operations');
@@ -121,11 +145,16 @@ class BackupController extends Controller
         return back()->with('status', 'Snapshot deletion queued.');
     }
 
+    private function denyUnlessBackupType(Request $request, string $type): ?Response
+    {
+        $feature = FeatureManager::forBackupType($type);
+        $gate = app(RequireFeature::class);
+
+        return $gate->allows($request, $feature) ? null : $gate->deny($request, $feature);
+    }
+
     private function privateDisks(): array
     {
-        return collect(config('filesystems.disks'))
-            ->reject(fn (array $disk) => ($disk['visibility'] ?? null) === 'public')
-            ->keys()
-            ->all();
+        return app(\App\Services\BackupStorage::class)->privateDiskNames();
     }
 }

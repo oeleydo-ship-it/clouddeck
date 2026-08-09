@@ -41,6 +41,14 @@ final class FeatureManager
         return $map;
     }
 
+    /**
+     * Catalog key that gates a backup policy / recovery-point type.
+     */
+    public static function forBackupType(string $type): string
+    {
+        return $type === 'snapshot' ? 'os_backups' : 'database_backups';
+    }
+
     public function enabled(string $key, User $user): bool
     {
         if ($user->isSuperAdmin()) {

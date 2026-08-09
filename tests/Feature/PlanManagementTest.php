@@ -23,7 +23,7 @@ class PlanManagementTest extends TestCase
             'name' => 'Pro', 'slug' => 'pro', 'currency' => 'usd',
             'monthly_price' => 29, 'yearly_price' => 290, 'sort_order' => 20,
             'servers' => 10, 'managed_servers' => 3, 'sites' => 50, 'managed_sites' => 30, 'databases' => 50, 'api_tokens' => 10,
-            'teams' => 3, 'team_members' => 20,
+            'teams' => 3, 'team_members' => 20, 'os_backup_gb' => 50,
             'active' => '1', 'public' => '1', 'feature_monitoring' => '1',
             ...$overrides,
         ];
@@ -98,6 +98,25 @@ class PlanManagementTest extends TestCase
             ->assertSee('USD 29')
             ->assertSee('Monitoring')
             ->assertSee('0 subscriptions');
+    }
+
+    public function test_non_zero_hosting_quotas_enable_matching_access_gates(): void
+    {
+        $this->actingAs($this->admin())->post('/admin/plans', $this->payload([
+            'slug' => 'starter',
+            'name' => 'Starter',
+            // Intentionally omit feature_providers / feature_managed_servers checkboxes.
+            'servers' => 2,
+            'managed_servers' => 1,
+            'managed_sites' => 3,
+            'os_backup_gb' => 25,
+        ]))->assertSessionHas('status');
+
+        $plan = Plan::where('slug', 'starter')->sole();
+        $this->assertTrue($plan->features['providers']);
+        $this->assertTrue($plan->features['managed_servers']);
+        $this->assertTrue($plan->features['os_backups']);
+        $this->assertSame(25, $plan->limits['os_backup_gb']);
     }
 
     public function test_customers_cannot_create_or_delete_plans(): void

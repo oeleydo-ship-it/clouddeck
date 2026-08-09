@@ -33,11 +33,12 @@
         <label class="text-xs heading">Managed servers<span class="mt-0.5 block font-normal muted">How many platform-hosted VPS on this plan</span><input class="field mt-1" type="number" min="-1" name="managed_servers" value="{{ old('managed_servers', $plan?->limits['managed_servers'] ?? 0) }}" required></label>
         <label class="text-xs heading">BYOS sites<span class="mt-0.5 block font-normal muted">Sites hosted on BYOS / custom servers</span><input class="field mt-1" type="number" min="-1" name="sites" value="{{ old('sites', $plan?->limits['sites'] ?? 1) }}" required></label>
         <label class="text-xs heading">Managed sites<span class="mt-0.5 block font-normal muted">Sites hosted on platform-managed servers</span><input class="field mt-1" type="number" min="-1" name="managed_sites" value="{{ old('managed_sites', $plan?->limits['managed_sites'] ?? 0) }}" required></label>
+        <label class="text-xs heading">OS backup storage (GB)<span class="mt-0.5 block font-normal muted">Included provider-snapshot capacity. Customers can buy more GB as a Stripe add-on. Use <code>-1</code> for unlimited.</span><input class="field mt-1" type="number" min="-1" name="os_backup_gb" value="{{ old('os_backup_gb', $plan?->limits['os_backup_gb'] ?? 0) }}" required></label>
     </div>
 
     <div class="mt-3 grid gap-3 sm:grid-cols-3">
         @foreach($limitKeys as $key => $label)
-            @if(! in_array($key, ['servers', 'managed_servers', 'sites', 'managed_sites'], true))
+            @if(! in_array($key, ['servers', 'managed_servers', 'sites', 'managed_sites', 'os_backup_gb'], true))
                 <label class="text-xs muted">{{ $label }}<input class="field" type="number" min="-1" name="{{ $key }}" value="{{ old($key, $plan?->limits[$key] ?? 1) }}" required></label>
             @endif
         @endforeach
@@ -46,7 +47,7 @@
 
 <fieldset class="mt-5">
     <legend class="text-sm font-medium heading">Gated features (on / off)</legend>
-    <p class="mt-1 text-xs muted">Turn modules on or off. Server and site <em>counts</em> stay under Quotas — do not confuse access toggles with limits.</p>
+    <p class="mt-1 text-xs muted">Turn modules on or off. Saving with a non-zero BYOS server quota enables BYOS access; a non-zero Managed quota enables managed access. Console visitors without a feature see an upgrade prompt instead of a hard error.</p>
 
     <p class="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] muted">Hosting access</p>
     <div class="mt-2 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">

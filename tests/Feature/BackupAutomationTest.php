@@ -69,8 +69,8 @@ class BackupAutomationTest extends TestCase
         [$user, $server, $database] = $this->infrastructure();
         $policy = $server->backupPolicies()->create(['user_id' => $user->id, 'managed_database_id' => $database->id, 'name' => 'Daily', 'type' => 'database', 'frequency' => 'daily', 'run_at' => '02:00', 'timezone' => 'UTC', 'retention_count' => 3, 'enabled' => true, 'next_run_at' => now()->subMinute()]);
 
-        (new DispatchDueBackupsJob)->handle(app(BackupSchedule::class));
-        (new DispatchDueBackupsJob)->handle(app(BackupSchedule::class));
+        (new DispatchDueBackupsJob)->handle(app(BackupSchedule::class), app(\App\Services\FeatureManager::class));
+        (new DispatchDueBackupsJob)->handle(app(BackupSchedule::class), app(\App\Services\FeatureManager::class));
 
         $this->assertSame(1, $policy->databaseBackups()->count());
         $this->assertTrue($policy->fresh()->next_run_at->isFuture());
@@ -150,7 +150,8 @@ class BackupAutomationTest extends TestCase
         $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=backups")
             ->assertOk()
             ->assertSee('Automated backup policy')
-            ->assertSee('Provider snapshots')
+            ->assertSee('OS backups (provider snapshots)')
+            ->assertSee('Database backup')
             ->assertSee('Storage disk')
             ->assertSee('Create snapshot');
     }
@@ -162,13 +163,94 @@ class BackupAutomationTest extends TestCase
 
         $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=backups")
             ->assertOk()
-            ->assertSee('database export policies')
+            ->assertSee('database backup policies')
             ->assertDontSee('>Create snapshot<', false);
 
         $this->actingAs($user)->post("/servers/{$server->id}/backup-policies", [
             'name' => 'Snap', 'type' => 'snapshot',
             'frequency' => 'daily', 'run_at' => '02:00', 'timezone' => 'UTC', 'retention_count' => 2,
         ])->assertStatus(422);
+    }
+
+    public function test_database_backup_mutations_redirect_to_billing_when_plan_lacks_entitlement(): void
+    {
+        [$user, $server, $database] = $this->infrastructure([
+            'database_backups' => false,
+            'os_backups' => true,
+        ]);
+
+        $this->actingAs($user)->post("/servers/{$server->id}/backup-policies", [
+            'name' => 'Nightly', 'type' => 'database', 'managed_database_id' => $database->id,
+            'frequency' => 'daily', 'run_at' => '02:00', 'timezone' => 'UTC', 'retention_count' => 7,
+        ])->assertRedirect(route('billing.index'));
+
+        $this->assertDatabaseMissing('backup_policies', ['server_id' => $server->id]);
+    }
+
+    public function test_os_backup_mutations_redirect_to_billing_when_plan_lacks_entitlement(): void
+    {
+        [$user, $server] = $this->infrastructure([
+            'database_backups' => true,
+            'os_backups' => false,
+        ]);
+
+        $this->actingAs($user)->post("/servers/{$server->id}/snapshots", [
+            'name' => 'manual-snap',
+        ])->assertRedirect(route('billing.index'));
+
+        $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=backups")
+            ->assertOk()
+            ->assertSee('Upgrade for OS backups')
+            ->assertSee('OS backup (provider snapshot)');
+    }
+
+    public function test_due_policy_is_skipped_when_plan_no_longer_entitles_the_type(): void
+    {
+        Queue::fake();
+        [$user, $server, $database] = $this->infrastructure([
+            'database_backups' => false,
+            'os_backups' => false,
+        ]);
+        $policy = $server->backupPolicies()->create([
+            'user_id' => $user->id,
+            'managed_database_id' => $database->id,
+            'name' => 'Daily',
+            'type' => 'database',
+            'frequency' => 'daily',
+            'run_at' => '02:00',
+            'timezone' => 'UTC',
+            'retention_count' => 3,
+            'enabled' => true,
+            'next_run_at' => now()->subMinute(),
+        ]);
+
+        (new DispatchDueBackupsJob)->handle(app(BackupSchedule::class), app(\App\Services\FeatureManager::class));
+
+        $this->assertSame(0, $policy->databaseBackups()->count());
+        $this->assertTrue($policy->fresh()->next_run_at->isFuture());
+        Queue::assertNothingPushed();
+    }
+
+    public function test_legacy_backups_feature_migrates_into_database_and_os_keys(): void
+    {
+        $plan = \App\Models\Plan::create([
+            'name' => 'Legacy',
+            'slug' => 'legacy-backups',
+            'monthly_price' => 0,
+            'yearly_price' => 0,
+            'currency' => 'USD',
+            'limits' => [],
+            'features' => ['backups' => true, 'firewall' => false],
+            'active' => true,
+            'public' => true,
+        ]);
+
+        app(\App\Services\PlatformDefaults::class)->ensure();
+
+        $plan->refresh();
+        $this->assertArrayNotHasKey('backups', $plan->features);
+        $this->assertTrue($plan->features['database_backups']);
+        $this->assertTrue($plan->features['os_backups']);
     }
 
     public function test_database_policy_can_select_a_private_storage_disk(): void
@@ -263,9 +345,23 @@ class BackupAutomationTest extends TestCase
         $this->getJson('/api/backups')->assertOk()->assertJsonPath('policies.0.id', $policy->id)->assertJsonCount(1, 'policies');
     }
 
-    private function infrastructure(): array
+    private function infrastructure(array $featureOverrides = []): array
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
+        if ($featureOverrides !== []) {
+            $plan = \App\Models\Plan::create([
+                'name' => 'Backup Suite',
+                'slug' => 'backup-suite-'.uniqid(),
+                'monthly_price' => 0,
+                'yearly_price' => 0,
+                'currency' => 'USD',
+                'limits' => ['servers' => 5, 'sites' => 5, 'databases' => 5, 'api_tokens' => 5, 'teams' => 1, 'team_members' => 5],
+                'features' => array_merge(array_fill_keys(array_keys(config('plan-features.labels')), true), $featureOverrides),
+                'active' => true,
+                'public' => true,
+            ]);
+            $user->subscriptions()->create(['plan_id' => $plan->id, 'status' => 'active', 'provider' => 'manual']);
+        }
         $account = CloudAccount::create(['user_id' => $user->id, 'provider' => 'digitalocean', 'name' => 'Production', 'credentials' => ['token' => 'secret'], 'validated_at' => now()]);
         $key = SshKey::create(['user_id' => $user->id, 'name' => 'Managed', 'public_key' => 'ssh-ed25519 AAAA test', 'private_key' => 'private-key']);
         $server = Server::create(['user_id' => $user->id, 'cloud_account_id' => $account->id, 'ssh_key_id' => $key->id, 'provider_id' => '123', 'name' => 'App', 'hostname' => 'app-01', 'region' => 'nyc3', 'size' => 's-1vcpu-1gb', 'image' => 'ubuntu-24-04-x64', 'public_ip' => '192.0.2.10', 'status' => ServerStatus::Ready]);

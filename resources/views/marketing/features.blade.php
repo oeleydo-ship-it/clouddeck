@@ -40,7 +40,7 @@
             ['Staging sites', 'Spin up a linked staging hostname, test safely, then promote to production when ready.'],
             ['Workers and cron jobs', 'Add queue workers and schedules in the panel. They sync to Supervisor and cron on the server.'],
             ['Databases', 'Create databases and users, link them to a site, and import or export with protected downloads.'],
-            ['Backups', 'Schedule database backups or full server snapshots. Choose how long to keep them and confirm before restore.'],
+            ['Backups', 'Schedule database backups or full OS server snapshots. Choose how long to keep them and confirm before restore. Each type is a plan entitlement.'],
             ['Monitoring and auto-heal', 'Track CPU, memory, disk, and site uptime. Restart down services automatically and alert Slack, Discord, or Telegram.'],
             ['Security detection', 'Scan managed servers for suspicious SSH, integrity, and site signals. Review incidents and block IPs manually from the console.'],
             ['DNS', 'Connect Cloudflare and manage A, AAAA, CNAME, and TXT records next to your sites.'],

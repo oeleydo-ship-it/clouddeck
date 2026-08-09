@@ -32,12 +32,10 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('databases', [ManagedDatabaseController::class, 'store'])->middleware('abilities:servers:write');
     Route::delete('databases/{managedDatabase}', [ManagedDatabaseController::class, 'destroy'])->middleware('abilities:servers:write');
     Route::get('metrics', [MetricController::class, 'index'])->middleware(['feature:monitoring', 'abilities:servers:read']);
-    Route::middleware('feature:backups')->group(function () {
-        Route::get('backups', [BackupController::class, 'index'])->middleware('abilities:servers:read');
-        Route::post('servers/{server}/backup-policies', [BackupController::class, 'store'])->middleware('abilities:servers:write');
-        Route::post('backup-policies/{backupPolicy}/run', [BackupController::class, 'run'])->middleware('abilities:servers:write');
-        Route::delete('backup-policies/{backupPolicy}', [BackupController::class, 'destroy'])->middleware('abilities:servers:write');
-    });
+    Route::get('backups', [BackupController::class, 'index'])->middleware('abilities:servers:read');
+    Route::post('servers/{server}/backup-policies', [BackupController::class, 'store'])->middleware('abilities:servers:write');
+    Route::post('backup-policies/{backupPolicy}/run', [BackupController::class, 'run'])->middleware('abilities:servers:write');
+    Route::delete('backup-policies/{backupPolicy}', [BackupController::class, 'destroy'])->middleware('abilities:servers:write');
     Route::get('sites', [SiteController::class, 'index'])->middleware('abilities:servers:read');
     Route::get('sites/{site}', [SiteController::class, 'show'])->middleware('abilities:servers:read');
     Route::post('sites', [SiteController::class, 'store'])->middleware('abilities:servers:write');

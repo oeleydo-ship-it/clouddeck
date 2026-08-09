@@ -102,6 +102,7 @@
                 <h2 class="section-title">What's new</h2>
                 <p class="mt-3 text-sm muted">Recent console updates for customers. Jump to a section for the full walkthrough.</p>
                 <ul class="mt-4 list-inside list-disc space-y-2 text-sm muted">
+                    <li><a class="link-action" href="#ssl-custom">Custom SSL</a> — upload your own PEM fullchain and private key on the site SSL tab (bring-your-own certificate).</li>
                     @if($managedServersEnabled)
                         <li><a class="link-action" href="#managed-servers">Managed servers</a> — provision a VPS through {{ $branding['name'] }} without connecting your own cloud account. Pick region and size, pay monthly via Stripe when required, then deploy as usual. Quotas are separate from BYOS servers and sites.</li>
                     @endif
@@ -116,7 +117,7 @@
                     <li><a class="link-action" href="#teams">Teams</a> — invite Edit / Resend / Delete, plus Viewer, Operator, Admin, and Owner privileges.</li>
                     <li><a class="link-action" href="#workers">Cron presets</a> — one-click Laravel <code>schedule:run</code> on site and server Cron tabs.</li>
                     <li><a class="link-action" href="#sites">PHP 8.5</a> — available when creating sites; new servers install 8.5 (plus 8.4/8.3/8.2) with 8.5 as the default.</li>
-                    <li><a class="link-action" href="#backups">Backups</a> — schedule, run now, restore/download databases, provider snapshots, storage disk, and BYO limits.</li>
+                    <li><a class="link-action" href="#backups">Backups</a> — site code+database archives, database backups, and OS provider snapshots (separate plan entitlements), schedule, run now, restore/download, storage disk, and BYO limits.</li>
                     <li><a class="link-action" href="#maintenance">Server maintenance</a> — software hardening, Ubuntu package updates, and major release upgrades from Services.</li>
                     <li><a class="link-action" href="#password">Google sign-in</a> — use <strong class="heading">Continue with Google</strong> on login/register when the platform enables it.</li>
                 </ul>
@@ -306,23 +307,51 @@
             {{-- SSL --}}
             <section id="ssl" class="panel scroll-mt-8">
                 <h2 class="section-title">SSL certificates</h2>
-                <p class="mt-3 text-sm muted">From the site’s <strong class="heading">SSL</strong> tab, use Let’s Encrypt or upload your own certificate.</p>
+                <p class="mt-3 text-sm muted">Open a site → <strong class="heading">SSL</strong> tab. Choose free Let’s Encrypt, or upload a certificate you already own (custom / bring-your-own SSL). The site must be <strong class="heading">Active</strong> before either path can run.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Let’s Encrypt</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
                     <li>Point DNS A/AAAA records at the server’s public IP before requesting.</li>
-                    <li>Issue the certificate; {{ $branding['name'] }} configures Nginx for HTTPS.</li>
-                    <li>Optionally force HTTPS redirects and enable auto renew from the same tab.</li>
-                    <li>Renewals run on a schedule — keep DNS correct so Certbot can re-verify.</li>
+                    <li>On the SSL tab, under <strong class="heading">Let’s Encrypt</strong>, optionally tick <strong class="heading">Force HTTPS</strong> and <strong class="heading">Auto renew</strong>.</li>
+                    <li>Click <strong class="heading">Issue certificate</strong> (or <strong class="heading">Renew / update</strong>). {{ $branding['name'] }} queues Certbot on the server and configures Nginx.</li>
+                    <li>Renewals run on a schedule when auto renew is on — keep DNS correct so Certbot can re-verify.</li>
                 </ol>
 
-                <h3 class="mt-6 text-sm font-semibold heading">Bring your own certificate</h3>
+                <h3 id="ssl-custom" class="mt-8 scroll-mt-8 text-sm font-semibold heading">Custom SSL (bring your own certificate)</h3>
+                <p class="mt-2 text-sm muted">Use this when you have a certificate from a commercial CA, Cloudflare Origin, or another issuer — or a wildcard you manage yourself. {{ $branding['name'] }} does not contact the CA; you supply the files.</p>
+
+                <h4 class="mt-4 text-sm font-semibold heading">What to prepare</h4>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li><strong class="heading">Fullchain PEM</strong> — your leaf certificate plus any intermediate certificates in one file (often <code>fullchain.pem</code> or <code>.crt</code>).</li>
+                    <li><strong class="heading">Private key PEM</strong> — the matching key (often <code>privkey.pem</code> or <code>.key</code>). Passphrase-protected keys are not supported; decrypt the key first.</li>
+                    <li>The certificate must not be expired, and the key must match the certificate.</li>
+                    <li>For browsers to trust the site, the cert’s names (CN / SAN) should cover your site domain (and <code>www</code> if you use it).</li>
+                </ul>
+
+                <h4 class="mt-4 text-sm font-semibold heading">Upload and install</h4>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
-                    <li>Upload a PEM <strong class="heading">fullchain</strong> and matching <strong class="heading">private key</strong> (file or paste).</li>
-                    <li>{{ $branding['name'] }} validates the pair, encrypts them at rest, and installs them on the server under <code>/etc/ssl/clouddeck/{domain}/</code>.</li>
-                    <li>Nginx is pointed at those files and reloaded. Custom certificates are not auto-renewed — upload a replacement before expiry.</li>
-                    <li>Issuing Let’s Encrypt later replaces the custom certificate for that site.</li>
+                    <li>Open the site → <strong class="heading">SSL</strong> → <strong class="heading">Bring your own certificate</strong>.</li>
+                    <li>Choose PEM files, or expand <strong class="heading">Or paste PEM text</strong> and paste the fullchain and private key.</li>
+                    <li>Optionally enable <strong class="heading">Force HTTPS</strong> so HTTP visitors are redirected to HTTPS.</li>
+                    <li>Click <strong class="heading">Upload &amp; install</strong>. {{ $branding['name'] }} validates the pair, encrypts the PEMs at rest, and queues an install job on the <code>operations</code> queue.</li>
+                    <li>When status shows <strong class="heading">Active</strong> / <strong class="heading">Secure</strong>, Nginx is using your certificate. The provider label shows <strong class="heading">Custom</strong> and the expiry date from the cert.</li>
                 </ol>
+                <p class="mt-3 rounded-xl bg-slate-50 p-4 text-sm muted dark:bg-white/5">Files are written on the server under <code>/etc/ssl/clouddeck/{domain}/</code> (<code>fullchain.pem</code> and <code>privkey.pem</code>). Keep an operations queue worker running so the install job can finish.</p>
+
+                <h4 class="mt-4 text-sm font-semibold heading">Renewal and switching</h4>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>Custom certificates are <strong class="heading">not</strong> auto-renewed. Before expiry, upload a new fullchain and key the same way.</li>
+                    <li>Expiry warnings still apply when the console notifies about certificates nearing expiry — replace the custom cert when you get that alert.</li>
+                    <li>Issuing Let’s Encrypt later on the same site replaces the custom certificate.</li>
+                    <li>Uploading a new custom certificate replaces the previous one for that site.</li>
+                </ul>
+
+                <h4 class="mt-4 text-sm font-semibold heading">Troubleshooting</h4>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li><strong class="heading">Certificate / key rejected</strong> — check PEM headers, that the key matches, and that the cert is not expired.</li>
+                    <li><strong class="heading">Install stays pending or failed</strong> — confirm the site is Active, the server is Ready with working SSH, and an operations worker is running; read the failure reason on the SSL tab.</li>
+                    <li><strong class="heading">Browser still warns</strong> — the cert may not include your hostname, or you may have uploaded only the leaf without intermediates (use a full chain).</li>
+                </ul>
             </section>
 
             {{-- Databases --}}
@@ -507,7 +536,7 @@
             {{-- Backups --}}
             <section id="backups" class="panel scroll-mt-8">
                 <h2 class="section-title">Backups and restores</h2>
-                <p class="mt-3 text-sm muted">Open a ready server → <strong class="heading">Backups</strong> tab to schedule recovery points, run them on demand, and restore or download databases.</p>
+                <p class="mt-3 text-sm muted">Open a ready server → <strong class="heading">Backups</strong> tab to schedule <strong class="heading">database backups</strong> or <strong class="heading">OS backups</strong> (provider snapshots). Open any site → <strong class="heading">Backups</strong> for <strong class="heading">full site backups</strong> (code + database) that work on custom IP servers. Each type is a plan entitlement — upgrade when your plan does not include it. Superadmins set off-server storage (local or S3-compatible) under <strong class="heading">Admin → Storage</strong>.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Automated policies</h3>
                 <ol class="mt-2 list-decimal space-y-2 pl-5 text-sm muted">
@@ -531,14 +560,21 @@
                     <li>External DNS, object storage, and resources outside the VM are not restored by a snapshot.</li>
                 </ul>
 
+                <h3 class="mt-6 text-sm font-semibold heading">Site backups (code + database)</h3>
+                <ul class="mt-2 list-inside list-disc space-y-1 text-sm muted">
+                    <li>Available on Laravel and WordPress sites — packs live <code>current</code> + <code>shared</code> plus a database dump, then streams the archive to {{ $branding['name'] }} private storage.</li>
+                    <li>Works on custom IP-only servers (no provider snapshot required).</li>
+                    <li><strong class="heading">Restore</strong> requires typing the exact domain. Requires the <strong class="heading">Site backups</strong> plan feature.</li>
+                </ul>
+
                 <h3 class="mt-6 text-sm font-semibold heading">BYO / custom servers</h3>
-                <p class="mt-2 text-sm muted">Connected custom (bring-your-own by IP) servers support <strong class="heading">database export policies only</strong>. Provider snapshots require a cloud provider ID. The Backups tab explains this when snapshots are unavailable.</p>
+                <p class="mt-2 text-sm muted">Connected custom (bring-your-own by IP) servers support <strong class="heading">database backup policies</strong> and <strong class="heading">site (code + database) backups</strong>. OS / provider snapshots require a cloud provider ID. The server Backups tab explains when snapshots are unavailable; site backups live on each site’s Backups tab.</p>
 
                 <h3 class="mt-6 text-sm font-semibold heading">Failure alerts</h3>
-                <p class="mt-2 text-sm muted">Failed database exports, snapshot create/refresh failures, and restore failures send a <strong class="heading">Backup failed</strong> email. Subscribe under <a class="link-action" href="{{ route('notifications.index') }}">Notifications → Email recipients</a>.</p>
+                <p class="mt-2 text-sm muted">Failed database exports, snapshot create/refresh failures, site backup/restore failures, and restore failures send a <strong class="heading">Backup failed</strong> email. Subscribe under <a class="link-action" href="{{ route('notifications.index') }}">Notifications → Email recipients</a>.</p>
 
-                <h3 class="mt-6 text-sm font-semibold heading">WordPress backups</h3>
-                <p class="mt-2 text-sm muted">WordPress sites have a dedicated Backups tab for application-level recovery points before plugin or core updates. Those archives stay on the VPS.</p>
+                <h3 class="mt-6 text-sm font-semibold heading">WordPress on-server backups</h3>
+                <p class="mt-2 text-sm muted">WordPress sites keep an additional <strong class="heading">On-server WordPress backup</strong> section for application-level recovery points before plugin or core updates. Those archives stay on the VPS and are separate from offloaded full site backups.</p>
             </section>
 
             @if($stagingSitesEnabled)

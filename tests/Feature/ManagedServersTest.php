@@ -118,7 +118,10 @@ class ManagedServersTest extends TestCase
         $this->enableManagedPlatform();
         $user = $this->entitledUser(['managed_servers' => false]);
 
-        $this->actingAs($user)->get('/servers/managed')->assertForbidden();
+        $this->actingAs($user)->get('/servers/managed')
+            ->assertOk()
+            ->assertSee('isn’t on your plan', false)
+            ->assertSee(route('billing.index'), false);
     }
 
     public function test_entitled_customer_can_open_managed_wizard_when_ready(): void

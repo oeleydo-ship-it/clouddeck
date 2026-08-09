@@ -429,6 +429,21 @@ class AdminSettingController extends Controller
         return back()->with('status', 'Stripe credentials saved.');
     }
 
+    public function osBackupPricing(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'os_backup_gb_price' => ['required', 'numeric', 'min:0.5', 'max:1000'],
+        ]);
+
+        $cents = (int) round(((float) $data['os_backup_gb_price']) * 100);
+        $settings->put('os_backup_gb_price_cents', (string) max(50, $cents), 'string', true);
+        $audit->record($request, 'settings.os-backup-pricing-updated', null, [], [
+            'os_backup_gb_price_cents' => max(50, $cents),
+        ]);
+
+        return back()->with('status', 'OS backup storage pricing saved.');
+    }
+
     public function insertCode(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
     {
         $data = $request->validate([
@@ -452,5 +467,109 @@ class AdminSettingController extends Controller
         ]);
 
         return back()->with('status', 'Insert code saved.');
+    }
+
+    public function objectStorage(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $data = $request->validate([
+            'object_storage_provider' => ['required', Rule::in(['digitalocean', 'hetzner', 'wasabi', 'custom'])],
+            'object_storage_key' => ['nullable', 'string', 'max:255'],
+            'object_storage_secret' => ['nullable', 'string', 'max:255'],
+            'object_storage_region' => ['nullable', 'string', 'max:64'],
+            'object_storage_bucket' => ['nullable', 'string', 'max:255'],
+            'object_storage_endpoint' => ['nullable', 'string', 'max:255'],
+            'object_storage_url' => ['nullable', 'string', 'max:255'],
+            'object_storage_path_style' => ['sometimes', 'boolean'],
+            'database_backup_disk' => ['required', Rule::in(['local', 's3'])],
+        ]);
+
+        $settings->put('object_storage_provider', $data['object_storage_provider'], 'string', true);
+
+        if (filled($data['object_storage_key'] ?? null)) {
+            $settings->put('object_storage_key', (string) $data['object_storage_key'], 'string', false);
+        }
+        if (filled($data['object_storage_secret'] ?? null)) {
+            $settings->put('object_storage_secret', (string) $data['object_storage_secret'], 'string', false);
+        }
+
+        $settings->put('object_storage_region', (string) ($data['object_storage_region'] ?? ''), 'string', true);
+        $settings->put('object_storage_bucket', (string) ($data['object_storage_bucket'] ?? ''), 'string', true);
+        $settings->put('object_storage_endpoint', (string) ($data['object_storage_endpoint'] ?? ''), 'string', true);
+        $settings->put('object_storage_url', (string) ($data['object_storage_url'] ?? ''), 'string', true);
+        $settings->put('object_storage_path_style', $request->boolean('object_storage_path_style') ? '1' : '0', 'boolean', true);
+        $settings->put('database_backup_disk', $data['database_backup_disk'], 'string', true);
+
+        if ($data['database_backup_disk'] === 's3' && ! $settings->objectStorageConfigured()) {
+            return back()->withInput()->withErrors([
+                'database_backup_disk' => 'Configure access key, secret, region, and bucket before selecting object storage as the default disk.',
+            ]);
+        }
+
+        $this->applyObjectStorageConfig($settings);
+
+        $audit->record($request, 'settings.object_storage_updated', null, [], [
+            'provider' => $data['object_storage_provider'],
+            'bucket' => $data['object_storage_bucket'] ?? null,
+            'region' => $data['object_storage_region'] ?? null,
+            'endpoint' => $data['object_storage_endpoint'] ?? null,
+            'path_style' => $request->boolean('object_storage_path_style'),
+            'database_backup_disk' => $data['database_backup_disk'],
+            'key_updated' => filled($data['object_storage_key'] ?? null),
+            'secret_updated' => filled($data['object_storage_secret'] ?? null),
+        ]);
+
+        return back()->with('status', 'Object storage settings saved.');
+    }
+
+    public function testObjectStorage(Request $request, SystemSettings $settings): RedirectResponse
+    {
+        $this->applyObjectStorageConfig($settings);
+
+        if (! $settings->objectStorageConfigured()) {
+            return back()->with('error', 'Save access key, secret, region, and bucket before testing.');
+        }
+
+        $path = 'uplary-storage-tests/'.now()->format('YmdHis').'-'.bin2hex(random_bytes(4)).'.txt';
+
+        try {
+            Storage::disk('s3')->put($path, 'uplary object storage probe');
+            $exists = Storage::disk('s3')->exists($path);
+            Storage::disk('s3')->delete($path);
+
+            if (! $exists) {
+                return back()->with('error', 'Upload succeeded but the object could not be read back. Check bucket permissions.');
+            }
+        } catch (Throwable $e) {
+            return back()->with('error', 'Object storage test failed: '.$e->getMessage());
+        }
+
+        return back()->with('status', 'Object storage connection succeeded.');
+    }
+
+    private function applyObjectStorageConfig(SystemSettings $settings): void
+    {
+        $storage = $settings->objectStorage();
+
+        if (filled($storage['key'])) {
+            config(['filesystems.disks.s3.key' => $storage['key']]);
+        }
+        if (filled($storage['secret'])) {
+            config(['filesystems.disks.s3.secret' => $storage['secret']]);
+        }
+        if (filled($storage['region'])) {
+            config(['filesystems.disks.s3.region' => $storage['region']]);
+        }
+        if (filled($storage['bucket'])) {
+            config(['filesystems.disks.s3.bucket' => $storage['bucket']]);
+        }
+        if (filled($storage['endpoint'])) {
+            config(['filesystems.disks.s3.endpoint' => $storage['endpoint']]);
+        }
+        if (filled($storage['url'])) {
+            config(['filesystems.disks.s3.url' => $storage['url']]);
+        }
+
+        config(['filesystems.disks.s3.use_path_style_endpoint' => $storage['path_style']]);
+        config(['remote_management.database_backup_disk' => $settings->databaseBackupDisk()]);
     }
 }

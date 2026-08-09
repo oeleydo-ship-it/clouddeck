@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Billing\ConfirmOsBackupAddon;
 use App\Billing\Stripe\StripeClient;
 use App\Models\Plan;
 use App\Services\AuditLogger;
 use App\Services\EntitlementService;
 use App\Services\QuotaManager;
+use App\Services\SystemSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,26 +18,32 @@ use RuntimeException;
 
 class BillingController extends Controller
 {
-    public function index(Request $request, EntitlementService $entitlements, QuotaManager $quotas): View
+    public function index(Request $request, EntitlementService $entitlements, QuotaManager $quotas, SystemSettings $settings): View
     {
-        $managedServersEnabled = app(\App\Services\SystemSettings::class)->managedServersEnabled();
+        $managedServersEnabled = $settings->managedServersEnabled();
         $resources = $managedServersEnabled
-            ? ['servers', 'managed_servers', 'sites', 'managed_sites', 'databases', 'api_tokens', 'teams', 'team_members']
-            : ['servers', 'sites', 'databases', 'api_tokens', 'teams', 'team_members'];
+            ? ['servers', 'managed_servers', 'sites', 'managed_sites', 'databases', 'api_tokens', 'teams', 'team_members', 'os_backup_gb']
+            : ['servers', 'sites', 'databases', 'api_tokens', 'teams', 'team_members', 'os_backup_gb'];
         $plan = $entitlements->plan($request->user());
+        $user = $request->user();
+        $addonActive = in_array($user->os_backup_stripe_subscription_status, ['active', 'trialing'], true);
 
         return view('billing.index', [
             'plan' => $plan,
-            'subscription' => $entitlements->subscription($request->user()),
+            'subscription' => $entitlements->subscription($user),
             'plans' => Plan::where('active', true)->where('public', true)->orderBy('sort_order')->get(),
             'usage' => collect($resources)->mapWithKeys(fn ($resource) => [$resource => [
-                'used' => $quotas->usage($request->user(), $resource),
-                'limit' => $entitlements->planLimit($request->user(), $resource),
+                'used' => $quotas->usage($user, $resource),
+                'limit' => $entitlements->limit($user, $resource),
+                'plan_limit' => $entitlements->planLimit($user, $resource),
             ]])->all(),
-            'requests' => $request->user()->billingRequests()->with('plan')->latest()->limit(10)->get(),
-            'invoices' => $request->user()->billingInvoices()->latest()->limit(20)->get(),
+            'requests' => $user->billingRequests()->with('plan')->latest()->limit(10)->get(),
+            'invoices' => $user->billingInvoices()->latest()->limit(20)->get(),
             'stripeEnabled' => (bool) config('services.stripe.secret'),
             'managedServersEnabled' => $managedServersEnabled,
+            'osBackupGbPriceCents' => $settings->osBackupGbPriceCents(),
+            'osBackupAddonGb' => $addonActive ? (int) $user->os_backup_addon_gb : 0,
+            'osBackupAddonActive' => $addonActive,
         ]);
     }
 
@@ -59,6 +67,51 @@ class BillingController extends Controller
         }
 
         return redirect()->away($session['url']);
+    }
+
+    public function checkoutOsBackup(Request $request, StripeClient $stripe, SystemSettings $settings, AuditLogger $audit): RedirectResponse
+    {
+        $data = $request->validate([
+            'gigabytes' => ['required', 'integer', 'min:1', 'max:10000'],
+        ]);
+
+        if (! config('services.stripe.secret')) {
+            throw ValidationException::withMessages(['billing' => 'Stripe billing is not configured.']);
+        }
+
+        $user = $request->user();
+        if (in_array($user->os_backup_stripe_subscription_status, ['active', 'trialing'], true) && filled($user->os_backup_stripe_subscription_id)) {
+            throw ValidationException::withMessages([
+                'billing' => 'You already have an OS backup storage add-on. Open the Stripe portal to change quantity or cancel, then purchase again if needed.',
+            ]);
+        }
+
+        try {
+            $session = $stripe->checkoutOsBackupAddon($user, (int) $data['gigabytes'], $settings->osBackupGbPriceCents());
+        } catch (RuntimeException $e) {
+            throw ValidationException::withMessages(['billing' => $e->getMessage()]);
+        }
+
+        $audit->record($request, 'billing.os-backup-addon-checkout', $user, [], [
+            'gigabytes' => (int) $data['gigabytes'],
+            'unit_cents' => $settings->osBackupGbPriceCents(),
+        ]);
+
+        return redirect()->away($session['url']);
+    }
+
+    public function osBackupSuccess(Request $request, StripeClient $stripe, ConfirmOsBackupAddon $confirm): RedirectResponse
+    {
+        $sessionId = (string) $request->query('session_id', '');
+        if ($sessionId !== '') {
+            try {
+                $confirm->fromCheckoutSession($stripe->checkoutSession($sessionId));
+            } catch (RuntimeException) {
+                // Webhook may still confirm; show a soft success either way.
+            }
+        }
+
+        return redirect()->route('billing.index')->with('status', 'OS backup storage checkout completed. Capacity updates as soon as Stripe confirms the subscription.');
     }
 
     public function portal(Request $request, StripeClient $stripe): RedirectResponse

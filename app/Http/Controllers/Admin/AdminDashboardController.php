@@ -71,9 +71,23 @@ class AdminDashboardController extends Controller
         ]);
     }
 
+    public function storage(): View
+    {
+        return view('admin.storage', [
+            'settings' => SystemSetting::all()->keyBy('key'),
+            'objectStorage' => app(SystemSettings::class)->objectStorage(),
+            'databaseBackupDisk' => app(SystemSettings::class)->databaseBackupDisk(),
+        ]);
+    }
+
     public function settings(): View
     {
         return view('admin.settings', ['settings' => SystemSetting::all()->keyBy('key')]);
+    }
+
+    public function mail(): View
+    {
+        return view('admin.mail', ['settings' => SystemSetting::all()->keyBy('key')]);
     }
 
     public function managedServers(CloudProviderManager $providers, SystemSettings $systemSettings): View

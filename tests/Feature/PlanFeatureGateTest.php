@@ -36,10 +36,13 @@ class PlanFeatureGateTest extends TestCase
         $this->assertFalse(app(FeatureManager::class)->enabled('firewall', $user));
         $this->assertTrue(app(FeatureManager::class)->enabled('notifications', $user));
 
-        $this->actingAs($user)->get('/firewall')->assertForbidden();
+        $this->actingAs($user)->get('/firewall')
+            ->assertOk()
+            ->assertSee('isn’t on your plan', false)
+            ->assertSee(route('billing.index'), false);
         $this->actingAs($user)->get('/servers')->assertOk();
         $dashboard = $this->actingAs($user)->get('/dashboard')->assertOk();
-        $dashboard->assertDontSee(route('firewall.index'), false);
+        $dashboard->assertSee(route('firewall.index'), false);
         $dashboard->assertSee(route('servers.index'), false);
     }
 
@@ -73,8 +76,12 @@ class PlanFeatureGateTest extends TestCase
         $free = Plan::where('slug', 'free')->firstOrFail();
         $user->subscriptions()->create(['plan_id' => $free->id, 'status' => 'active', 'provider' => 'system']);
 
-        $this->actingAs($user)->get('/firewall')->assertForbidden();
-        $this->actingAs($user)->get('/security')->assertForbidden();
+        $this->actingAs($user)->get('/firewall')
+            ->assertOk()
+            ->assertSee('isn’t on your plan', false);
+        $this->actingAs($user)->get('/security')
+            ->assertOk()
+            ->assertSee('isn’t on your plan', false);
         $this->actingAs($user)->get('/servers')->assertOk();
         $this->actingAs($user)->get('/sites')->assertOk();
     }

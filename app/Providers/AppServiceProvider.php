@@ -60,6 +60,7 @@ class AppServiceProvider extends ServiceProvider
         $this->applyStripeCredentialsFromSettings();
         $this->applyMailCredentialsFromSettings();
         $this->applyGoogleCredentialsFromSettings();
+        $this->applyObjectStorageFromSettings();
 
         // Resolved per render rather than shared once, so a logo or name saved on the
         // settings page shows up on the next request instead of after a deploy.
@@ -242,6 +243,46 @@ class AppServiceProvider extends ServiceProvider
             ]);
         } catch (Throwable $e) {
             Log::warning('Could not load Google OAuth credentials from settings: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * S3-compatible object storage from Admin → Storage. Overrides AWS_* / DATABASE_BACKUP_DISK
+     * when settings are saved so Spaces, Hetzner, and Wasabi work without redeploying .env.
+     */
+    private function applyObjectStorageFromSettings(): void
+    {
+        try {
+            $settings = app(SystemSettings::class);
+            $storage = $settings->objectStorage();
+
+            if (filled($storage['key'])) {
+                config(['filesystems.disks.s3.key' => $storage['key']]);
+            }
+            if (filled($storage['secret'])) {
+                config(['filesystems.disks.s3.secret' => $storage['secret']]);
+            }
+            if (filled($storage['region'])) {
+                config(['filesystems.disks.s3.region' => $storage['region']]);
+            }
+            if (filled($storage['bucket'])) {
+                config(['filesystems.disks.s3.bucket' => $storage['bucket']]);
+            }
+            if (filled($storage['endpoint'])) {
+                config(['filesystems.disks.s3.endpoint' => $storage['endpoint']]);
+            }
+            if (filled($storage['url'])) {
+                config(['filesystems.disks.s3.url' => $storage['url']]);
+            }
+
+            config(['filesystems.disks.s3.use_path_style_endpoint' => $storage['path_style']]);
+
+            $backupDisk = $settings->get('database_backup_disk');
+            if (filled($backupDisk) && in_array($backupDisk, ['local', 's3'], true)) {
+                config(['remote_management.database_backup_disk' => $backupDisk]);
+            }
+        } catch (Throwable $e) {
+            Log::warning('Could not load object storage credentials from settings: '.$e->getMessage());
         }
     }
 }

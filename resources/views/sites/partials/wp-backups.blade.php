@@ -1,14 +1,15 @@
+@php $localWpBackups = $site->backups->where('kind', 'wordpress_local')->sortByDesc('created_at'); @endphp
 <section class="panel">
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-            <h2 class="font-semibold heading">Backups</h2>
-            <p class="mt-1 text-sm muted">Captures the database and <code>wp-content</code> — the two things a deployment cannot bring back, since core files come from wordpress.org. The ten most recent are kept on the server.</p>
+            <h2 class="font-semibold heading">On-server WordPress backup</h2>
+            <p class="mt-1 text-sm muted">Captures the database and <code>wp-content</code> on this VPS — the two things a deployment cannot bring back, since core files come from wordpress.org. The ten most recent are kept on the server (not offloaded to {{ $branding['name'] }} storage).</p>
         </div>
         <form method="POST" action="{{ route('wordpress.backup',$site) }}">@csrf<button class="button-primary shrink-0">Back up now</button></form>
     </div>
 
     <div class="mt-5 divide-y divide-slate-100 dark:divide-white/5">
-        @forelse($site->backups as $backup)
+        @forelse($localWpBackups as $backup)
             <div class="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div class="min-w-0">
                     <p class="font-mono text-sm heading">{{ $backup->label }}</p>

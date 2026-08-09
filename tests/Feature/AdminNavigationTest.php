@@ -24,6 +24,8 @@ class AdminNavigationTest extends TestCase
             ['/admin/feature-flags', 'Feature flags'],
             ['/admin/billing-review', 'Billing review'],
             ['/admin/payments', 'Payments'],
+            ['/admin/storage', 'Storage'],
+            ['/admin/mail', 'SMTP'],
             ['/admin/pages', 'Pages'],
             ['/admin/seo', 'SEO'],
             ['/admin/analytics', 'Analytics'],
@@ -69,6 +71,8 @@ class AdminNavigationTest extends TestCase
             ->assertSee(route('admin.insert-code'), false)
             ->assertSee(route('admin.ai'), false)
             ->assertSee(route('admin.google-auth'), false)
+            ->assertSee(route('admin.mail'), false)
+            ->assertSee(route('admin.storage'), false)
             ->assertSee(route('admin.audit'), false);
     }
 

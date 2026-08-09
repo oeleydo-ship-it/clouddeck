@@ -19,9 +19,9 @@ final class SshClient
         return $result->output();
     }
 
-    public function runStreaming(Server $server, string $command, callable $output): ProcessResult
+    public function runStreaming(Server $server, string $command, callable $output, ?int $timeoutSeconds = null): ProcessResult
     {
-        return $this->execute($server, $command, $output);
+        return $this->execute($server, $command, $output, $timeoutSeconds);
     }
 
     public function runScript(Server $server, string $path, array $env = [], ?int $timeoutSeconds = null): string
@@ -37,6 +37,32 @@ final class SshClient
     public function runScriptStreaming(Server $server, string $path, array $env, callable $output, ?int $timeoutSeconds = null): ProcessResult
     {
         return $this->executeScript($server, $this->script($path, $env), $output, $timeoutSeconds);
+    }
+
+    /**
+     * Stream local contents to a remote path over SSH (binary-safe; used for site restore archives).
+     *
+     * @param  resource|string  $contents
+     */
+    public function putContents(Server $server, string $remotePath, mixed $contents, ?int $timeoutSeconds = null): void
+    {
+        if (str_contains($remotePath, "\0") || ! str_starts_with($remotePath, '/tmp/')) {
+            throw new RuntimeException('Remote path must be under /tmp.');
+        }
+
+        $key = $this->keyFile($server);
+        try {
+            $result = Process::timeout($timeoutSeconds ?? 1800)
+                ->input($contents)
+                ->run([...$this->sshCommand($server, $key), 'bash', '-c', 'cat > '.escapeshellarg($remotePath)]);
+            if ($result->failed()) {
+                throw new RuntimeException($result->errorOutput() ?: 'Failed to upload file over SSH.');
+            }
+        } finally {
+            if (is_file($key)) {
+                unlink($key);
+            }
+        }
     }
 
     private function execute(Server $server, string $command, ?callable $output = null, ?int $timeoutSeconds = null): ProcessResult

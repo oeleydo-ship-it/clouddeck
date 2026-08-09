@@ -43,4 +43,19 @@ class SiteBackup extends Model
 
         return round($size, $size < 10 && $unit > 0 ? 1 : 0).' '.$units[$unit];
     }
+
+    public function isFullApp(): bool
+    {
+        return ($this->kind ?? 'wordpress_local') === 'full_app';
+    }
+
+    public function isOffloaded(): bool
+    {
+        return $this->isFullApp() && filled($this->disk_path);
+    }
+
+    public function isSuccessful(): bool
+    {
+        return in_array($this->status, ['ready', 'completed'], true);
+    }
 }

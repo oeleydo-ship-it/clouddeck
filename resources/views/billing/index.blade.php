@@ -15,12 +15,24 @@
     @error('billing')
         <div class="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200">{{ $message }}</div>
     @enderror
-    <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">@foreach($usage as $resource=>$value)<div class="panel p-5"><div class="flex justify-between text-sm"><span class="capitalize text-slate-500 dark:text-slate-400">{{ str_replace('_',' ',$resource) }}</span><span>{{ $value['used'] }} / {{ $value['limit'] < 0 ? 'Unlimited' : $value['limit'] }}</span></div>@if($value['limit']>0)<div class="mt-3 h-2 rounded bg-slate-100 dark:bg-white/10"><div class="h-full rounded bg-cyan-400" style="width:{{ min(100,$value['used']*100/$value['limit']) }}%"></div></div>@endif</div>@endforeach</div>
+            <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @foreach($usage as $resource=>$value)
+                    <div class="panel p-5">
+                        <div class="flex justify-between text-sm">
+                            <span class="capitalize text-slate-500 dark:text-slate-400">{{ str_replace('_',' ',$resource) }}</span>
+                            <span>{{ $value['used'] }} / {{ $value['limit'] < 0 ? 'Unlimited' : $value['limit'] }}{{ $resource === 'os_backup_gb' ? ' GB' : '' }}</span>
+                        </div>
+                        @if($value['limit']>0)
+                            <div class="mt-3 h-2 rounded bg-slate-100 dark:bg-white/10"><div class="h-full rounded bg-cyan-400" style="width:{{ min(100,$value['used']*100/$value['limit']) }}%"></div></div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
     @php
         $managedServersEnabled = $managedServersEnabled ?? false;
         $limitLabels = $managedServersEnabled
-            ? ['servers' => 'BYOS servers', 'managed_servers' => 'Managed servers', 'sites' => 'BYOS sites', 'managed_sites' => 'Managed sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members']
-            : ['servers' => 'Servers', 'sites' => 'Sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members'];
+            ? ['servers' => 'BYOS servers', 'managed_servers' => 'Managed servers', 'sites' => 'BYOS sites', 'managed_sites' => 'Managed sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members', 'os_backup_gb' => 'OS backup storage (GB)']
+            : ['servers' => 'Servers', 'sites' => 'Sites', 'databases' => 'Databases', 'api_tokens' => 'API tokens', 'teams' => 'Teams', 'team_members' => 'Team members', 'os_backup_gb' => 'OS backup storage (GB)'];
         $serverNotes = [
             'servers' => 'Provision on your own cloud account. No infra cost from us.',
             'managed_servers' => 'We create and host the VPS for you — no cloud account needed.',
@@ -129,6 +141,44 @@
             </div>
         @endforelse
     </div>
+
+    <section class="panel mt-8">
+        <h2 class="font-semibold heading">OS backup storage</h2>
+        <p class="mt-1 text-sm muted">
+            Provider snapshot capacity is limited by your plan
+            (
+            @if(($usage['os_backup_gb']['plan_limit'] ?? 0) < 0)
+                unlimited
+            @else
+                {{ $usage['os_backup_gb']['plan_limit'] ?? 0 }} GB included
+            @endif
+            )
+            @if(($osBackupAddonGb ?? 0) > 0)
+                plus <strong class="heading">{{ $osBackupAddonGb }} GB</strong> add-on
+            @endif.
+            Using <strong class="heading">{{ $usage['os_backup_gb']['used'] ?? 0 }}</strong>
+            of
+            <strong class="heading">{{ ($usage['os_backup_gb']['limit'] ?? 0) < 0 ? 'Unlimited' : ($usage['os_backup_gb']['limit'] ?? 0).' GB' }}</strong>.
+        </p>
+        @if($stripeEnabled ?? false)
+            @if($osBackupAddonActive ?? false)
+                <p class="mt-4 text-sm muted">Manage or cancel your GB add-on in the Stripe customer portal.</p>
+                <form method="POST" action="{{ route('billing.portal') }}" class="mt-3">@csrf
+                    <button class="button-secondary">Open billing portal</button>
+                </form>
+            @else
+                <form method="POST" action="{{ route('billing.os-backup') }}" class="mt-5 flex flex-wrap items-end gap-3">@csrf
+                    <label class="text-sm heading">Extra GB / month
+                        <input class="field mt-1 !w-32" type="number" name="gigabytes" min="1" max="10000" value="50" required>
+                    </label>
+                    <button class="button-primary">Buy with Stripe</button>
+                    <p class="basis-full text-xs muted">{{ number_format(($osBackupGbPriceCents ?? 50) / 100, 2) }} USD per GB / month. Stacks on top of plan-included capacity.</p>
+                </form>
+            @endif
+        @else
+            <p class="mt-4 text-sm muted">Stripe is not configured — ask an administrator to enable checkout for OS backup add-ons.</p>
+        @endif
+    </section>
 
     @if($requests->isNotEmpty())
         <section class="panel mt-8">

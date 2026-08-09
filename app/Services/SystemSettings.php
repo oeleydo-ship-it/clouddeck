@@ -120,6 +120,14 @@ final class SystemSettings
     }
 
     /**
+     * Monthly price per GB of OS backup add-on capacity, in cents (default $0.50).
+     */
+    public function osBackupGbPriceCents(): int
+    {
+        return max(50, (int) $this->get('os_backup_gb_price_cents', '50'));
+    }
+
+    /**
      * Default percentage markup applied over the provider's raw infra cost when a size has
      * no explicit override in managedSizePrices(). Lets an admin price every configuration
      * (1 GB, 4 GB, 8 GB, …) above cost without pricing each one by hand.
@@ -583,6 +591,63 @@ PROMPT;
     public function stripeWebhookSecret(): ?string
     {
         return $this->get('stripe_webhook_secret');
+    }
+
+    /**
+     * S3-compatible object storage for off-server backups (Spaces, Hetzner, Wasabi, etc.).
+     * Settings override AWS_* from .env when set.
+     *
+     * @return array{
+     *     provider: string,
+     *     key: ?string,
+     *     secret: ?string,
+     *     region: ?string,
+     *     bucket: ?string,
+     *     endpoint: ?string,
+     *     url: ?string,
+     *     path_style: bool,
+     *     configured: bool
+     * }
+     */
+    public function objectStorage(): array
+    {
+        $key = $this->get('object_storage_key') ?: config('filesystems.disks.s3.key');
+        $secret = $this->get('object_storage_secret') ?: config('filesystems.disks.s3.secret');
+        $bucket = $this->get('object_storage_bucket') ?: config('filesystems.disks.s3.bucket');
+        $region = $this->get('object_storage_region') ?: config('filesystems.disks.s3.region');
+        $endpoint = $this->get('object_storage_endpoint') ?: config('filesystems.disks.s3.endpoint');
+        $url = $this->get('object_storage_url') ?: config('filesystems.disks.s3.url');
+        $pathStyleStored = $this->get('object_storage_path_style');
+        $pathStyle = $pathStyleStored !== null
+            ? in_array($pathStyleStored, ['1', 'true'], true)
+            : (bool) config('filesystems.disks.s3.use_path_style_endpoint', false);
+
+        return [
+            'provider' => $this->get('object_storage_provider', 'custom') ?: 'custom',
+            'key' => $key,
+            'secret' => $secret,
+            'region' => $region,
+            'bucket' => $bucket,
+            'endpoint' => $endpoint,
+            'url' => $url,
+            'path_style' => $pathStyle,
+            'configured' => filled($key) && filled($secret) && filled($bucket) && filled($region),
+        ];
+    }
+
+    public function objectStorageConfigured(): bool
+    {
+        return $this->objectStorage()['configured'];
+    }
+
+    /**
+     * Default private disk for new database/site backups. Admin setting overrides env.
+     */
+    public function databaseBackupDisk(): string
+    {
+        $disk = $this->get('database_backup_disk') ?: config('remote_management.database_backup_disk', 'local');
+
+        return in_array($disk, ['local', 's3'], true) ? $disk : 'local';
     }
 
     public function googleClientId(): ?string

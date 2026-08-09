@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ManagedDatabase;
 use App\Models\Server;
+use App\Models\ServerSnapshot;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
@@ -20,9 +21,13 @@ final class QuotaManager
                 'servers' => 'BYOS servers',
                 'sites' => 'BYOS sites',
                 'managed_sites' => 'managed sites',
+                'os_backup_gb' => 'OS backup storage (GB)',
                 default => $resource,
             };
-            throw ValidationException::withMessages(['quota' => 'Your plan limit for '.$label.' has been reached. Upgrade or remove an existing resource.']);
+            $hint = $resource === 'os_backup_gb'
+                ? ' Buy more GB on Billing, upgrade your plan, or delete older snapshots.'
+                : ' Upgrade or remove an existing resource.';
+            throw ValidationException::withMessages(['quota' => 'Your plan limit for '.$label.' has been reached.'.$hint]);
         }
     }
 
@@ -56,6 +61,19 @@ final class QuotaManager
             'api_tokens' => $user->tokens()->count(),
             'teams' => $user->ownedTeams()->count(),
             'team_members' => $user->ownedTeams()->withCount('memberships')->get()->sum('memberships_count'),
+            // Ready snapshots use recorded GB; in-flight ones reserve at least 1 GB until sized.
+            'os_backup_gb' => (int) ServerSnapshot::query()
+                ->where('user_id', $user->id)
+                ->whereIn('status', ['ready', 'creating', 'processing'])
+                ->get(['size_gigabytes', 'status'])
+                ->sum(function (ServerSnapshot $snapshot): int {
+                    $size = (float) ($snapshot->size_gigabytes ?? 0);
+                    if ($size > 0) {
+                        return (int) ceil($size);
+                    }
+
+                    return in_array($snapshot->status, ['creating', 'processing'], true) ? 1 : 0;
+                }),
             default => 0,
         };
     }

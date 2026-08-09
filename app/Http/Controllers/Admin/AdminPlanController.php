@@ -87,6 +87,7 @@ class AdminPlanController extends Controller
             'api_tokens' => ['required', 'integer', 'min:-1'],
             'teams' => ['required', 'integer', 'min:-1'],
             'team_members' => ['required', 'integer', 'min:-1'],
+            'os_backup_gb' => ['required', 'integer', 'min:-1'],
             'active' => ['sometimes', 'boolean'],
             'public' => ['sometimes', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'between:0,1000'],
@@ -97,13 +98,30 @@ class AdminPlanController extends Controller
             ->mapWithKeys(fn (string $key) => [$key => $request->boolean('feature_'.$key)])
             ->all();
 
+        $limits = collect(['servers', 'managed_servers', 'sites', 'managed_sites', 'databases', 'api_tokens', 'teams', 'team_members', 'os_backup_gb'])
+            ->mapWithKeys(fn ($key) => [$key => (int) $data[$key]])
+            ->all();
+
+        // Non-zero hosting quotas without the matching access gate show as "Access off"
+        // while Billing still advertises a count. Align access with those quotas so Free
+        // (and every plan) can actually use the capacity you set.
+        if ($limits['servers'] !== 0) {
+            $features['providers'] = true;
+        }
+        if ($limits['managed_servers'] !== 0 || $limits['managed_sites'] !== 0) {
+            $features['managed_servers'] = true;
+        }
+        if ($limits['os_backup_gb'] !== 0) {
+            $features['os_backups'] = true;
+        }
+
         return [
             'name' => $data['name'],
             'slug' => $data['slug'] ?? Str::slug($data['name']),
             'monthly_price' => (int) round($data['monthly_price'] * 100),
             'yearly_price' => (int) round($data['yearly_price'] * 100),
             'currency' => strtoupper($data['currency']),
-            'limits' => collect(['servers', 'managed_servers', 'sites', 'managed_sites', 'databases', 'api_tokens', 'teams', 'team_members'])->mapWithKeys(fn ($key) => [$key => (int) $data[$key]])->all(),
+            'limits' => $limits,
             'features' => $features,
             'active' => $request->boolean('active'),
             'public' => $request->boolean('public'),

@@ -16,6 +16,8 @@ final class PlatformDefaults
      */
     public function ensure(): void
     {
+        $this->migrateLegacyBackupFeatures();
+
         $labels = FeatureManager::catalog();
         $defaults = config('plan-features.defaults', []);
 
@@ -24,7 +26,7 @@ final class PlatformDefaults
             'monthly_price' => 0,
             'yearly_price' => 0,
             'currency' => 'USD',
-            'limits' => ['servers' => 1, 'managed_servers' => 0, 'sites' => 1, 'managed_sites' => 5, 'databases' => 3, 'api_tokens' => 2, 'teams' => 1, 'team_members' => 3],
+            'limits' => ['servers' => 1, 'managed_servers' => 0, 'sites' => 1, 'managed_sites' => 5, 'databases' => 3, 'api_tokens' => 2, 'teams' => 1, 'team_members' => 3, 'os_backup_gb' => 0],
             'features' => $defaults['free'] ?? [],
             'active' => true,
             'public' => true,
@@ -35,7 +37,7 @@ final class PlatformDefaults
             'monthly_price' => 2900,
             'yearly_price' => 29000,
             'currency' => 'USD',
-            'limits' => ['servers' => 10, 'managed_servers' => 3, 'sites' => 50, 'managed_sites' => 30, 'databases' => 50, 'api_tokens' => 10, 'teams' => 3, 'team_members' => 20],
+            'limits' => ['servers' => 10, 'managed_servers' => 3, 'sites' => 50, 'managed_sites' => 30, 'databases' => 50, 'api_tokens' => 10, 'teams' => 3, 'team_members' => 20, 'os_backup_gb' => 50],
             'features' => $defaults['pro'] ?? [],
             'active' => true,
             'public' => true,
@@ -46,7 +48,7 @@ final class PlatformDefaults
             'monthly_price' => 9900,
             'yearly_price' => 99000,
             'currency' => 'USD',
-            'limits' => ['servers' => -1, 'managed_servers' => -1, 'sites' => -1, 'managed_sites' => -1, 'databases' => -1, 'api_tokens' => -1, 'teams' => -1, 'team_members' => -1],
+            'limits' => ['servers' => -1, 'managed_servers' => -1, 'sites' => -1, 'managed_sites' => -1, 'databases' => -1, 'api_tokens' => -1, 'teams' => -1, 'team_members' => -1, 'os_backup_gb' => -1],
             'features' => $defaults['business'] ?? [],
             'active' => true,
             'public' => true,
@@ -59,6 +61,32 @@ final class PlatformDefaults
                 ['name' => $name, 'enabled' => true, 'rollout_percentage' => 100],
             );
         }
+
+        FeatureFlag::where('key', 'backups')->delete();
+    }
+
+    /**
+     * Split the former single `backups` boolean into database_backups + os_backups on
+     * every plan that still carries the legacy key (custom plans not overwritten below).
+     */
+    private function migrateLegacyBackupFeatures(): void
+    {
+        Plan::query()->each(function (Plan $plan): void {
+            $features = $plan->features ?? [];
+            if (! array_key_exists('backups', $features)) {
+                return;
+            }
+
+            $legacy = (bool) $features['backups'];
+            if (! array_key_exists('database_backups', $features)) {
+                $features['database_backups'] = $legacy;
+            }
+            if (! array_key_exists('os_backups', $features)) {
+                $features['os_backups'] = $legacy;
+            }
+            unset($features['backups']);
+            $plan->update(['features' => $features]);
+        });
     }
 
     public function freePlan(): Plan

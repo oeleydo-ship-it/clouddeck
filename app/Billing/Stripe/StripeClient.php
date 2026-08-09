@@ -106,6 +106,55 @@ final class StripeClient
         return $this->client()->withHeader('Idempotency-Key', (string) Str::uuid())->post('/checkout/sessions', $payload)->throw()->json();
     }
 
+    /**
+     * Recurring Checkout for extra OS backup storage (GB). Quantity = GB purchased.
+     * Plan-included capacity stays on the plan; this add-on stacks on top.
+     */
+    public function checkoutOsBackupAddon(User $user, int $gigabytes, int $unitAmountCents): array
+    {
+        if ($gigabytes < 1 || $gigabytes > 10000) {
+            throw new RuntimeException('Choose between 1 and 10,000 GB of OS backup storage.');
+        }
+        if ($unitAmountCents < 50) {
+            throw new RuntimeException('OS backup storage must be priced at least $0.50 per GB / month.');
+        }
+
+        $meta = [
+            'user_id' => (string) $user->id,
+            'purpose' => 'os_backup_storage',
+            'gb' => (string) $gigabytes,
+        ];
+
+        $priceData = [
+            'currency' => 'usd',
+            'unit_amount' => $unitAmountCents,
+            'recurring' => ['interval' => 'month'],
+            'product_data' => [
+                'name' => 'OS backup storage',
+                'description' => $gigabytes.' GB / month of provider snapshot capacity',
+            ],
+        ];
+
+        if (config('services.stripe.automatic_tax')) {
+            $priceData['tax_behavior'] = 'exclusive';
+        }
+
+        $payload = [
+            'mode' => 'subscription',
+            'line_items' => [['price_data' => $priceData, 'quantity' => $gigabytes]],
+            'client_reference_id' => (string) $user->id,
+            'success_url' => route('billing.os-backup.success').'?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url' => route('billing.index'),
+            'allow_promotion_codes' => 'true',
+            'automatic_tax' => ['enabled' => config('services.stripe.automatic_tax') ? 'true' : 'false'],
+            'metadata' => $meta,
+            'subscription_data' => ['metadata' => $meta],
+        ];
+        $payload[$user->stripe_customer_id ? 'customer' : 'customer_email'] = $user->stripe_customer_id ?: $user->email;
+
+        return $this->client()->withHeader('Idempotency-Key', (string) Str::uuid())->post('/checkout/sessions', $payload)->throw()->json();
+    }
+
     public function cancelSubscription(string $subscriptionId): array
     {
         return $this->client()->delete('/subscriptions/'.$subscriptionId)->throw()->json();

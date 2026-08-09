@@ -9,17 +9,17 @@
         </div>
         <div class="flex flex-wrap gap-3">
             @include('servers.partials.provision-menu')
-            @php $canByos = $planFeatures['providers'] ?? true; @endphp
             <a href="{{ route('servers.custom') }}" class="button-secondary">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/></svg>
                 Add existing server
             </a>
-            @if($canByos)
-                <a href="{{ route('cloud-accounts') }}" class="button-secondary">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
-                    Import existing Droplet
-                </a>
-            @endif
+            <a href="{{ route('cloud-accounts') }}" class="button-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+                Import existing Droplet
+                @unless($planFeatures['providers'] ?? false)
+                    <span class="ml-1 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">Upgrade</span>
+                @endunless
+            </a>
         </div>
     </header>
 

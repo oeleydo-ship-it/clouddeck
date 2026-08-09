@@ -10,6 +10,8 @@
         ['route' => 'admin.posts', 'label' => 'Blog', 'icon' => 'M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z'],
         ['route' => 'admin.billing', 'label' => 'Billing review', 'icon' => 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
         ['route' => 'admin.payments', 'label' => 'Payments', 'icon' => 'M2 9h20M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z'],
+        ['route' => 'admin.storage', 'label' => 'Storage', 'icon' => 'M22 12H2M2 7h20v10H2zM12 7v10'],
+        ['route' => 'admin.mail', 'label' => 'SMTP', 'icon' => 'M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Zm0 4 8 5 8-5'],
         ['route' => 'admin.pages', 'label' => 'Pages', 'icon' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6'],
         ['route' => 'admin.seo', 'label' => 'SEO', 'icon' => 'M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18'],
         ['route' => 'admin.analytics', 'label' => 'Analytics', 'icon' => 'M3 3v18h18M7 16V9m5 7V5m5 11v-6'],

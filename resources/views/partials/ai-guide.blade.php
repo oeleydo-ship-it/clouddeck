@@ -58,7 +58,7 @@
         </div>
         <div class="max-h-72 space-y-3 overflow-y-auto px-4 py-3" x-ref="thread">
             <template x-if="history.length === 0">
-                <p class="text-sm muted">Try: “How do I connect a Contabo server?” or “How do I enable SSL?”</p>
+                <p class="text-sm muted">Try: “How do I connect a Contabo server?” or “How do I upload a custom SSL certificate?”</p>
             </template>
             <template x-for="(item, index) in history" :key="index">
                 <div class="rounded-xl px-3 py-2 text-sm" :class="item.role === 'user' ? 'ml-6 bg-sky-50 text-sky-900 dark:bg-sky-400/10 dark:text-sky-100' : 'mr-2 bg-slate-50 heading dark:bg-white/5'">

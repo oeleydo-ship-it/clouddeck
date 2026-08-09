@@ -2,6 +2,7 @@
 
 namespace App\Billing\Stripe;
 
+use App\Actions\Billing\ConfirmOsBackupAddon;
 use App\Actions\Servers\ConfirmManagedServerPayment;
 use App\Models\BillingInvoice;
 use App\Models\Plan;
@@ -34,6 +35,12 @@ final class StripeWebhookHandler
             return;
         }
 
+        if (data_get($object, 'metadata.purpose') === 'os_backup_storage') {
+            app(ConfirmOsBackupAddon::class)->fromCheckoutSession($object, true);
+
+            return;
+        }
+
         $user = User::find(data_get($object, 'metadata.user_id') ?: data_get($object, 'client_reference_id'));
         $plan = Plan::find(data_get($object, 'metadata.plan_id'));
         if (! $user || ! $plan) {
@@ -50,6 +57,12 @@ final class StripeWebhookHandler
         // Managed VPS subscriptions are tracked on server metadata — never as plan entitlements.
         if (data_get($object, 'metadata.purpose') === 'managed_server') {
             $this->managedServerSubscriptionChanged($object);
+
+            return;
+        }
+
+        if (data_get($object, 'metadata.purpose') === 'os_backup_storage') {
+            $this->osBackupAddonSubscriptionChanged($object);
 
             return;
         }
@@ -90,6 +103,27 @@ final class StripeWebhookHandler
         }
 
         $server->forceFill(['metadata' => $metadata])->save();
+    }
+
+    private function osBackupAddonSubscriptionChanged(array $object): void
+    {
+        $user = $this->user($object)
+            ?: User::query()->where('os_backup_stripe_subscription_id', data_get($object, 'id'))->first();
+        if (! $user) {
+            return;
+        }
+
+        $status = (string) data_get($object, 'status', 'incomplete');
+        $gb = (int) data_get($object, 'metadata.gb', 0);
+        if ($gb < 1) {
+            $gb = (int) data_get($object, 'items.data.0.quantity', $user->os_backup_addon_gb);
+        }
+
+        app(ConfirmOsBackupAddon::class)->apply($user, $gb, [
+            'stripe_subscription_id' => data_get($object, 'id'),
+            'stripe_customer_id' => data_get($object, 'customer'),
+            'status' => $status,
+        ]);
     }
 
     private function invoiceChanged(array $object, string $eventType): void

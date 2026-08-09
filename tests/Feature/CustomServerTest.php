@@ -50,8 +50,14 @@ class CustomServerTest extends TestCase
 
         // BYOS provider connections and the provision-with-your-cloud wizard share the
         // same gate; adding an existing server by SSH does not need a provider connection.
-        $this->actingAs($user)->get('/cloud-accounts')->assertForbidden();
-        $this->actingAs($user)->get('/servers/create')->assertForbidden();
+        // Gated console routes show an upgrade panel instead of a bare 403.
+        $this->actingAs($user)->get('/cloud-accounts')
+            ->assertOk()
+            ->assertSee('isn’t on your plan', false)
+            ->assertSee(route('billing.index'), false);
+        $this->actingAs($user)->get('/servers/create')
+            ->assertOk()
+            ->assertSee('isn’t on your plan', false);
         $this->actingAs($user)->get('/servers/custom')->assertOk();
     }
 

@@ -12,6 +12,7 @@
             'api_tokens' => 'API tokens',
             'teams' => 'Teams',
             'team_members' => 'Team members',
+            'os_backup_gb' => 'OS backup storage (GB)',
         ];
         $featureKeys = \App\Services\FeatureManager::catalog();
         // Quotas already show server/site counts above. Hide the matching access toggles from
@@ -29,7 +30,7 @@
 
     <div x-data="{ editing: null, creating: false }" class="space-y-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="max-w-2xl text-sm muted"><strong class="heading">Quotas</strong> set how many resources a subscriber may create. <strong class="heading">Gated features</strong> turn modules on or off. BYOS and Managed server <em>counts</em> are quotas; access to those flows is toggled under gated features when you edit a plan.</p>
+            <p class="max-w-2xl text-sm muted"><strong class="heading">Quotas</strong> set how many resources a subscriber may create. <strong class="heading">Gated features</strong> turn modules on or off. Saving a plan with a non-zero BYOS or Managed quota automatically turns on the matching access gate so customers are not stuck with “Access off” while a count is advertised.</p>
             <button type="button" @click="creating = ! creating; editing = null" class="button-primary shrink-0" x-text="creating ? 'Cancel' : 'New plan'">New plan</button>
         </div>
 
@@ -76,7 +77,7 @@
                                 <div class="min-w-0">
                                     <dt class="text-xs font-medium heading">{{ $limitKeys[$key] }}</dt>
                                     @if($accessOff)
-                                        <p class="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">Access off</p>
+                                        <p class="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">Access off — quota unused</p>
                                     @endif
                                 </div>
                                 <dd class="text-sm font-semibold heading">{{ $limit($plan->limits[$key] ?? 0) }}</dd>

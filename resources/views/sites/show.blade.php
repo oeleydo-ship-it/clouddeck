@@ -103,7 +103,7 @@
     <div class="mt-8 flex gap-2 overflow-x-auto border-b border-slate-200 dark:border-white/10">@php
         $tabs = $site->isWordPress()
             ? ['overview'=>'Overview','themes'=>'Themes','plugins'=>'Plugins','backups'=>'Backups','environment'=>'Environment','ssl'=>'SSL','cron'=>'Cron','logs'=>'Logs','monitoring'=>'Monitoring']
-            : ['overview'=>'Overview','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook','logs'=>'Logs','monitoring'=>'Monitoring'];
+            : ['overview'=>'Overview','backups'=>'Backups','environment'=>'Environment','deploy'=>'Deployment settings','ssl'=>'SSL','cron'=>'Cron','queue'=>'Queue & Reverb','webhook'=>'Webhook','logs'=>'Logs','monitoring'=>'Monitoring'];
     @endphp
     @foreach($tabs as $key=>$label)<button @click="tab='{{ $key }}'" :class="tab==='{{ $key }}' ? 'border-cyan-500 text-slate-900 dark:border-cyan-400 dark:text-white' : 'border-transparent text-slate-500 dark:text-slate-400'" class="border-b-2 px-4 py-3 text-sm font-medium">{{ $label }}</button>@endforeach</div>
     <div x-show="tab==='overview'" class="mt-6"><div class="grid gap-4 sm:grid-cols-3">
@@ -173,8 +173,17 @@
                 @endif
             </div>
         @endforeach
-        <div x-cloak x-show="tab==='backups'" class="mt-6">
-            @if($wordpressReady)@include('sites.partials.wp-backups')@else @include('sites.partials.wp-locked') @endif
+        <div x-cloak x-show="tab==='backups'" class="mt-6 space-y-6">
+            @include('sites.partials.app-backups')
+            @if($wordpressReady)
+                @include('sites.partials.wp-backups')
+            @else
+                @include('sites.partials.wp-locked')
+            @endif
+        </div>
+    @else
+        <div x-cloak x-show="tab==='backups'" class="mt-6 space-y-6">
+            @include('sites.partials.app-backups')
         </div>
     @endif
     <div x-cloak x-show="tab==='environment'" class="mt-6"><form method="POST" action="{{ route('sites.environment',$site) }}" class="panel">@csrf @method('PUT')<h2 class="font-semibold heading">Encrypted environment</h2><p class="mt-2 text-sm muted">Values are encrypted at rest and written only to the server's shared release directory.</p><textarea class="field mt-5 min-h-[28rem] font-mono text-xs leading-6" name="environment" spellcheck="false">{{ $environment }}</textarea><button class="button-primary mt-5">Save environment</button></form></div>
