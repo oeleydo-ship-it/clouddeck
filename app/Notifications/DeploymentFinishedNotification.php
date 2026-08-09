@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Deployment;
+use App\Notifications\Concerns\RespectsClientEmailPolicy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -11,6 +12,7 @@ use Illuminate\Notifications\Notification;
 class DeploymentFinishedNotification extends Notification implements ShouldQueue
 {
     use Queueable;
+    use RespectsClientEmailPolicy;
 
     public function __construct(public readonly Deployment $deployment)
     {
@@ -19,7 +21,7 @@ class DeploymentFinishedNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return $this->recipients($notifiable) === [] ? ['database'] : ['database', 'mail'];
+        return $this->channelsWithOptionalMail($notifiable, $this->recipients($notifiable));
     }
 
     public function notificationEvent(): string

@@ -26,12 +26,13 @@ class AdminNavigationTest extends TestCase
             ['/admin/payments', 'Payments'],
             ['/admin/storage', 'Storage'],
             ['/admin/mail', 'SMTP'],
+            ['/admin/notifications', 'Notification center'],
             ['/admin/pages', 'Pages'],
             ['/admin/seo', 'SEO'],
             ['/admin/analytics', 'Analytics'],
             ['/admin/webmaster', 'Webmaster'],
             ['/admin/insert-code', 'Insert code'],
-            ['/admin/ai', 'AI guide'],
+            ['/admin/ai', 'AI'],
             ['/admin/google-auth', 'Google Auth'],
             ['/admin/settings', 'Settings'],
             ['/admin/audit', 'Audit'],
@@ -72,6 +73,7 @@ class AdminNavigationTest extends TestCase
             ->assertSee(route('admin.ai'), false)
             ->assertSee(route('admin.google-auth'), false)
             ->assertSee(route('admin.mail'), false)
+            ->assertSee(route('admin.notifications'), false)
             ->assertSee(route('admin.storage'), false)
             ->assertSee(route('admin.audit'), false);
     }

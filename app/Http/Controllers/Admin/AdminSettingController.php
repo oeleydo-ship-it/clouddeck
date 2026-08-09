@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\MailSettingsTestMessage;
+use App\Models\NotificationChannel;
 use App\Services\AuditLogger;
 use App\Services\SystemSettings;
 use Illuminate\Http\RedirectResponse;
@@ -210,6 +211,58 @@ class AdminSettingController extends Controller
         }
 
         return back()->with('status', 'Test message sent to '.$data['test_email'].'.');
+    }
+
+    /**
+     * Platform-wide mute for client alert emails. In-app bell delivery is unchanged;
+     * password resets, verification, and team invites always send.
+     */
+    public function notifications(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $eventKeys = array_keys(NotificationChannel::EVENTS);
+
+        $request->validate([
+            'client_email_notifications_enabled' => ['sometimes', 'boolean'],
+            'client_email_billing_payment_failed' => ['sometimes', 'boolean'],
+            'events' => ['nullable', 'array'],
+            'events.*' => ['string', Rule::in($eventKeys)],
+        ]);
+
+        $settings->put(
+            'client_email_notifications_enabled',
+            $request->boolean('client_email_notifications_enabled') ? '1' : '0',
+            'boolean',
+            true,
+        );
+
+        $enabledEvents = $request->input('events', []);
+        if (! is_array($enabledEvents)) {
+            $enabledEvents = [];
+        }
+
+        foreach ($eventKeys as $event) {
+            $settings->put(
+                'client_email_event_'.$event,
+                in_array($event, $enabledEvents, true) ? '1' : '0',
+                'boolean',
+                true,
+            );
+        }
+
+        $settings->put(
+            'client_email_billing_payment_failed',
+            $request->boolean('client_email_billing_payment_failed') ? '1' : '0',
+            'boolean',
+            true,
+        );
+
+        $audit->record($request, 'settings.notifications_updated', null, [], [
+            'operational_enabled' => $request->boolean('client_email_notifications_enabled'),
+            'events' => $enabledEvents,
+            'billing_failed' => $request->boolean('client_email_billing_payment_failed'),
+        ]);
+
+        return back()->with('status', 'Notification center saved. Disabled emails stay in the in-app bell only.');
     }
 
     public function landing(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse

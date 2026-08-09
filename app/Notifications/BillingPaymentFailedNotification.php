@@ -20,7 +20,9 @@ class BillingPaymentFailedNotification extends Notification implements ShouldQue
 
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return app(SystemSettings::class)->clientEmailBillingFailedAllowed()
+            ? ['mail', 'database']
+            : ['database'];
     }
 
     public function toMail(object $notifiable): MailMessage

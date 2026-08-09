@@ -14,6 +14,7 @@
         <p class="mt-1 text-sm muted">
             Used for verification, password resets, invitations, and deployment notifications.
             Works with any SMTP provider — for <strong>Resend</strong>, use host <code>smtp.resend.com</code>, port <code>587</code>, username <code>resend</code>, and your API key as the password.
+            Choose which client alert emails may send under <a class="underline" href="{{ route('admin.notifications') }}">Notifications</a>.
         </p>
         <form method="POST" action="{{ route('admin.settings.mail') }}" class="mt-5 max-w-2xl">@csrf @method('PUT')
             <div class="grid gap-4 sm:grid-cols-2">

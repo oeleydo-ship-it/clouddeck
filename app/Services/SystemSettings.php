@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\NotificationChannel;
 use App\Models\Post;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Cache;
@@ -638,6 +639,51 @@ PROMPT;
     public function objectStorageConfigured(): bool
     {
         return $this->objectStorage()['configured'];
+    }
+
+    /**
+     * Master switch for operational client alert emails (uptime, deploys, SSL, backups, …).
+     * In-app bell notifications are unaffected. Defaults on so existing installs keep mailing.
+     */
+    public function clientEmailNotificationsEnabled(): bool
+    {
+        return $this->boolean('client_email_notifications_enabled', true);
+    }
+
+    /**
+     * Whether a specific operational event may leave the SMTP path. Requires the master
+     * switch; a missing per-event setting means allowed.
+     */
+    public function clientEmailEventAllowed(string $event): bool
+    {
+        if (! $this->clientEmailNotificationsEnabled()) {
+            return false;
+        }
+
+        return $this->boolean('client_email_event_'.$event, true);
+    }
+
+    /**
+     * Stripe payment-failed mail is separate from operational alerts so operators can mute
+     * noisy ops emails without silencing billing recovery.
+     */
+    public function clientEmailBillingFailedAllowed(): bool
+    {
+        return $this->boolean('client_email_billing_payment_failed', true);
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    public function clientEmailEventToggles(): array
+    {
+        $toggles = [];
+
+        foreach (array_keys(NotificationChannel::EVENTS) as $event) {
+            $toggles[$event] = $this->boolean('client_email_event_'.$event, true);
+        }
+
+        return $toggles;
     }
 
     /**

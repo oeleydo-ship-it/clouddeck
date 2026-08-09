@@ -311,6 +311,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/payments', [AdminDashboardController::class, 'payments'])->name('payments');
         Route::get('/storage', [AdminDashboardController::class, 'storage'])->name('storage');
         Route::get('/mail', [AdminDashboardController::class, 'mail'])->name('mail');
+        Route::get('/notifications', [AdminDashboardController::class, 'notifications'])->name('notifications');
         Route::get('/settings', [AdminDashboardController::class, 'settings'])->name('settings');
         Route::get('/managed-servers', [AdminDashboardController::class, 'managedServers'])->name('managed-servers');
         Route::get('/pages', [AdminDashboardController::class, 'pages'])->name('pages');
@@ -363,5 +364,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/settings/logo', [AdminSettingController::class, 'destroyLogo'])->name('settings.logo.destroy');
         Route::put('/settings/mail', [AdminSettingController::class, 'mail'])->name('settings.mail');
         Route::post('/settings/mail/test', [AdminSettingController::class, 'testMail'])->middleware('throttle:6,1')->name('settings.mail.test');
+        Route::put('/settings/notifications', [AdminSettingController::class, 'notifications'])->name('settings.notifications');
     });
 });

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Notifications\Concerns\RespectsClientEmailPolicy;
 use App\Services\SystemSettings;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,6 +18,7 @@ use Illuminate\Notifications\Notification;
 class OperationalEventNotification extends Notification implements ShouldQueue
 {
     use Queueable;
+    use RespectsClientEmailPolicy;
 
     public function __construct(
         public readonly string $event,
@@ -32,8 +34,9 @@ class OperationalEventNotification extends Notification implements ShouldQueue
     public function via(object $notifiable): array
     {
         // Recorded in the bell regardless of whether anyone asked to be emailed about it: the
-        // record of what happened is not the same thing as being told about it.
-        return $this->recipients($notifiable) === [] ? ['database'] : ['database', 'mail'];
+        // record of what happened is not the same thing as being told about it. Superadmin
+        // Notification Center can also strip mail to protect SMTP quota.
+        return $this->channelsWithOptionalMail($notifiable, $this->recipients($notifiable));
     }
 
     public function toMail(object $notifiable): MailMessage

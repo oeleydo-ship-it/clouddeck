@@ -90,6 +90,18 @@ class AdminDashboardController extends Controller
         return view('admin.mail', ['settings' => SystemSetting::all()->keyBy('key')]);
     }
 
+    public function notifications(): View
+    {
+        $system = app(SystemSettings::class);
+
+        return view('admin.notifications', [
+            'settings' => SystemSetting::all()->keyBy('key'),
+            'clientEmailEnabled' => $system->clientEmailNotificationsEnabled(),
+            'eventToggles' => $system->clientEmailEventToggles(),
+            'billingFailedAllowed' => $system->clientEmailBillingFailedAllowed(),
+        ]);
+    }
+
     public function managedServers(CloudProviderManager $providers, SystemSettings $systemSettings): View
     {
         $ready = $systemSettings->managedServersReady();
