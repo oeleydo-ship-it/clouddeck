@@ -59,6 +59,7 @@ class ServerManagementController extends Controller
         return view('servers.manage', [
             'server' => $server->load([
                 'databases.backups',
+                'databases.site',
                 'cronJobs',
                 'operations' => fn ($q) => $q->latest()->limit(20),
                 'sites.queueWorkers',

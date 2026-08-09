@@ -7,6 +7,7 @@ use App\Services\QuotaManager;
 use App\Services\SystemSettings;
 use App\Services\WordPressConfig;
 use App\Jobs\Sites\ConfigureSiteJob;
+use App\Jobs\Sites\SyncPlatformStagingDnsJob;
 use App\Notifications\OperationalEventNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -101,6 +102,10 @@ final class CreateStagingSite
         });
 
         ConfigureSiteJob::dispatch($site->id)->onQueue('provisioning');
+
+        if ($source === 'platform') {
+            SyncPlatformStagingDnsJob::dispatch($site->id)->onQueue('operations');
+        }
 
         $production->user->notify(new OperationalEventNotification(
             event: 'site_added',

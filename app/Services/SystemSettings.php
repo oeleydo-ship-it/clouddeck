@@ -92,6 +92,27 @@ final class SystemSettings
     }
 
     /**
+     * Cloudflare API token that may edit DNS on the platform staging apex zone.
+     */
+    public function platformDnsCloudflareToken(): ?string
+    {
+        return $this->get('platform_dns_cloudflare_token');
+    }
+
+    public function platformDnsCloudflareZoneId(): ?string
+    {
+        return $this->get('platform_dns_cloudflare_zone_id');
+    }
+
+    /**
+     * Token + zone id present — platform staging A records can be published automatically.
+     */
+    public function platformStagingDnsReady(): bool
+    {
+        return filled($this->platformDnsCloudflareToken()) && filled($this->platformDnsCloudflareZoneId());
+    }
+
+    /**
      * Platform-provided VMs (not BYOS). Off until a superadmin enables the feature and
      * saves a cloud API token that Uplary uses to create VPS for customers.
      */

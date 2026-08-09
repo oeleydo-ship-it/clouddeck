@@ -76,11 +76,12 @@ final class CloudflareDns
     }
 
     /**
+     * @param  array<string, scalar>  $query
      * @return array<int, array{id: string, type: string, name: string, content: string, ttl: int, proxied: bool}>
      */
-    public function records(string $zoneId): array
+    public function records(string $zoneId, array $query = []): array
     {
-        $response = $this->client()->get("/zones/{$zoneId}/dns_records", ['per_page' => 100]);
+        $response = $this->client()->get("/zones/{$zoneId}/dns_records", array_merge(['per_page' => 100], $query));
         $this->assertSucceeded($response, 'read DNS records');
 
         return collect($response->json('result') ?? [])

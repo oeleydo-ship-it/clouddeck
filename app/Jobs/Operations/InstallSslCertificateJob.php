@@ -26,23 +26,31 @@ class InstallSslCertificateJob implements ShouldQueue
     {
         $certificate = SslCertificate::with('site.server.sshKey', 'user')->findOrFail($this->certificateId);
         $certificate->update(['status' => 'issuing']);
-        $ssh->runScript($certificate->site->server, resource_path('scripts/install-ssl.sh'), ['DOMAIN' => $certificate->site->domain, 'EMAIL' => $certificate->user->email, 'REDIRECT' => $certificate->force_https ? 'redirect' : 'no-redirect']);
-        $output = $ssh->run($certificate->site->server, "openssl x509 -in /etc/letsencrypt/live/{$certificate->site->domain}/cert.pem -noout -enddate");
+        $site = $certificate->site;
+        // Certbot needs a matching Nginx server_name. Staging/create jobs lost from Redis
+        // leave the distro default site answering the hostname, which breaks ACME.
+        $ssh->runScript($site->server, resource_path('scripts/configure-site.sh'), [
+            'DOMAIN' => $site->domain,
+            'PHP_VERSION' => $site->php_version,
+            'DOCUMENT_ROOT' => $site->documentRoot(),
+        ]);
+        $ssh->runScript($site->server, resource_path('scripts/install-ssl.sh'), ['DOMAIN' => $site->domain, 'EMAIL' => $certificate->user->email, 'REDIRECT' => $certificate->force_https ? 'redirect' : 'no-redirect']);
+        $output = $ssh->run($site->server, "openssl x509 -in /etc/letsencrypt/live/{$site->domain}/cert.pem -noout -enddate");
         $expires = trim(str_replace('notAfter=', '', $output));
         $certificate->update(['status' => 'active', 'issued_at' => now(), 'expires_at' => Carbon::parse($expires), 'failure_reason' => null]);
 
-        $certificate->site?->user?->notify(new OperationalEventNotification(
+        $site->user?->notify(new OperationalEventNotification(
             event: 'ssl_installed',
-            title: 'Certificate issued for '.$certificate->site->domain,
+            title: 'Certificate issued for '.$site->domain,
             body: 'The certificate is active and expires on '.$certificate->fresh()->expires_at->toFormattedDayDateString().'.',
-            url: route('sites.show', ['site' => $certificate->site, 'tab' => 'ssl']),
-            context: ['certificate_id' => $certificate->id, 'site_id' => $certificate->site_id],
+            url: route('sites.show', ['site' => $site, 'tab' => 'ssl']),
+            context: ['certificate_id' => $certificate->id, 'site_id' => $site->id],
         ));
 
         // A site that gains TLS has to move its WebSocket to wss:// on 443, otherwise the
         // browser blocks the connection as mixed content on the now-HTTPS page.
-        if ($certificate->site->queueWorkers()->where('type', 'reverb')->exists()) {
-            app(ReverbEnvironment::class)->apply($certificate->site);
+        if ($site->queueWorkers()->where('type', 'reverb')->exists()) {
+            app(ReverbEnvironment::class)->apply($site);
         }
     }
 

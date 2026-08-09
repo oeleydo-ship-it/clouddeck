@@ -23,11 +23,8 @@ class CreateDatabaseJob implements ShouldQueue
         $database->update(['status' => 'creating']);
         $ssh->runScript($database->server, resource_path('scripts/manage-database.sh'), ['ACTION' => 'create', 'ENGINE' => $database->engine, 'DATABASE' => $database->name, 'USERNAME' => $database->username, 'PASSWORD' => $database->password]);
         $database->update(['status' => 'ready', 'failure_reason' => null]);
-        if ($database->site) {
-            foreach (['DB_CONNECTION' => $database->engine === 'postgresql' ? 'pgsql' : 'mysql', 'DB_HOST' => '127.0.0.1', 'DB_PORT' => $database->engine === 'postgresql' ? '5432' : '3306', 'DB_DATABASE' => $database->name, 'DB_USERNAME' => $database->username, 'DB_PASSWORD' => $database->password] as $key => $value) {
-                $database->site->environmentVariables()->updateOrCreate(['key' => $key], ['value' => $value, 'is_secret' => $key === 'DB_PASSWORD']);
-            }
-        }
+        $database->load('site');
+        $database->syncAttachedSiteEnvironment();
     }
 
     public function failed(Throwable $e): void

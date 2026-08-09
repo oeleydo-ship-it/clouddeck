@@ -59,6 +59,59 @@ class ServerOperationsTest extends TestCase
         $this->assertSame('password123', $site->environmentVariables()->where('key', 'DB_PASSWORD')->firstOrFail()->value);
     }
 
+    public function test_an_existing_database_can_be_attached_to_a_site(): void
+    {
+        [$user, $server, $site] = $this->infrastructure();
+        $database = $server->databases()->create([
+            'user_id' => $user->id,
+            'engine' => 'mysql',
+            'name' => 'staging',
+            'username' => 'stagin',
+            'password' => 'secret-pass',
+            'status' => 'ready',
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('databases.update', $database), ['site_id' => $site->id])
+            ->assertSessionHas('status');
+
+        $this->assertSame($site->id, $database->fresh()->site_id);
+        $this->assertSame('staging', $site->environmentVariables()->where('key', 'DB_DATABASE')->value('value'));
+        $this->assertSame('secret-pass', $site->environmentVariables()->where('key', 'DB_PASSWORD')->value('value'));
+        $this->assertSame('mysql', $site->environmentVariables()->where('key', 'DB_CONNECTION')->value('value'));
+    }
+
+    public function test_reattaching_clears_db_env_from_the_previous_site(): void
+    {
+        [$user, $server, $site] = $this->infrastructure();
+        $other = Site::create([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'domain' => 'staging.example.com',
+            'php_version' => '8.4',
+            'repository_url' => 'https://github.com/acme/app.git',
+            'branch' => 'staging',
+            'status' => 'active',
+        ]);
+        $database = $server->databases()->create([
+            'user_id' => $user->id,
+            'site_id' => $site->id,
+            'engine' => 'mysql',
+            'name' => 'staging',
+            'username' => 'stagin',
+            'password' => 'secret-pass',
+            'status' => 'ready',
+        ]);
+        $database->syncAttachedSiteEnvironment();
+
+        $this->actingAs($user)
+            ->patch(route('databases.update', $database), ['site_id' => $other->id])
+            ->assertSessionHas('status');
+
+        $this->assertNull($site->environmentVariables()->where('key', 'DB_DATABASE')->value('value'));
+        $this->assertSame('staging', $other->environmentVariables()->where('key', 'DB_DATABASE')->value('value'));
+    }
+
     public function test_ssl_cron_worker_and_service_operations_are_dispatched_to_operations_queue(): void
     {
         Queue::fake();

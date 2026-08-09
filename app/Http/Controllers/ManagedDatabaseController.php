@@ -42,6 +42,31 @@ class ManagedDatabaseController extends Controller
         return back()->with('status', 'Database creation queued.')->with('database_password', $password);
     }
 
+    public function update(Request $request, ManagedDatabase $managedDatabase): RedirectResponse
+    {
+        $this->authorize('update', $managedDatabase->server);
+        abort_unless(in_array($managedDatabase->status, ['ready', 'failed'], true), 422, 'Wait until the database is ready before attaching a site.');
+
+        $data = $request->validate([
+            'site_id' => [
+                'nullable',
+                'uuid',
+                Rule::exists('sites', 'id')
+                    ->where('user_id', $request->user()->id)
+                    ->where('server_id', $managedDatabase->server_id),
+            ],
+        ]);
+
+        $previousSite = $managedDatabase->site;
+        $managedDatabase->update(['site_id' => $data['site_id'] ?: null]);
+        $managedDatabase->load('site');
+        $managedDatabase->syncAttachedSiteEnvironment($previousSite);
+
+        $label = $managedDatabase->site?->domain ?? 'no site';
+
+        return back()->with('status', 'Database attachment updated ('.$label.'). Redeploy the site so the new environment takes effect.');
+    }
+
     public function destroy(Request $request, ManagedDatabase $managedDatabase): RedirectResponse
     {
         $this->authorize('update', $managedDatabase->server);

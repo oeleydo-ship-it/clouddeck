@@ -29,7 +29,21 @@
                 <label class="mt-4 flex gap-2 text-sm heading"><input type="checkbox" name="allow_impersonate_admins" value="1" @checked(($settings->get('allow_impersonate_admins')?->value ?? '0') === '1')>Allow impersonating other super admins</label>
                 <p class="mt-2 text-xs muted">Requires the <code>users.impersonate_admins</code> gate (super admins only). Leave off unless support truly needs to enter another administrator's account.</p>
                 <label class="mt-4 block text-sm heading">Platform staging domain<input class="field" name="staging_platform_domain" value="{{ $value('staging_platform_domain', 'uplary.com') }}" placeholder="uplary.com"></label>
-                <p class="mt-2 text-xs muted">Used when a customer chooses a platform subdomain: <code>{slug}.staging.{{ $value('staging_platform_domain', 'uplary.com') }}</code>. Point wildcard DNS for <code>*.staging.{{ $value('staging_platform_domain', 'uplary.com') }}</code> at customer servers, or document per-subdomain A records.</p>
+                <p class="mt-2 text-xs muted">Used when a customer chooses a platform subdomain: <code>{slug}.staging.{{ $value('staging_platform_domain', 'uplary.com') }}</code>.</p>
+                <label class="mt-4 block text-sm heading">Platform Cloudflare DNS token
+                    <input class="field font-mono text-xs" type="password" name="platform_dns_cloudflare_token" value="" placeholder="{{ filled($value('platform_dns_cloudflare_token')) ? '•••••••• (leave blank to keep)' : 'Cloudflare API token' }}" autocomplete="new-password">
+                </label>
+                <p class="mt-2 text-xs muted">
+                    Zone:DNS Edit on <code>{{ $value('staging_platform_domain', 'uplary.com') }}</code>.
+                    When set, creating platform staging publishes an A record <code>{slug}.staging</code> → that site’s server public IP (DNS-only, not proxied).
+                    DNS for this apex must live on Cloudflare.
+                    @if(app(\App\Services\SystemSettings::class)->platformStagingDnsReady())
+                        <span class="text-emerald-600 dark:text-emerald-300">Connected.</span>
+                    @else
+                        <span class="text-amber-700 dark:text-amber-300">Not connected — platform staging hostnames will not auto-point at customer servers.</span>
+                    @endif
+                </p>
+                @error('platform_dns_cloudflare_token')<p class="mt-2 text-xs text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                 <button class="button-primary mt-5">Save general settings</button>
             </form>
         </section>

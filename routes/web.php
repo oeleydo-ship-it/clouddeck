@@ -216,6 +216,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/servers/{server}/phpmyadmin', [PhpMyAdminController::class, 'store'])->name('phpmyadmin.store');
     Route::delete('/servers/{server}/phpmyadmin', [PhpMyAdminController::class, 'destroy'])->name('phpmyadmin.destroy');
     Route::post('/servers/{server}/databases', [ManagedDatabaseController::class, 'store'])->name('databases.store');
+    Route::patch('/databases/{managedDatabase}', [ManagedDatabaseController::class, 'update'])->name('databases.update');
     Route::delete('/databases/{managedDatabase}', [ManagedDatabaseController::class, 'destroy'])->name('databases.destroy');
     Route::post('/databases/{managedDatabase}/export', [ManagedDatabaseController::class, 'export'])->name('databases.export');
     Route::post('/databases/{managedDatabase}/import', [ManagedDatabaseController::class, 'import'])->name('databases.import');
@@ -292,6 +293,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/sites/{site}', [SiteController::class, 'update'])->name('sites.update');
     Route::put('/sites/{site}/environment', [SiteController::class, 'environment'])->name('sites.environment');
     Route::post('/sites/{site}/deployments', [SiteController::class, 'deploy'])->name('sites.deploy');
+    Route::post('/sites/{site}/reconfigure', [SiteController::class, 'reconfigure'])->middleware('throttle:6,1')->name('sites.reconfigure');
     Route::post('/sites/{site}/rollbacks/{deployment}', [SiteController::class, 'rollback'])->name('sites.rollback');
     Route::delete('/sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
     Route::post('/sites/{site}/queue-health', [SiteController::class, 'queueHealth'])->name('sites.queue-health');

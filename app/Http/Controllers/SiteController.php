@@ -259,6 +259,18 @@ class SiteController extends Controller
         return redirect()->route('deployments.show', $deployment)->with('status', 'Deployment queued.');
     }
 
+    public function reconfigure(Request $request, Site $site): RedirectResponse
+    {
+        $this->authorize('update', $site);
+        abort_unless($site->isStaging(), 404);
+        abort_unless($site->server->status === ServerStatus::Ready, 422, 'The server must be ready before repairing site configuration.');
+
+        $site->update(['status' => 'configuring']);
+        ConfigureSiteJob::dispatch($site->id)->onQueue('provisioning');
+
+        return back()->with('status', 'Repairing Nginx and PHP-FPM for '.$site->domain.'. Retry SSL after this finishes.');
+    }
+
     public function rollback(Request $request, Site $site, Deployment $deployment, StartRollback $rollback): RedirectResponse
     {
         $this->authorize('deploy', $site);

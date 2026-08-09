@@ -208,11 +208,27 @@
             </div>
             @if($certificate?->failure_reason)<p class="mt-3 text-xs text-rose-600 dark:text-rose-300">{{ $certificate->failure_reason }}</p>@endif
             @if($site->status !== 'active')<p class="mt-3 text-xs muted">The site must finish configuring before a certificate can be installed.</p>@endif
+            <p class="mt-3 text-xs muted">
+                Point an A record for <code class="text-[11px]">{{ $site->domain }}</code> at
+                <code class="text-[11px]">{{ $site->server->public_ip ?? 'this server’s public IP' }}</code>.
+                @if($site->isStaging())
+                    If the hostname shows the stock “Welcome to nginx!” page, Nginx has no matching site block — repair configuration below, then retry SSL.
+                @endif
+            </p>
+            @if($site->isStaging())
+                <form method="POST" action="{{ route('sites.reconfigure', $site) }}" class="mt-4">
+                    @csrf
+                    <input type="hidden" name="_tab" value="ssl">
+                    <button class="button-secondary !px-3 !py-1.5 text-xs" @disabled($site->server->status !== \App\Enums\ServerStatus::Ready || $site->status === 'configuring')">
+                        {{ $site->status === 'configuring' ? 'Repairing Nginx…' : 'Repair Nginx / PHP-FPM' }}
+                    </button>
+                </form>
+            @endif
         </section>
 
         <section class="panel">
             <h3 class="font-semibold heading">Let’s Encrypt</h3>
-            <p class="mt-1 text-sm muted">Free automated certificate. DNS must point at this server before issuing.</p>
+            <p class="mt-1 text-sm muted">Free automated certificate. DNS must point at this server before issuing. Issuing also rewrites a missing Nginx site block first.</p>
             <form method="POST" action="{{ route('ssl.store',$site) }}" class="mt-5 flex flex-wrap items-center gap-4">@csrf
                 <input type="hidden" name="_tab" value="ssl">
                 <label class="flex gap-2 text-sm heading"><input type="checkbox" name="force_https" value="1" @checked(($isCustomSsl ? true : $certificate?->force_https) ?? true)>Force HTTPS</label>

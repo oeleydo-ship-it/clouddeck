@@ -284,12 +284,12 @@ class WordPressManagementTest extends TestCase
         // application entirely.
         $configure = file_get_contents(resource_path('scripts/configure-site.sh'));
 
-        $this->assertStringContainsString('if [ ! -f "/etc/nginx/sites-available/${DOMAIN}" ]', $configure);
+        $this->assertStringContainsString('NGINX_SITE="/etc/nginx/sites-available/${DOMAIN}"', $configure);
+        $this->assertStringContainsString('write_http_vhost', $configure);
         // The link is made every time: the block existing is not the same as it being served.
-        $this->assertGreaterThan(
-            strpos($configure, 'if [ ! -f "/etc/nginx/sites-available/${DOMAIN}" ]'),
-            strpos($configure, 'ln -sfn "/etc/nginx/sites-available/${DOMAIN}"'),
-        );
+        $this->assertStringContainsString('ln -sfn "${NGINX_SITE}" "/etc/nginx/sites-enabled/${DOMAIN}"', $configure);
+        $this->assertStringContainsString('rm -f /etc/nginx/sites-enabled/default', $configure);
+        $this->assertStringContainsString('acme-challenge', $configure);
 
         foreach (['DeployWordPressJob', 'DeployLaravelJob'] as $job) {
             $source = file_get_contents(app_path("Jobs/Deployments/{$job}.php"));

@@ -4,9 +4,33 @@ DOMAIN={{DOMAIN}}
 PHP_VERSION={{PHP_VERSION}}
 DOCUMENT_ROOT={{DOCUMENT_ROOT}}
 ROOT="/var/www/${DOMAIN}"
+DOC_ABS="${ROOT}/${DOCUMENT_ROOT}"
+NGINX_SITE="/etc/nginx/sites-available/${DOMAIN}"
 
-mkdir -p "${ROOT}/releases" "${ROOT}/shared/storage/app/public" "${ROOT}/shared/storage/framework/cache" "${ROOT}/shared/storage/framework/sessions" "${ROOT}/shared/storage/framework/views" "${ROOT}/shared/storage/logs"
+mkdir -p "${ROOT}/releases" \
+  "${ROOT}/shared/storage/app/public" \
+  "${ROOT}/shared/storage/framework/cache" \
+  "${ROOT}/shared/storage/framework/sessions" \
+  "${ROOT}/shared/storage/framework/views" \
+  "${ROOT}/shared/storage/logs" \
+  "${ROOT}/shared/acme" \
+  "${DOC_ABS}"
 chown -R www-data:www-data "${ROOT}"
+
+# Before the first deploy, current/public does not exist. Without a real document root
+# Nginx still needs a matching server_name block; otherwise requests fall through to the
+# distro default welcome page and Let's Encrypt challenges fail on the wrong vhost.
+if [ ! -f "${DOC_ABS}/index.php" ] && [ ! -f "${DOC_ABS}/index.html" ]; then
+  cat > "${DOC_ABS}/index.html" <<HTML
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>${DOMAIN}</title></head>
+<body style="font-family:system-ui;margin:3rem;line-height:1.5">
+<h1>${DOMAIN}</h1>
+<p>This site is configured on the server. Deploy from Uplary to publish the application.</p>
+</body></html>
+HTML
+  chown www-data:www-data "${DOC_ABS}/index.html"
+fi
 
 cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/clouddeck-${DOMAIN}.conf" <<POOL
 [clouddeck-${DOMAIN}]
@@ -24,23 +48,26 @@ POOL
 "php-fpm${PHP_VERSION}" -t
 systemctl reload "php${PHP_VERSION}-fpm"
 
-# Written only when the site has none. This runs before every deployment so a site whose
-# configuration never landed cannot keep being served by whichever block Nginx lists first,
-# and rewriting an existing one would discard the lines Certbot adds for TLS.
-if [ ! -f "/etc/nginx/sites-available/${DOMAIN}" ]; then
-cat > "/etc/nginx/sites-available/${DOMAIN}" <<NGINX
+write_http_vhost() {
+cat > "${NGINX_SITE}" <<NGINX
 server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN};
-    root ${ROOT}/${DOCUMENT_ROOT};
-    index index.php;
+    root ${DOC_ABS};
+    index index.php index.html;
     charset utf-8;
     client_max_body_size 100M;
 
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Shared ACME webroot so certificates can issue before the first deploy lands.
+    location ^~ /.well-known/acme-challenge/ {
+        root ${ROOT}/shared/acme;
+        default_type text/plain;
+    }
 
     include /etc/nginx/clouddeck/${DOMAIN}-reverb.conf*;
     location / { try_files \$uri \$uri/ /index.php?\$query_string; }
@@ -57,11 +84,30 @@ server {
     error_log /var/log/nginx/${DOMAIN}.error.log;
 }
 NGINX
-    echo "Wrote the Nginx server block for ${DOMAIN}"
+  echo "Wrote the Nginx server block for ${DOMAIN}"
+}
+
+# Written only when the site has none, or when the block is missing this hostname.
+# Never clobber a Certbot-managed file — that would drop TLS lines.
+if [ ! -f "${NGINX_SITE}" ]; then
+  write_http_vhost
+elif ! grep -qE "server_name[[:space:]]+${DOMAIN}([:;[:space:]]|$)" "${NGINX_SITE}"; then
+  if grep -q "managed by Certbot" "${NGINX_SITE}"; then
+    echo "Nginx site exists with Certbot changes but unexpected server_name; leaving intact"
+  else
+    write_http_vhost
+  fi
+else
+  echo "Nginx server block for ${DOMAIN} already present"
 fi
 
 # Without this link Nginx has no block for the domain and answers with whichever site it
-# lists first, so the domain quietly serves someone else's application.
-ln -sfn "/etc/nginx/sites-available/${DOMAIN}" "/etc/nginx/sites-enabled/${DOMAIN}"
+# lists first, so the domain quietly serves the default welcome page.
+ln -sfn "${NGINX_SITE}" "/etc/nginx/sites-enabled/${DOMAIN}"
+
+# Stock Ubuntu welcome site is default_server and steals unmatched Host headers. App
+# servers should not keep it enabled once real sites exist.
+rm -f /etc/nginx/sites-enabled/default
+
 nginx -t
 systemctl reload nginx

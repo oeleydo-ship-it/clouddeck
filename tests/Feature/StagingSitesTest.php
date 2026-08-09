@@ -6,6 +6,7 @@ use App\Actions\Sites\CreateStagingSite;
 use App\Enums\ServerStatus;
 use App\Jobs\Deployments\DeployLaravelJob;
 use App\Jobs\Sites\ConfigureSiteJob;
+use App\Jobs\Sites\SyncPlatformStagingDnsJob;
 use App\Models\CloudAccount;
 use App\Models\Plan;
 use App\Models\Server;
@@ -71,6 +72,60 @@ class StagingSitesTest extends TestCase
         $this->assertSame('staging', $staging->branch);
         $this->assertSame('staging', $staging->environmentVariables()->where('key', 'APP_ENV')->value('value'));
         Queue::assertPushedOn('provisioning', ConfigureSiteJob::class);
+        Queue::assertPushedOn('operations', SyncPlatformStagingDnsJob::class);
+    }
+
+    public function test_custom_domain_staging_does_not_queue_platform_dns_sync(): void
+    {
+        Queue::fake();
+        app(SystemSettings::class)->put('staging_sites_enabled', '1', 'boolean');
+        [$user, $production] = $this->productionSite();
+
+        $this->actingAs($user)->post(route('sites.staging.store', $production), [
+            'domain_source' => 'custom',
+            'domain' => 'staging.client.com',
+        ])->assertRedirect();
+
+        Queue::assertNotPushed(SyncPlatformStagingDnsJob::class);
+    }
+
+    public function test_reconfigure_queues_configure_site_job_for_staging(): void
+    {
+        Queue::fake();
+        app(SystemSettings::class)->put('staging_sites_enabled', '1', 'boolean');
+        [$user, $production] = $this->productionSite();
+        $staging = app(CreateStagingSite::class)->execute($production, [
+            'domain_source' => 'custom',
+            'domain' => 'staging.example.com',
+        ]);
+        $staging->update(['status' => 'active']);
+
+        $this->actingAs($user)
+            ->from(route('sites.show', ['site' => $staging, 'tab' => 'ssl']))
+            ->post(route('sites.reconfigure', $staging))
+            ->assertRedirect();
+
+        $this->assertSame('configuring', $staging->fresh()->status);
+        Queue::assertPushedOn('provisioning', ConfigureSiteJob::class);
+    }
+
+    public function test_reconfigure_is_unavailable_for_production(): void
+    {
+        Queue::fake();
+        [$user, $site] = $this->productionSite();
+
+        $this->actingAs($user)->post(route('sites.reconfigure', $site))->assertNotFound();
+        Queue::assertNothingPushed();
+    }
+
+    public function test_install_ssl_script_requires_nginx_site_and_falls_back_to_webroot(): void
+    {
+        $script = file_get_contents(resource_path('scripts/install-ssl.sh'));
+
+        $this->assertStringContainsString('refusing to run Certbot until the site is configured', $script);
+        $this->assertStringContainsString('certbot --nginx', $script);
+        $this->assertStringContainsString('certonly --webroot', $script);
+        $this->assertStringContainsString('scripts/configure-site.sh', file_get_contents(app_path('Jobs/Operations/InstallSslCertificateJob.php')));
     }
 
     public function test_client_domain_staging_is_created_when_enabled(): void

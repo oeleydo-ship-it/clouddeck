@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ServerStatus;
+use App\Jobs\Sites\SyncPlatformStagingDnsJob;
 use App\Models\Concerns\HasUuid;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +16,21 @@ class Server extends Model
     protected $guarded = [];
 
     protected $hidden = ['monitoring_secret'];
+
+    protected static function booted(): void
+    {
+        static::updated(function (Server $server): void {
+            if (! $server->wasChanged('public_ip') || ! filled($server->public_ip)) {
+                return;
+            }
+
+            $server->sites()
+                ->where('environment', 'staging')
+                ->where('domain_source', 'platform')
+                ->pluck('id')
+                ->each(fn (string $siteId) => SyncPlatformStagingDnsJob::dispatch($siteId)->onQueue('operations'));
+        });
+    }
 
     protected function casts(): array
     {
