@@ -4,12 +4,14 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin\AdminBillingRequestController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminFeatureFlagController;
+use App\Http\Controllers\Admin\AdminImpersonationController;
 use App\Http\Controllers\Admin\AdminPlanController;
 use App\Http\Controllers\Admin\AdminPostController;
 use App\Http\Controllers\Admin\AdminSettingController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\PlatformServicesController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ImpersonationExitController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BlogController;
@@ -98,6 +100,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:5,1')->name('password.update');
 });
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
+Route::post('/impersonation/exit', ImpersonationExitController::class)->middleware(['auth', 'throttle:30,1'])->name('impersonation.exit');
 Route::get('/email/verify', fn () => view('auth.verify-email'))->middleware('auth')->name('verification.notice');
 Route::get('/email/verify/{id}/{hash}', fn (EmailVerificationRequest $request) => tap(redirect('/dashboard'), fn () => $request->fulfill()))->middleware(['auth', 'signed'])->name('verification.verify');
 Route::post('/email/verification-notification', function (Request $request) {
@@ -335,6 +338,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/posts/{post}', [AdminPostController::class, 'update'])->name('posts.update');
         Route::patch('/posts/{post}/publish', [AdminPostController::class, 'publish'])->name('posts.publish');
         Route::delete('/posts/{post}', [AdminPostController::class, 'destroy'])->name('posts.destroy');
+        Route::get('/users/{user}', [AdminImpersonationController::class, 'show'])->name('users.show');
+        Route::post('/users/{user}/impersonate', [AdminImpersonationController::class, 'start'])->middleware('throttle:10,1')->name('users.impersonate');
         Route::patch('/users/{user}/suspension', [AdminUserController::class, 'suspend'])->name('users.suspend');
         Route::patch('/users/{user}/role', [AdminUserController::class, 'role'])->name('users.role');
         Route::post('/users/{user}/subscription', [AdminUserController::class, 'subscription'])->name('users.subscription');

@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Middleware\EnsureEmailIsVerifiedWhenRequired;
+use App\Http\Middleware\EnsureImpersonationIntegrity;
+use App\Http\Middleware\EnsureImpersonationWriteAccess;
 use App\Http\Middleware\EnsureInstalled;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\EnsureSuperAdmin;
@@ -21,9 +23,18 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
-        $middleware->web(prepend: [EnsureInstalled::class], append: [PreserveActiveTab::class]);
+        $middleware->web(prepend: [EnsureInstalled::class], append: [
+            PreserveActiveTab::class,
+            EnsureImpersonationIntegrity::class,
+            EnsureImpersonationWriteAccess::class,
+        ]);
         $middleware->append(EnsureNotSuspended::class);
-        $middleware->alias(['abilities' => CheckAbilities::class, 'admin' => EnsureSuperAdmin::class, 'feature' => RequireFeature::class, 'verified' => EnsureEmailIsVerifiedWhenRequired::class]);
+        $middleware->alias([
+            'abilities' => CheckAbilities::class,
+            'admin' => EnsureSuperAdmin::class,
+            'feature' => RequireFeature::class,
+            'verified' => EnsureEmailIsVerifiedWhenRequired::class,
+        ]);
         $middleware->validateCsrfTokens(except: ['webhooks/*']);
     })
     ->withExceptions(function (Exceptions $exceptions) {

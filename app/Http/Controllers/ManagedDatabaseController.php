@@ -45,6 +45,9 @@ class ManagedDatabaseController extends Controller
     public function destroy(Request $request, ManagedDatabase $managedDatabase): RedirectResponse
     {
         $this->authorize('update', $managedDatabase->server);
+        // Typing the name is required because dropping the schema on the server is permanent —
+        // exports are separate and are not restored by undoing this action.
+        $request->validate(['confirmation' => ['required', Rule::in([$managedDatabase->name])]]);
         $managedDatabase->update(['status' => 'deleting']);
         DeleteDatabaseJob::dispatch($managedDatabase->id)->onQueue('operations');
 

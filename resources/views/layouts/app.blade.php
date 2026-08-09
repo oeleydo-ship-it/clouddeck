@@ -246,6 +246,25 @@
                 <!-- Ambient brand wash: keeps the expansive feel without competing with data. -->
                 <div class="pointer-events-none absolute right-0 top-0 -z-10 size-[500px] rounded-full bg-[linear-gradient(135deg,#00d2fd_0%,#0058bc_100%)] opacity-10 blur-[120px]"></div>
 
+                @if(! empty($isImpersonating) && $impersonationTarget)
+                    <div class="border-b border-amber-500/40 bg-amber-500 text-slate-950">
+                        <div class="mx-auto flex w-full max-w-[1280px] flex-wrap items-center justify-between gap-3 px-4 py-2.5 lg:px-7">
+                            <div class="min-w-0 text-sm">
+                                <p class="font-semibold">You are impersonating {{ $impersonationTarget->name }}</p>
+                                <p class="truncate text-xs text-slate-900/80">
+                                    {{ $impersonationTarget->email }}
+                                    @if(($impersonationSupportMode ?? null) === 'read_only')
+                                        · Support mode: read only
+                                    @endif
+                                </p>
+                            </div>
+                            <form method="POST" action="{{ route('impersonation.exit') }}">@csrf
+                                <button class="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-medium text-amber-50 hover:bg-slate-900">Exit impersonation</button>
+                            </form>
+                        </div>
+                    </div>
+                @endif
+
                 <!-- Console context row. Part of the page body rather than a fixed bar, so the -->
                 <!-- breadcrumb reads as the top of the content and nothing is pinned over it. -->
                 <div class="page-context">

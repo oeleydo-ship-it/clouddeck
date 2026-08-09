@@ -26,20 +26,27 @@ class AdminUsersAndFlagsTest extends TestCase
         $this->actingAs($admin)->get('/admin/users')
             ->assertOk()
             ->assertSee('paying@example.test')
+            ->assertSee(route('admin.users.show', $customer), false)
+            ->assertSee('Pro');
+
+        $this->actingAs($admin)->get(route('admin.users.show', $customer))
+            ->assertOk()
             ->assertSee(route('admin.users.subscription', $customer), false)
             ->assertSee(route('admin.users.role', $customer), false)
             ->assertSee(route('admin.users.suspend', $customer), false)
-            ->assertSee('Pro');
+            ->assertSee('Impersonate user');
     }
 
     public function test_a_suspended_account_is_labelled_and_offered_a_restore(): void
     {
         $admin = $this->admin();
-        User::factory()->create(['email' => 'blocked@example.test', 'suspended_at' => now()]);
+        $customer = User::factory()->create(['email' => 'blocked@example.test', 'suspended_at' => now()]);
 
-        $response = $this->actingAs($admin)->get('/admin/users')->assertOk();
+        $this->actingAs($admin)->get('/admin/users')->assertOk()->assertSee('Suspended');
 
-        $response->assertSee('Suspended')->assertSee('Restore');
+        $response = $this->actingAs($admin)->get(route('admin.users.show', $customer))->assertOk();
+
+        $response->assertSee('Restore');
         // The button posts the inverse of the current state, so a suspended account offers 0.
         $response->assertSee('name="suspend" value="0"', false);
     }
@@ -64,10 +71,10 @@ class AdminUsersAndFlagsTest extends TestCase
     public function test_assigning_a_plan_is_impossible_while_none_is_active(): void
     {
         $admin = $this->admin();
-        User::factory()->create();
+        $customer = User::factory()->create();
         Plan::create(['name' => 'Retired', 'slug' => 'retired', 'monthly_price' => 0, 'yearly_price' => 0, 'currency' => 'USD', 'limits' => [], 'features' => [], 'active' => false, 'public' => false]);
 
-        $this->actingAs($admin)->get('/admin/users')->assertOk()->assertSee('No active plans');
+        $this->actingAs($admin)->get(route('admin.users.show', $customer))->assertOk()->assertSee('No active plans');
     }
 
     public function test_billing_is_in_the_sidebar_and_account_menu_holds_teams(): void

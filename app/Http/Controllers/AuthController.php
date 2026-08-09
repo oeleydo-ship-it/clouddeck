@@ -90,6 +90,8 @@ class AuthController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
+        app(\App\Services\ImpersonationManager::class)->terminateOnLogout($request);
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

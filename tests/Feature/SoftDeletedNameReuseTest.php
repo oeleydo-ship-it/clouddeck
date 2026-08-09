@@ -47,13 +47,29 @@ class SoftDeletedNameReuseTest extends TestCase
         $database = ManagedDatabase::sole();
         // Deleting queues a remote drop and trashes the row once it succeeds; this is the
         // state the operator is in afterwards.
-        $this->actingAs($user)->delete("/databases/{$database->id}")->assertSessionHas('status');
+        $this->actingAs($user)->delete("/databases/{$database->id}", ['confirmation' => $database->name])->assertSessionHas('status');
         $database->delete();
 
         // Previously an integrity violation that reached the operator as a 500.
         $this->actingAs($user)->post("/servers/{$server->id}/databases", $payload)->assertSessionHasNoErrors();
 
         $this->assertSame(1, ManagedDatabase::count());
+    }
+
+    public function test_deleting_a_database_requires_typing_its_name(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+
+        $this->actingAs($user)->post("/servers/{$server->id}/databases", ['engine' => 'mysql', 'name' => 'wp', 'username' => 'wp'])->assertSessionHasNoErrors();
+        $database = ManagedDatabase::sole();
+
+        $this->actingAs($user)->delete("/databases/{$database->id}")->assertSessionHasErrors('confirmation');
+        $this->actingAs($user)->delete("/databases/{$database->id}", ['confirmation' => 'wrong'])->assertSessionHasErrors('confirmation');
+        $this->assertSame('pending', $database->fresh()->status);
+
+        $this->actingAs($user)->delete("/databases/{$database->id}", ['confirmation' => 'wp'])->assertSessionHas('status');
+        $this->assertSame('deleting', $database->fresh()->status);
     }
 
     public function test_a_database_name_already_live_on_that_server_is_refused_with_a_message(): void

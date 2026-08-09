@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Auth\ImpersonationGates;
 use App\Billing\Contracts\BillingGateway;
 use App\Billing\ManualBillingGateway;
 use App\Enums\DeploymentStatus;
@@ -56,6 +57,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        ImpersonationGates::register();
         Event::listen(DeploymentFinished::class, SendDeploymentNotification::class);
         $this->applyStripeCredentialsFromSettings();
         $this->applyMailCredentialsFromSettings();
@@ -86,6 +88,12 @@ class AppServiceProvider extends ServiceProvider
             $view->with('analytics', $settings->analytics());
             $view->with('aiGuideEnabled', $settings->aiGuideEnabled());
             $view->with('insertCode', $settings->insertCode());
+
+            $impersonation = app(\App\Services\ImpersonationManager::class);
+            $view->with('isImpersonating', $impersonation->isImpersonating());
+            $view->with('impersonationSupportMode', $impersonation->supportMode());
+            $view->with('impersonationTarget', $impersonation->isImpersonating() ? auth()->user() : null);
+            $view->with('impersonationAdmin', $impersonation->impersonator());
         });
     }
 
