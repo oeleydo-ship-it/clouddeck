@@ -166,6 +166,12 @@ fi
 
 echo "[8/9] Switching the current release atomically"
 chown -R www-data:www-data "${RELEASE_PATH}" "${SHARED}"
+# configure-site used to mkdir current/public as a real tree for the placeholder page.
+# mv -T cannot replace that directory with a symlink ("cannot overwrite directory with non-directory").
+if [ -e "${ROOT}/current" ] && [ ! -L "${ROOT}/current" ]; then
+    echo "Removing non-symlink ${ROOT}/current so the release can be linked"
+    rm -rf "${ROOT}/current"
+fi
 ln -sfn "${RELEASE_PATH}" "${ROOT}/current.next"
 mv -Tf "${ROOT}/current.next" "${ROOT}/current"
 

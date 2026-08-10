@@ -8,6 +8,10 @@ TARGET="${ROOT}/releases/${RELEASE}"
 
 test -d "${TARGET}"
 test -f "${TARGET}/artisan"
+if [ -e "${ROOT}/current" ] && [ ! -L "${ROOT}/current" ]; then
+    echo "Removing non-symlink ${ROOT}/current so the release can be linked"
+    rm -rf "${ROOT}/current"
+fi
 ln -sfn "${TARGET}" "${ROOT}/current.next"
 mv -Tf "${ROOT}/current.next" "${ROOT}/current"
 cd "${ROOT}/current"

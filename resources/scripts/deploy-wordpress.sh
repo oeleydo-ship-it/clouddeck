@@ -60,6 +60,11 @@ echo "[5/6] Switching the current release atomically"
 chown -R www-data:www-data "${RELEASE_PATH}" "${SHARED}/wp-content" "${SHARED}/wp-config.php"
 find "${RELEASE_PATH}" -type d -exec chmod 755 {} \;
 find "${RELEASE_PATH}" -type f -exec chmod 644 {} \;
+# Same as Laravel: a real current/ directory blocks the atomic symlink switch.
+if [ -e "${ROOT}/current" ] && [ ! -L "${ROOT}/current" ]; then
+    echo "Removing non-symlink ${ROOT}/current so the release can be linked"
+    rm -rf "${ROOT}/current"
+fi
 ln -sfn "${RELEASE_PATH}" "${ROOT}/current.next"
 mv -Tf "${ROOT}/current.next" "${ROOT}/current"
 

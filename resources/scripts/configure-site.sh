@@ -4,6 +4,10 @@ DOMAIN={{DOMAIN}}
 PHP_VERSION={{PHP_VERSION}}
 DOCUMENT_ROOT={{DOCUMENT_ROOT}}
 ROOT="/var/www/${DOMAIN}"
+# Never mkdir under current/: that path must stay free for a release symlink.
+# A real current/ directory makes `mv -T current.next current` fail with
+# "cannot overwrite directory … with non-directory".
+PLACEHOLDER="${ROOT}/shared/placeholder"
 DOC_ABS="${ROOT}/${DOCUMENT_ROOT}"
 NGINX_SITE="/etc/nginx/sites-available/${DOMAIN}"
 
@@ -14,14 +18,14 @@ mkdir -p "${ROOT}/releases" \
   "${ROOT}/shared/storage/framework/views" \
   "${ROOT}/shared/storage/logs" \
   "${ROOT}/shared/acme" \
-  "${DOC_ABS}"
+  "${PLACEHOLDER}"
 chown -R www-data:www-data "${ROOT}"
 
 # Before the first deploy, current/public does not exist. Without a real document root
 # Nginx still needs a matching server_name block; otherwise requests fall through to the
 # distro default welcome page and Let's Encrypt challenges fail on the wrong vhost.
-if [ ! -f "${DOC_ABS}/index.php" ] && [ ! -f "${DOC_ABS}/index.html" ]; then
-  cat > "${DOC_ABS}/index.html" <<HTML
+if [ ! -f "${PLACEHOLDER}/index.php" ] && [ ! -f "${PLACEHOLDER}/index.html" ]; then
+  cat > "${PLACEHOLDER}/index.html" <<HTML
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${DOMAIN}</title></head>
 <body style="font-family:system-ui;margin:3rem;line-height:1.5">
@@ -29,7 +33,18 @@ if [ ! -f "${DOC_ABS}/index.php" ] && [ ! -f "${DOC_ABS}/index.html" ]; then
 <p>This site is configured on the server. Deploy from Uplary to publish the application.</p>
 </body></html>
 HTML
-  chown www-data:www-data "${DOC_ABS}/index.html"
+  chown www-data:www-data "${PLACEHOLDER}/index.html"
+fi
+
+if [ -L "${ROOT}/current" ] && [ -d "${DOC_ABS}" ]; then
+  NGINX_ROOT="${DOC_ABS}"
+else
+  NGINX_ROOT="${PLACEHOLDER}"
+fi
+
+if [ ! -d "/etc/php/${PHP_VERSION}/fpm/pool.d" ]; then
+  echo "PHP ${PHP_VERSION} FPM is not installed (missing /etc/php/${PHP_VERSION}/fpm/pool.d)." >&2
+  exit 1
 fi
 
 cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/clouddeck-${DOMAIN}.conf" <<POOL
@@ -54,7 +69,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN};
-    root ${DOC_ABS};
+    root ${NGINX_ROOT};
     index index.php index.html;
     charset utf-8;
     client_max_body_size 100M;

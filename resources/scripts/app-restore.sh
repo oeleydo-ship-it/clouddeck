@@ -62,6 +62,10 @@ if [ "${KEEP_BACKUPS}" = "1" ]; then
 fi
 
 # Point current at the restored release.
+if [ -e "${ROOT}/current" ] && [ ! -L "${ROOT}/current" ]; then
+    echo "Removing non-symlink ${ROOT}/current so the release can be linked"
+    rm -rf "${ROOT}/current"
+fi
 ln -sfn "${RELEASE_DIR}" "${ROOT}/current.next"
 mv -Tf "${ROOT}/current.next" "${ROOT}/current"
 

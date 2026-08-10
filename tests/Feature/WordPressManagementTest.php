@@ -286,6 +286,10 @@ class WordPressManagementTest extends TestCase
 
         $this->assertStringContainsString('NGINX_SITE="/etc/nginx/sites-available/${DOMAIN}"', $configure);
         $this->assertStringContainsString('write_http_vhost', $configure);
+        // Placeholder lives under shared/, never under current/ — that path must stay free
+        // for the release symlink or the atomic switch fails.
+        $this->assertStringContainsString('shared/placeholder', $configure);
+        $this->assertStringNotContainsString('mkdir -p "${DOC_ABS}"', $configure);
         // The link is made every time: the block existing is not the same as it being served.
         $this->assertStringContainsString('ln -sfn "${NGINX_SITE}" "/etc/nginx/sites-enabled/${DOMAIN}"', $configure);
         $this->assertStringContainsString('rm -f /etc/nginx/sites-enabled/default', $configure);
@@ -311,6 +315,8 @@ class WordPressManagementTest extends TestCase
 
         $this->assertStringContainsString('expected="${ROOT}/current"', $wordpress);
         $this->assertStringContainsString('expected="${ROOT}/current/public"', $laravel);
+        $this->assertStringContainsString('Removing non-symlink', $laravel);
+        $this->assertStringContainsString('Removing non-symlink', $wordpress);
 
         foreach (['deploy-wordpress.sh' => $wordpress, 'deploy-laravel.sh' => $laravel] as $name => $script) {
             $this->assertStringContainsString('ensure_document_root', $script, $name);
