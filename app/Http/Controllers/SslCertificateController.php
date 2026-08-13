@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\Operations\InstallCustomSslCertificateJob;
 use App\Jobs\Operations\InstallSslCertificateJob;
+use App\Jobs\Operations\RemoveSslCertificateJob;
 use App\Models\Site;
 use App\Services\CustomSslValidator;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +19,9 @@ class SslCertificateController extends Controller
         abort_unless($site->status === 'active', 422);
         $request->validate(['force_https' => ['sometimes', 'boolean'], 'auto_renew' => ['sometimes', 'boolean']]);
         $certificate = $site->sslCertificates()->latest()->first();
+        if ($certificate && in_array($certificate->status, ['issuing', 'removing'], true)) {
+            return back()->withErrors(['ssl' => 'An SSL operation is already in progress for this site.']);
+        }
         if (! $certificate) {
             $certificate = $site->sslCertificates()->create([
                 'user_id' => $request->user()->id,
@@ -39,7 +43,7 @@ class SslCertificateController extends Controller
         }
         InstallSslCertificateJob::dispatch($certificate->id)->onQueue('operations');
 
-        return back()->with('status', 'SSL issuance queued.');
+        return back()->with('status', 'Let’s Encrypt certificate issuance queued.');
     }
 
     public function storeCustom(Request $request, Site $site, CustomSslValidator $validator): RedirectResponse
@@ -55,6 +59,11 @@ class SslCertificateController extends Controller
             'private_key_pem' => ['nullable', 'string', 'max:16384'],
         ]);
 
+        $certificate = $site->sslCertificates()->latest()->first();
+        if ($certificate && in_array($certificate->status, ['issuing', 'removing'], true)) {
+            return back()->withErrors(['ssl' => 'An SSL operation is already in progress for this site.'])->withInput();
+        }
+
         $fullchain = $this->pemFromRequest($request, 'fullchain', 'fullchain_pem');
         $privateKey = $this->pemFromRequest($request, 'private_key', 'private_key_pem');
         if ($fullchain === '' || $privateKey === '') {
@@ -67,7 +76,6 @@ class SslCertificateController extends Controller
         $parsed = $validator->validate($fullchain, $privateKey);
         $domains = $parsed['domains'] !== [] ? $parsed['domains'] : [$site->domain];
 
-        $certificate = $site->sslCertificates()->latest()->first();
         $payload = [
             'user_id' => $request->user()->id,
             'domains' => $domains,
@@ -89,7 +97,26 @@ class SslCertificateController extends Controller
 
         InstallCustomSslCertificateJob::dispatch($certificate->id)->onQueue('operations');
 
-        return back()->with('status', 'Custom SSL install queued.');
+        return back()->with('status', 'Custom certificate install queued.');
+    }
+
+    public function destroy(Request $request, Site $site): RedirectResponse
+    {
+        $this->authorize('update', $site);
+        abort_unless($site->status === 'active', 422);
+
+        $certificate = $site->sslCertificates()->latest()->first();
+        if (! $certificate) {
+            return back()->withErrors(['ssl' => 'No SSL certificate is installed on this site.']);
+        }
+        if (in_array($certificate->status, ['removing', 'issuing'], true)) {
+            return back()->withErrors(['ssl' => 'An SSL operation is already in progress for this site.']);
+        }
+
+        $certificate->update(['status' => 'removing', 'failure_reason' => null]);
+        RemoveSslCertificateJob::dispatch($certificate->id)->onQueue('operations');
+
+        return back()->with('status', 'SSL removal queued. The site will serve HTTP until you issue or upload a new certificate.');
     }
 
     private function pemFromRequest(Request $request, string $fileKey, string $textKey): string

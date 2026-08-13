@@ -54,6 +54,7 @@ class DeployLaravelJob implements ShouldQueue
             'DOMAIN' => $deployment->site->domain,
             'PHP_VERSION' => $deployment->site->php_version,
             'DOCUMENT_ROOT' => $deployment->site->documentRoot(),
+            'PLATFORM' => $deployment->site->platform ?: 'laravel',
         ]);
 
         $result = $ssh->runScriptStreaming($deployment->site->server, resource_path('scripts/deploy-laravel.sh'), [

@@ -206,7 +206,7 @@ class WordPressSiteTest extends TestCase
             ->assertSee('wordpress.org')
             ->assertSee('Not deployed yet')
             // Laravel-only surfaces would be dead ends on a WordPress install.
-            ->assertDontSee('Queue &amp; Reverb', false)
+            ->assertDontSee('Queue & Reverb')
             ->assertDontSee('Deployment settings');
 
         foreach (['DB_DATABASE' => 'blog', 'DB_USERNAME' => 'blog_user', 'DB_PASSWORD' => 'secret'] as $key => $value) {

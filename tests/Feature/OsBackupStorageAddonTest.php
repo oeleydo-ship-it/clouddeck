@@ -15,6 +15,7 @@ use App\Services\QuotaManager;
 use App\Services\SystemSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class OsBackupStorageAddonTest extends TestCase
@@ -69,9 +70,11 @@ class OsBackupStorageAddonTest extends TestCase
 
         $this->actingAs($user)->get('/billing')
             ->assertOk()
-            ->assertSee('OS backup storage')
-            ->assertSee('Buy with Stripe')
-            ->assertSee(route('billing.os-backup'), false);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Billing/Index')
+                ->where('osBackupTitle', 'OS backup storage')
+                ->where('osBackupCta', 'Buy with Stripe')
+                ->where('stripeEnabled', true));
     }
 
     public function test_checkout_session_completion_applies_addon_gb(): void

@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Services\FeatureManager;
 use Closure;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class RequireFeature
@@ -31,7 +32,7 @@ class RequireFeature
 
         // APIs and non-GET mutations stay hard-denied. Console page loads show an upgrade
         // prompt instead of the bare "This feature is not enabled" 403.
-        if ($request->expectsJson() || $request->is('api/*') || $request->is('livewire/*')) {
+        if ($request->expectsJson() || $request->is('api/*')) {
             abort(403, 'This feature is not enabled for your account.');
         }
 
@@ -41,9 +42,11 @@ class RequireFeature
                 ->with('error', "{$label} is not included in your plan. Subscribe or upgrade to unlock it.");
         }
 
-        return response()->view('entitlements.upgrade', [
+        return Inertia::render('Entitlements/Upgrade', [
+            'title' => $label.' isn’t on your plan',
             'feature' => $feature,
             'label' => $label,
-        ]);
+            'billingHref' => route('billing.index'),
+        ])->toResponse($request);
     }
 }

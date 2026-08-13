@@ -17,12 +17,12 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Throwable;
 
 final class CloudServerImportController extends Controller
 {
-    public function index(Request $request, CloudAccount $cloudAccount, CloudProviderManager $providers): View|RedirectResponse
+    public function index(Request $request, CloudAccount $cloudAccount, CloudProviderManager $providers)
     {
         $this->authorizeAccount($request, $cloudAccount);
 
@@ -36,7 +36,9 @@ final class CloudServerImportController extends Controller
 
         $imported = $cloudAccount->servers()->whereNotNull('provider_id')->get()->keyBy('provider_id');
 
-        return view('cloud-accounts.servers', [
+        return Inertia::render('CloudAccounts/Servers', [
+            'title' => 'Import servers',
+            'copy' => ['Import and bootstrap'],
             'account' => $cloudAccount,
             'droplets' => $droplets,
             'imported' => $imported,

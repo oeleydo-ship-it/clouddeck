@@ -217,12 +217,17 @@ class SecurityDetectionTest extends TestCase
         $this->assertSame('Developer', $settings->forUser($user->fresh())['scope']['label']);
         $this->assertNull($server->fresh()->team_id);
 
-        $html = $this->actingAs($user->fresh())->get('/security')->assertOk()->getContent();
-        $this->assertStringContainsString($server->name, $html);
-        $this->assertStringContainsString('Developer', $html);
-        $this->assertStringNotContainsString('Add a server to start protecting it', $html);
-        $this->assertMatchesRegularExpression('/Protected servers<\/p>\s*<p[^>]*>\s*1\s*<\/p>/s', $html);
-        $this->assertMatchesRegularExpression('/Protected sites<\/p>\s*<p[^>]*>\s*1\s*<\/p>/s', $html);
+        $this->actingAs($user->fresh())->get('/security')
+            ->assertOk()
+            ->assertSee($server->name)
+            ->assertSee('Developer')
+            ->assertDontSee('Add a server to start protecting it')
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Security/Index')
+                ->where('protectedServers', 1)
+                ->where('protectedSites', 1)
+                ->where('settingsScope', 'Developer')
+                ->where('empty', null));
         $this->assertSame(1, $settings->serverQueryFor($user->fresh())->count());
         $this->assertTrue($settings->enabledForServer($server->fresh()));
     }

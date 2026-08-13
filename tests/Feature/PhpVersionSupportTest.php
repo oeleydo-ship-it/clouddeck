@@ -55,9 +55,10 @@ class PhpVersionSupportTest extends TestCase
         $this->actingAs($user)
             ->get('/sites/create')
             ->assertOk()
-            ->assertSee('name="php_version"', false)
-            ->assertSee('>8.5</option>', false)
-            ->assertSee('selected>8.5</option>', false);
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Sites/Create')
+                ->where('defaultPhpVersion', '8.5')
+                ->where('phpVersions.0', '8.5'));
     }
 
     public function test_bootstrap_script_installs_managed_php_versions_including_8_5(): void

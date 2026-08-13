@@ -196,15 +196,17 @@ class ServerOperationsTest extends TestCase
 
         $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=cron")
             ->assertOk()
-            ->assertSee('data-cron-presets', false)
-            ->assertSee('Laravel · app.example.com')
-            ->assertSee($commandAttr, false);
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Servers/Manage')
+                ->where('cronPresets.0.label', 'Laravel · app.example.com')
+                ->where('cronPresets.0.command', 'cd /var/www/app.example.com/current && php artisan schedule:run'));
 
         $this->actingAs($user)->get("/sites/{$site->id}?tab=cron")
             ->assertOk()
-            ->assertSee('data-cron-presets', false)
-            ->assertSee('>Laravel scheduler</button>', false)
-            ->assertSee($commandAttr, false);
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Sites/Show')
+                ->where('meta.scheduler_label', 'Laravel scheduler')
+                ->where('meta.scheduler_command', 'cd /var/www/app.example.com/current && php artisan schedule:run'));
     }
 
     public function test_site_cron_jobs_cannot_be_created_by_another_user(): void
@@ -435,7 +437,8 @@ class ServerOperationsTest extends TestCase
         $this->actingAs($user)->get("/servers/{$server->id}/manage")
             ->assertOk()
             ->assertSee('RUNNING')
-            ->assertSee('aria-label="Copy IP address"', false)
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->where('copyIpLabel', 'Copy IP address'))
             ->assertSee($server->public_ip);
     }
 

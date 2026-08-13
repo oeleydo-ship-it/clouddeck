@@ -33,6 +33,7 @@ class InstallSslCertificateJob implements ShouldQueue
             'DOMAIN' => $site->domain,
             'PHP_VERSION' => $site->php_version,
             'DOCUMENT_ROOT' => $site->documentRoot(),
+            'PLATFORM' => $site->platform ?: 'laravel',
         ]);
         $ssh->runScript($site->server, resource_path('scripts/install-ssl.sh'), ['DOMAIN' => $site->domain, 'EMAIL' => $certificate->user->email, 'REDIRECT' => $certificate->force_https ? 'redirect' : 'no-redirect']);
         $output = $ssh->run($site->server, "openssl x509 -in /etc/letsencrypt/live/{$site->domain}/cert.pem -noout -enddate");

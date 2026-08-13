@@ -7,6 +7,14 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Inertia pages @vite() the React entry. Tests do not build a manifest.
+        $this->withoutVite();
+    }
+
     /**
      * Marks the instance as already installed, so requests are not diverted to the setup
      * wizard. Needed only by tests that exercise guest pages against a genuinely empty

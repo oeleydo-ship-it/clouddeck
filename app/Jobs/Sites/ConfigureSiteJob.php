@@ -22,7 +22,12 @@ class ConfigureSiteJob implements ShouldQueue
     public function handle(SshClient $ssh): void
     {
         $site = Site::with('server.sshKey')->findOrFail($this->siteId);
-        $ssh->runScript($site->server, resource_path('scripts/configure-site.sh'), ['DOMAIN' => $site->domain, 'PHP_VERSION' => $site->php_version, 'DOCUMENT_ROOT' => $site->documentRoot()]);
+        $ssh->runScript($site->server, resource_path('scripts/configure-site.sh'), [
+            'DOMAIN' => $site->domain,
+            'PHP_VERSION' => $site->php_version,
+            'DOCUMENT_ROOT' => $site->documentRoot(),
+            'PLATFORM' => $site->platform ?: 'laravel',
+        ]);
         $site->update(['status' => 'active']);
     }
 

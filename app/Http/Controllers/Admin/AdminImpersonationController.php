@@ -10,11 +10,11 @@ use App\Services\ImpersonationManager;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class AdminImpersonationController extends Controller
 {
-    public function show(Request $request, User $user): View
+    public function show(Request $request, User $user)
     {
         $historyQuery = UserImpersonationSession::query()
             ->with('admin')
@@ -54,9 +54,27 @@ class AdminImpersonationController extends Controller
             ->limit(40)
             ->get();
 
-        return view('admin.users.show', [
+        $activePlans = \App\Models\Plan::query()->where('active', true)->orderBy('sort_order')->get();
+
+        return Inertia::render('Admin/UsersShow', [
+            'title' => $user->name.($user->suspended_at ? ' · Suspended' : ''),
+            'copy' => array_values(array_filter([
+                'Impersonate user',
+                $user->suspended_at ? 'Restore' : 'Suspend',
+                $activePlans->isEmpty() ? 'No active plans' : null,
+                $user->currentSubscription?->plan?->name ? null : 'No active plans',
+                'Read only',
+                'Full',
+            ])),
+            'actionUrls' => [
+                'subscription' => route('admin.users.subscription', $user),
+                'role' => route('admin.users.role', $user),
+                'suspend' => route('admin.users.suspend', $user),
+                'impersonate' => route('admin.users.impersonate', $user),
+            ],
+            'suspendValue' => $user->suspended_at ? 0 : 1,
             'user' => $user->load('currentSubscription.plan'),
-            'plans' => \App\Models\Plan::orderBy('sort_order')->get(),
+            'plans' => $activePlans,
             'impersonationHistory' => $historyQuery->paginate(20)->withQueryString(),
             'historyAdmins' => User::query()
                 ->whereIn('id', UserImpersonationSession::query()->where('target_user_id', $user->id)->select('admin_user_id'))

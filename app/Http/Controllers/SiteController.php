@@ -32,15 +32,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class SiteController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): Response
     {
         $sites = $request->user()->sites();
 
-        return view('sites.index', [
+        return Inertia::render('Sites/Index', [
+            'title' => 'Sites',
             'sites' => (clone $sites)->with(['server', 'latestDeployment', 'stagingSite'])->latest()->paginate(15),
             'stagingSitesEnabled' => app(SystemSettings::class)->stagingSitesEnabled(),
             // Counted over every site the user owns, not just the current page, so the
@@ -54,9 +56,14 @@ class SiteController extends Controller
         ]);
     }
 
-    public function create(Request $request): View
+    public function create(Request $request): Response
     {
-        return view('sites.create', ['servers' => $request->user()->accessibleServers()->where('status', ServerStatus::Ready)->get()]);
+        return Inertia::render('Sites/Create', [
+            'title' => 'Create a site',
+            'servers' => $request->user()->accessibleServers()->where('status', ServerStatus::Ready)->get(['id', 'name', 'public_ip']),
+            'phpVersions' => config('clouddeck.php_versions'),
+            'defaultPhpVersion' => config('clouddeck.default_php_version'),
+        ]);
     }
 
     public function store(StoreSiteRequest $request, QuotaManager $quotas): RedirectResponse
@@ -75,9 +82,17 @@ class SiteController extends Controller
 
             // A WordPress install is configured by a generated wp-config.php, not by a
             // Laravel environment file, so seeding APP_KEY and a queue connection into it
-            // would leave keys nothing ever reads.
+            // would leave keys nothing ever reads. React SPAs only need VITE_* at build time.
             if ($site->isWordPress()) {
                 app(WordPressConfig::class)->ensureSalts($site);
+
+                return $site;
+            }
+
+            if ($site->isReact()) {
+                foreach (['VITE_APP_URL' => 'https://'.$site->domain, 'NODE_ENV' => 'production'] as $key => $value) {
+                    $site->environmentVariables()->create(['key' => $key, 'value' => $value, 'is_secret' => false]);
+                }
 
                 return $site;
             }
@@ -93,7 +108,7 @@ class SiteController extends Controller
         $request->user()->notify(new OperationalEventNotification(
             event: 'site_added',
             title: $site->domain.' was added to '.$site->server->name,
-            body: 'The '.($site->isWordPress() ? 'WordPress' : 'Laravel').' site is being configured on the server. It can be deployed once that finishes.',
+            body: 'The '.$site->platformLabel().' site is being configured on the server. It can be deployed once that finishes.',
             url: route('sites.show', $site),
             context: ['site_id' => $site->id, 'server_id' => $site->server_id],
         ));
@@ -101,7 +116,7 @@ class SiteController extends Controller
         return redirect()->route('sites.show', $site)->with('status', 'Site configuration has been queued.');
     }
 
-    public function show(Request $request, Site $site, EnvironmentFile $environment): View
+    public function show(Request $request, Site $site, EnvironmentFile $environment): Response
     {
         $this->authorize('view', $site);
 
@@ -111,7 +126,17 @@ class SiteController extends Controller
             RefreshWordPressInventoryJob::dispatch($site->id)->onQueue('operations');
         }
 
-        return view('sites.show', [
+        $databaseKey = $site->isWordPress() ? 'DB_DATABASE' : 'DB_CONNECTION';
+        $hasDatabase = $site->environmentVariables->contains(fn ($variable) => $variable->key === $databaseKey);
+        $wordpressInstalled = $site->wordpressIsInstalled();
+        $tabs = $site->isWordPress()
+            ? ['overview' => 'Overview', 'themes' => 'Themes', 'plugins' => 'Plugins', 'backups' => 'Backups', 'environment' => 'Environment', 'ssl' => 'SSL', 'cron' => 'Cron', 'logs' => 'Logs', 'monitoring' => 'Monitoring']
+            : ($site->isReact()
+                ? ['overview' => 'Overview', 'backups' => 'Backups', 'environment' => 'Environment', 'deploy' => 'Deployment settings', 'ssl' => 'SSL', 'webhook' => 'Webhook', 'logs' => 'Logs', 'monitoring' => 'Monitoring']
+                : ['overview' => 'Overview', 'backups' => 'Backups', 'environment' => 'Environment', 'deploy' => 'Deployment settings', 'ssl' => 'SSL', 'cron' => 'Cron', 'queue' => 'Queue & Reverb', 'webhook' => 'Webhook', 'logs' => 'Logs', 'monitoring' => 'Monitoring']);
+
+        return Inertia::render('Sites/Show', [
+            'title' => ($site->isLaravel() ? 'Laravel · ' : '').$site->domain,
             'site' => $site->load([
                 'server',
                 'environmentVariables',
@@ -122,13 +147,73 @@ class SiteController extends Controller
                 'stagingSite',
                 'productionSite',
                 'monitorIncidents' => fn ($query) => $query->limit(20),
+                'logSnapshots' => fn ($query) => $query->latest()->limit(5),
             ]),
+            'meta' => [
+                'is_react' => $site->isReact(),
+                'is_wordpress' => $site->isWordPress(),
+                'is_laravel' => $site->isLaravel(),
+                'uses_php' => $site->usesPhp(),
+                'platform_label' => $site->platformLabel(),
+                'is_staging' => $site->isStaging(),
+                'is_production' => $site->isProduction(),
+                'wordpress_installed' => $wordpressInstalled,
+                'has_database' => $hasDatabase,
+                'secure' => $site->sslCertificates->contains(fn ($certificate) => $certificate->status === 'active'),
+                'php_versions' => config('clouddeck.php_versions'),
+                'scheduler_command' => 'cd /var/www/'.$site->domain.'/current && php artisan schedule:run',
+                'webhook_url' => route('webhooks.site', $site),
+                'visit_url' => ($site->sslCertificates->contains(fn ($certificate) => $certificate->status === 'active') ? 'https://' : 'http://').$site->domain,
+                'deploy_action' => $site->isWordPress() ? ($wordpressInstalled ? 'Reinstall WordPress' : 'Install WordPress') : 'Deploy now',
+                'database_notice' => (! $hasDatabase && ! $site->isReact())
+                    ? 'Create a database before '.($site->isWordPress() ? 'installing' : 'deploying')
+                    : null,
+                'visit_label' => 'Visit site',
+                'wordpress_source' => $site->isWordPress() ? 'wordpress.org' : null,
+                'not_deployed' => $site->isWordPress() && ! $site->last_deployed_at ? 'Not deployed yet' : null,
+                'finish_wordpress' => $site->isWordPress() && $site->last_deployed_at && ! $wordpressInstalled ? 'Finish the WordPress install' : null,
+                'wp_install_path' => $site->isWordPress() ? 'wp-admin/install.php' : null,
+                'setup_complete' => $wordpressInstalled ? 'Setup complete' : null,
+                'scheduler_label' => $site->isLaravel() ? 'Laravel scheduler' : null,
+                'kept_on_deploy' => $site->isLaravel() ? 'Kept on every deploy' : null,
+                'horizon_access' => $site->isLaravel() ? 'Horizon dashboard access' : null,
+                'queue_failed_label' => $site->isLaravel() && $site->queue_failed_count !== null ? $site->queue_failed_count.' failed' : null,
+                'horizon_status' => $site->isLaravel()
+                    ? (data_get($site->installed_packages, 'laravel/horizon')
+                        ? data_get($site->installed_packages, 'laravel/horizon').' installed'
+                        : 'not detected')
+                    : null,
+                'reverb_status' => $site->isLaravel()
+                    ? (data_get($site->installed_packages, 'laravel/reverb')
+                        ? data_get($site->installed_packages, 'laravel/reverb').' installed'
+                        : 'not detected')
+                    : null,
+                'wp_update_available' => $site->isWordPress() ? 'Update available' : null,
+                'wp_active' => $site->isWordPress() ? 'Active' : null,
+                'wp_last_read_failed' => $site->isWordPress() && $site->wordpress_inventory_error ? 'The last read failed' : null,
+                'wp_browse_themes' => $site->isWordPress() ? 'Browse themes' : null,
+                'wp_browse_plugins' => $site->isWordPress() ? 'Browse plugins' : null,
+                'wp_install_activate' => $site->isWordPress() ? 'Install and activate' : null,
+                'wp_backup_now' => $site->isWordPress() ? 'Back up now' : null,
+                'wp_installed_themes' => $site->isWordPress() ? 'Installed themes' : null,
+                'wp_installed_plugins' => $site->isWordPress() ? 'Installed plugins' : null,
+                'wp_directory_error' => $site->isWordPress() ? 'could not be reached' : null,
+                'full_backup_label' => $site->isLaravel() || $site->isReact() ? 'Create full backup' : null,
+                'full_backups_heading' => $site->isLaravel() || $site->isReact() ? 'Full site backups' : null,
+            ],
+            'tabs' => $tabs,
+            'logSources' => $site->isReact()
+                ? array_intersect_key(\App\Http\Controllers\LogController::SOURCES, array_flip(['nginx', 'nginx-access']))
+                : ($site->isWordPress()
+                    ? array_intersect_key(\App\Http\Controllers\LogController::SOURCES, array_flip(['nginx', 'nginx-access', 'php']))
+                    : \App\Http\Controllers\LogController::SOURCES),
             'stagingSitesEnabled' => app(SystemSettings::class)->stagingSitesEnabled(),
-            'stagingPlatformDomain' => app(SystemSettings::class)->stagingPlatformDomain(),
             // Only fetched for the platform that can use it, and cached, so the directory
             // being slow or down never holds up a Laravel site's page.
             'directoryThemes' => $site->isWordPress() ? app(WordPressDirectory::class)->themes($request->query('theme_search')) : [],
             'directoryPlugins' => $site->isWordPress() ? app(WordPressDirectory::class)->plugins($request->query('plugin_search')) : [],
+            'wordpressThemes' => $site->isWordPress() ? $site->wordpressInventory('theme') : [],
+            'wordpressPlugins' => $site->isWordPress() ? $site->wordpressInventory('plugin') : [],
             'deployments' => $site->deployments()->with('user')->latest()->paginate(20),
             'environment' => $environment->render($site->environmentVariables),
             'rollbackReleases' => $site->deployments()->where('status', DeploymentStatus::Successful)->whereNotNull('release')->latest('finished_at')->limit(5)->pluck('release')->all(),
@@ -140,15 +225,17 @@ class SiteController extends Controller
         $this->authorize('update', $site);
 
         $data = $request->validate([
-            'domain_source' => ['required', Rule::in(['platform', 'custom'])],
-            'staging_slug' => ['required_if:domain_source,platform', 'nullable', 'string', 'max:63', 'regex:/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/'],
-            'domain' => ['required_if:domain_source,custom', 'nullable', 'lowercase', 'max:253', 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/'],
+            'domain' => ['required', 'lowercase', 'max:253', 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/'],
             'branch' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
         ]);
 
         $staging = $create->execute($site, $data);
+        $ip = $site->server->public_ip;
+        $status = filled($ip)
+            ? 'Staging queued. Point an A record for '.$staging->domain.' at '.$ip.', then install SSL.'
+            : 'Staging site configuration has been queued.';
 
-        return redirect()->route('sites.show', $staging)->with('status', 'Staging site configuration has been queued.');
+        return redirect()->route('sites.show', $staging)->with('status', $status);
     }
 
     public function promote(Request $request, Site $site, PromoteStagingSite $promote): RedirectResponse
@@ -224,7 +311,17 @@ class SiteController extends Controller
     public function update(Request $request, Site $site): RedirectResponse
     {
         $this->authorize('update', $site);
-        $data = $request->validate(['repository_url' => ['required', 'string', 'max:2048', new GitRepositoryUrl], 'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'], 'php_version' => ['required', Rule::in(config('clouddeck.php_versions'))], 'deployment_script' => ['nullable', 'string', 'max:30000'], 'auto_deploy' => ['sometimes', 'boolean'], 'zero_downtime' => ['sometimes', 'boolean']]);
+        $data = $request->validate([
+            'repository_url' => ['required', 'string', 'max:2048', new GitRepositoryUrl],
+            'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
+            'php_version' => [$site->usesPhp() ? 'required' : 'nullable', Rule::in(config('clouddeck.php_versions'))],
+            'deployment_script' => ['nullable', 'string', 'max:30000'],
+            'auto_deploy' => ['sometimes', 'boolean'],
+            'zero_downtime' => ['sometimes', 'boolean'],
+        ]);
+        if (! $site->usesPhp()) {
+            unset($data['php_version']);
+        }
         $site->update([...$data, 'auto_deploy' => $request->boolean('auto_deploy'), 'zero_downtime' => $request->boolean('zero_downtime')]);
 
         return back()->with('status', 'Deployment settings updated.');
@@ -257,18 +354,6 @@ class SiteController extends Controller
         $deployment = $start->execute($site, $request->user());
 
         return redirect()->route('deployments.show', $deployment)->with('status', 'Deployment queued.');
-    }
-
-    public function reconfigure(Request $request, Site $site): RedirectResponse
-    {
-        $this->authorize('update', $site);
-        abort_unless($site->isStaging(), 404);
-        abort_unless($site->server->status === ServerStatus::Ready, 422, 'The server must be ready before repairing site configuration.');
-
-        $site->update(['status' => 'configuring']);
-        ConfigureSiteJob::dispatch($site->id)->onQueue('provisioning');
-
-        return back()->with('status', 'Repairing Nginx and PHP-FPM for '.$site->domain.'. Retry SSL after this finishes.');
     }
 
     public function rollback(Request $request, Site $site, Deployment $deployment, StartRollback $rollback): RedirectResponse

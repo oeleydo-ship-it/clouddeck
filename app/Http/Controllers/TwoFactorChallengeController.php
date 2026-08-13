@@ -8,15 +8,16 @@ use App\Services\TwoFactorService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class TwoFactorChallengeController extends Controller
 {
     use RedirectsAfterAuthentication;
 
-    public function create(Request $request): View|RedirectResponse
+    public function create(Request $request): Response|RedirectResponse
     {
-        return $request->session()->has('login.id') ? view('auth.two-factor-challenge') : redirect('/login');
+        return $request->session()->has('login.id') ? Inertia::render('Auth/TwoFactorChallenge') : redirect('/login');
     }
 
     public function store(Request $request, TwoFactorService $twoFactor): RedirectResponse

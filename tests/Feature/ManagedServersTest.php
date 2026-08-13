@@ -7,7 +7,6 @@ use App\Jobs\Servers\BootstrapServerJob;
 use App\Jobs\Servers\CreateDropletJob;
 use App\Jobs\Servers\FinalizeProvisioningJob;
 use App\Jobs\Servers\WaitForServerJob;
-use App\Livewire\ManagedServerProvisionWizard;
 use App\Models\Plan;
 use App\Models\Server;
 use App\Models\User;
@@ -15,7 +14,7 @@ use App\Services\SystemSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
-use Livewire\Livewire;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ManagedServersTest extends TestCase
@@ -141,15 +140,15 @@ class ManagedServersTest extends TestCase
         $user = $this->entitledUser(['managed_servers' => true], ['managed_servers' => 1, 'servers' => 0]);
         $this->fakeCatalogAndStripeCheckout();
 
-        Livewire::actingAs($user)
-            ->test(ManagedServerProvisionWizard::class)
-            ->set('region', 'nyc3')
-            ->set('size', 's-1vcpu-1gb')
-            ->set('image', 'ubuntu-24-04-x64')
-            ->set('name', 'Managed App')
-            ->set('hostname', 'managed-app-01')
-            ->call('deploy')
-            ->assertRedirect('https://checkout.stripe.com/c/pay/cs_managed_1');
+        $this->actingAs($user)->get(route('servers.managed'))->assertOk();
+        $this->actingAs($user)->post(route('servers.managed.store'), [
+            'region' => 'nyc3',
+            'size' => 's-1vcpu-1gb',
+            'image' => 'ubuntu-24-04-x64',
+            'ssh_key_id' => $user->sshKeys()->value('id'),
+            'name' => 'Managed App',
+            'hostname' => 'managed-app-01',
+        ])->assertRedirect('https://checkout.stripe.com/c/pay/cs_managed_1');
 
         $server = Server::firstOrFail();
         $this->assertSame('managed', $server->provisioning_source);
@@ -404,18 +403,20 @@ class ManagedServersTest extends TestCase
         $user = $this->entitledUser(['managed_servers' => true], ['managed_servers' => 1, 'servers' => 0]);
         $this->fakeCatalogAndStripeCheckout();
 
-        Livewire::actingAs($user)
-            ->test(ManagedServerProvisionWizard::class)
-            ->set('region', 'nyc3')
-            ->set('size', 's-1vcpu-1gb')
-            ->set('image', 'ubuntu-24-04-x64')
-            ->set('name', 'Managed App')
-            ->set('hostname', 'managed-app-01')
-            ->assertSet('step', 1)
-            ->call('next')->call('next')->call('next')
-            ->assertSee('9.00')
-            ->call('deploy')
-            ->assertRedirect('https://checkout.stripe.com/c/pay/cs_managed_1');
+        $this->actingAs($user)->get(route('servers.managed'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Servers/Managed')
+                ->where('sizes.0.customer_price_monthly', fn ($price) => abs((float) $price - 9.0) < 0.001));
+
+        $this->actingAs($user)->post(route('servers.managed.store'), [
+            'region' => 'nyc3',
+            'size' => 's-1vcpu-1gb',
+            'image' => 'ubuntu-24-04-x64',
+            'ssh_key_id' => $user->sshKeys()->value('id'),
+            'name' => 'Managed App',
+            'hostname' => 'managed-app-01',
+        ])->assertRedirect('https://checkout.stripe.com/c/pay/cs_managed_1');
 
         $server = Server::firstOrFail();
         $this->assertEquals(6.0, $server->metadata['infra_price_monthly']);
@@ -571,14 +572,15 @@ class ManagedServersTest extends TestCase
             ]]),
         ]);
 
-        Livewire::actingAs($user)
-            ->test(ManagedServerProvisionWizard::class)
-            ->assertSet('regions.0.slug', 'nbg1')
-            ->assertSet('sizes.0.slug', 'cx22')
-            ->assertSet('sizes.0.memory', 4096)
-            ->assertSet('sizes.0.price_monthly', 6.49)
-            ->assertSet('images.0.slug', 'ubuntu-24.04')
-            ->assertSet('image', 'ubuntu-24.04');
+        $this->actingAs($user)->get(route('servers.managed'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Servers/Managed')
+                ->where('regions.0.slug', 'nbg1')
+                ->where('sizes.0.slug', 'cx22')
+                ->where('sizes.0.memory', 4096)
+                ->where('sizes.0.price_monthly', 6.49)
+                ->where('images.0.slug', 'ubuntu-24.04'));
     }
 
     public function test_managed_hetzner_create_and_wait_jobs_use_normalized_server_payload(): void

@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\ServerStatus;
 use App\Http\Controllers\LogController;
 use App\Jobs\Sites\FetchLogJob;
-use App\Livewire\LogViewer;
 use App\Models\CloudAccount;
 use App\Models\LogSnapshot;
 use App\Models\Plan;
@@ -19,7 +18,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class LogViewerTest extends TestCase
@@ -123,12 +121,10 @@ class LogViewerTest extends TestCase
         Queue::fake();
         [$user, $site] = $this->site();
 
-        // Livewire properties are input like any other, so the controller's rules alone would
-        // not cover this path.
-        Livewire::actingAs($user)->test(LogViewer::class, ['site' => $site])
-            ->set('lines', 99999)
-            ->call('read')
-            ->assertSet('lines', 2000);
+        $this->actingAs($user)->post(route('site-logs.store', $site), ['source' => 'laravel', 'lines' => 99999])
+            ->assertSessionHasErrors('lines');
+        $this->actingAs($user)->post(route('site-logs.store', $site), ['source' => 'laravel', 'lines' => 2000])
+            ->assertSessionHas('status');
 
         $this->assertSame(2000, LogSnapshot::sole()->lines);
     }

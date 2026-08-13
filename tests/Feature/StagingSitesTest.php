@@ -29,92 +29,58 @@ class StagingSitesTest extends TestCase
         [, $site] = $this->productionSite();
 
         $this->actingAs($site->user)->post(route('sites.staging.store', $site), [
-            'domain_source' => 'platform',
-            'staging_slug' => 'acme',
+            'domain' => 'staging.example.com',
         ])->assertNotFound();
     }
 
-    public function test_superadmin_can_enable_staging_and_set_platform_domain(): void
+    public function test_superadmin_can_enable_staging(): void
     {
         $admin = User::factory()->create(['role' => 'super_admin', 'email_verified_at' => now()]);
 
         $this->actingAs($admin)->put(route('admin.settings.update'), [
             'platform_name' => 'Uplary',
             'staging_sites_enabled' => '1',
-            'staging_platform_domain' => 'uplary.com',
             'registration_enabled' => '1',
             'public_site_enabled' => '1',
             'dns_enabled' => '1',
         ])->assertRedirect();
 
-        $settings = app(SystemSettings::class);
-        $this->assertTrue($settings->stagingSitesEnabled());
-        $this->assertSame('uplary.com', $settings->stagingPlatformDomain());
+        $this->assertTrue(app(SystemSettings::class)->stagingSitesEnabled());
     }
 
-    public function test_platform_subdomain_staging_is_created_when_enabled(): void
+    public function test_customer_domain_staging_is_created_when_enabled(): void
     {
         Queue::fake();
         app(SystemSettings::class)->put('staging_sites_enabled', '1', 'boolean');
-        app(SystemSettings::class)->put('staging_platform_domain', 'uplary.com', 'string');
+        [$user, $production] = $this->productionSite();
+
+        $this->actingAs($user)->post(route('sites.staging.store', $production), [
+            'domain' => 'staging.client.com',
+            'branch' => 'staging',
+        ])->assertRedirect()->assertSessionHas('status');
+
+        $staging = Site::query()->where('environment', 'staging')->firstOrFail();
+        $this->assertSame('staging.client.com', $staging->domain);
+        $this->assertSame('custom', $staging->domain_source);
+        $this->assertSame($production->id, $staging->production_site_id);
+        $this->assertSame('staging', $staging->branch);
+        $this->assertSame('staging', $staging->environmentVariables()->where('key', 'APP_ENV')->value('value'));
+        $this->assertStringContainsString('192.0.2.10', session('status'));
+        Queue::assertPushedOn('provisioning', ConfigureSiteJob::class);
+        Queue::assertNotPushed(SyncPlatformStagingDnsJob::class);
+    }
+
+    public function test_platform_subdomain_staging_is_rejected(): void
+    {
+        Queue::fake();
+        app(SystemSettings::class)->put('staging_sites_enabled', '1', 'boolean');
         [$user, $production] = $this->productionSite();
 
         $this->actingAs($user)->post(route('sites.staging.store', $production), [
             'domain_source' => 'platform',
             'staging_slug' => 'acme',
-            'branch' => 'staging',
-        ])->assertRedirect();
+        ])->assertSessionHasErrors('domain');
 
-        $staging = Site::query()->where('environment', 'staging')->firstOrFail();
-        $this->assertSame('acme.staging.uplary.com', $staging->domain);
-        $this->assertSame('platform', $staging->domain_source);
-        $this->assertSame($production->id, $staging->production_site_id);
-        $this->assertSame('staging', $staging->branch);
-        $this->assertSame('staging', $staging->environmentVariables()->where('key', 'APP_ENV')->value('value'));
-        Queue::assertPushedOn('provisioning', ConfigureSiteJob::class);
-        Queue::assertPushedOn('operations', SyncPlatformStagingDnsJob::class);
-    }
-
-    public function test_custom_domain_staging_does_not_queue_platform_dns_sync(): void
-    {
-        Queue::fake();
-        app(SystemSettings::class)->put('staging_sites_enabled', '1', 'boolean');
-        [$user, $production] = $this->productionSite();
-
-        $this->actingAs($user)->post(route('sites.staging.store', $production), [
-            'domain_source' => 'custom',
-            'domain' => 'staging.client.com',
-        ])->assertRedirect();
-
-        Queue::assertNotPushed(SyncPlatformStagingDnsJob::class);
-    }
-
-    public function test_reconfigure_queues_configure_site_job_for_staging(): void
-    {
-        Queue::fake();
-        app(SystemSettings::class)->put('staging_sites_enabled', '1', 'boolean');
-        [$user, $production] = $this->productionSite();
-        $staging = app(CreateStagingSite::class)->execute($production, [
-            'domain_source' => 'custom',
-            'domain' => 'staging.example.com',
-        ]);
-        $staging->update(['status' => 'active']);
-
-        $this->actingAs($user)
-            ->from(route('sites.show', ['site' => $staging, 'tab' => 'ssl']))
-            ->post(route('sites.reconfigure', $staging))
-            ->assertRedirect();
-
-        $this->assertSame('configuring', $staging->fresh()->status);
-        Queue::assertPushedOn('provisioning', ConfigureSiteJob::class);
-    }
-
-    public function test_reconfigure_is_unavailable_for_production(): void
-    {
-        Queue::fake();
-        [$user, $site] = $this->productionSite();
-
-        $this->actingAs($user)->post(route('sites.reconfigure', $site))->assertNotFound();
         Queue::assertNothingPushed();
     }
 
@@ -128,25 +94,6 @@ class StagingSitesTest extends TestCase
         $this->assertStringContainsString('scripts/configure-site.sh', file_get_contents(app_path('Jobs/Operations/InstallSslCertificateJob.php')));
     }
 
-    public function test_client_domain_staging_is_created_when_enabled(): void
-    {
-        Queue::fake();
-        app(SystemSettings::class)->put('staging_sites_enabled', '1', 'boolean');
-        [$user, $production] = $this->productionSite();
-
-        $this->actingAs($user)->post(route('sites.staging.store', $production), [
-            'domain_source' => 'custom',
-            'domain' => 'staging.client.com',
-        ])->assertRedirect();
-
-        $this->assertDatabaseHas('sites', [
-            'domain' => 'staging.client.com',
-            'environment' => 'staging',
-            'domain_source' => 'custom',
-            'production_site_id' => $production->id,
-        ]);
-    }
-
     public function test_promote_copies_settings_and_queues_production_deploy(): void
     {
         Queue::fake();
@@ -155,7 +102,6 @@ class StagingSitesTest extends TestCase
         $production->environmentVariables()->create(['key' => 'DB_CONNECTION', 'value' => 'mysql', 'is_secret' => false]);
 
         $staging = app(CreateStagingSite::class)->execute($production, [
-            'domain_source' => 'custom',
             'domain' => 'staging.client.com',
             'branch' => 'release-candidate',
         ]);
@@ -176,8 +122,7 @@ class StagingSitesTest extends TestCase
         $intruder = User::factory()->create(['email_verified_at' => now()]);
 
         $this->actingAs($intruder)->post(route('sites.staging.store', $production), [
-            'domain_source' => 'platform',
-            'staging_slug' => 'stolen',
+            'domain' => 'stolen.example.com',
         ])->assertForbidden();
     }
 

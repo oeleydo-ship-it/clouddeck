@@ -7,13 +7,16 @@ use App\Services\AuditLogger;
 use App\Services\PlatformRuntime\PlatformServicesMonitor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class PlatformServicesController extends Controller
 {
-    public function index(PlatformServicesMonitor $monitor): View
+    public function index(PlatformServicesMonitor $monitor)
     {
-        return view('admin.platform-services', [
+        return Inertia::render('Admin/PlatformServices', [
+            'title' => 'Platform services',
+            'heading' => 'Control-plane runtime',
+            'renewLabel' => 'Renew certificate',
             'initial' => $monitor->status(),
         ]);
     }

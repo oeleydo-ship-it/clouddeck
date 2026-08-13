@@ -30,23 +30,15 @@ class IncidentsAndNotificationsPagesTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
 
-        $html = $this->actingAs($user)->get('/dashboard')->assertOk()->getContent();
-        $sidebar = str($html)->after('<aside')->before('</aside>')->toString();
-
-        $this->assertStringNotContainsString('>Incidents</a>', $sidebar);
-        $this->assertStringNotContainsString(route('incidents.index'), $sidebar);
-        $this->assertStringContainsString(route('notifications.index'), $sidebar);
-        $this->assertMatchesRegularExpression('/href="[^"]*\/notifications"[^>]*>[\s\S]*?Notifications/', $sidebar);
-
-        $firewallPos = strpos($sidebar, route('firewall.index'));
-        $notificationsPos = strpos($sidebar, route('notifications.index'));
-        $providersPos = strpos($sidebar, route('cloud-accounts'));
-
-        $this->assertNotFalse($firewallPos);
-        $this->assertNotFalse($notificationsPos);
-        $this->assertNotFalse($providersPos);
-        $this->assertTrue($firewallPos < $notificationsPos);
-        $this->assertTrue($notificationsPos < $providersPos);
+        $this->actingAs($user)->get('/dashboard')
+            ->assertOk()
+            ->assertSee(route('notifications.index'), false)
+            ->assertDontSee(route('incidents.index'), false)
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Dashboard')
+                ->where('consoleNav.3.label', 'Firewall')
+                ->where('consoleNav.5.label', 'Notifications')
+                ->where('consoleNav.6.label', 'Providers'));
     }
 
     public function test_incidents_route_redirects_to_notifications_incidents_tab(): void

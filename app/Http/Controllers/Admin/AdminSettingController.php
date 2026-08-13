@@ -2,14 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Dns\Exceptions\DnsCredentialException;
 use App\Http\Controllers\Controller;
 use App\Mail\MailSettingsTestMessage;
 use App\Models\NotificationChannel;
 use App\Services\AuditLogger;
-use App\Services\PlatformStagingDns;
 use App\Services\SystemSettings;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -44,8 +41,6 @@ class AdminSettingController extends Controller
             'dns_enabled' => ['sometimes', 'boolean'],
             'staging_sites_enabled' => ['sometimes', 'boolean'],
             'allow_impersonate_admins' => ['sometimes', 'boolean'],
-            'staging_platform_domain' => ['nullable', 'string', 'max:253', 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i'],
-            'platform_dns_cloudflare_token' => ['nullable', 'string', 'max:255'],
             'maintenance_banner' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -58,26 +53,10 @@ class AdminSettingController extends Controller
             'dns_enabled' => 'boolean',
             'staging_sites_enabled' => 'boolean',
             'allow_impersonate_admins' => 'boolean',
-            'staging_platform_domain' => 'string',
             'maintenance_banner' => 'string',
         ] as $key => $type) {
-            if ($key === 'staging_platform_domain') {
-                $value = strtolower((string) ($data[$key] ?? $settings->stagingPlatformDomain()));
-            } else {
-                $value = $type === 'boolean' ? ($request->boolean($key) ? '1' : '0') : ($data[$key] ?? '');
-            }
+            $value = $type === 'boolean' ? ($request->boolean($key) ? '1' : '0') : ($data[$key] ?? '');
             $settings->put($key, $value, $type, true);
-        }
-
-        if (filled($data['platform_dns_cloudflare_token'] ?? null)) {
-            try {
-                app(PlatformStagingDns::class)->resolveAndStoreZoneId((string) $data['platform_dns_cloudflare_token']);
-                $settings->put('platform_dns_cloudflare_token', (string) $data['platform_dns_cloudflare_token'], 'string', false);
-            } catch (DnsCredentialException $e) {
-                return back()->withInput()->withErrors(['platform_dns_cloudflare_token' => $e->getMessage()]);
-            } catch (ConnectionException) {
-                return back()->withInput()->withErrors(['platform_dns_cloudflare_token' => 'Could not reach Cloudflare to validate the token.']);
-            }
         }
 
         $audit->record($request, 'settings.updated', null, [], ['keys' => array_keys($data)]);
@@ -294,6 +273,12 @@ class AdminSettingController extends Controller
             'landing_steps_eyebrow' => ['nullable', 'string', 'max:80'],
             'landing_steps_headline' => ['nullable', 'string', 'max:160'],
             'landing_steps_subcopy' => ['nullable', 'string', 'max:400'],
+            'landing_step_1_title' => ['nullable', 'string', 'max:120'],
+            'landing_step_1_body' => ['nullable', 'string', 'max:400'],
+            'landing_step_2_title' => ['nullable', 'string', 'max:120'],
+            'landing_step_2_body' => ['nullable', 'string', 'max:400'],
+            'landing_step_3_title' => ['nullable', 'string', 'max:120'],
+            'landing_step_3_body' => ['nullable', 'string', 'max:400'],
             'landing_cta_headline' => ['nullable', 'string', 'max:160'],
             'landing_cta_subcopy' => ['nullable', 'string', 'max:400'],
             'landing_cta_button' => ['nullable', 'string', 'max:60'],

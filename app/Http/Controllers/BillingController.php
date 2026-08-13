@@ -13,12 +13,12 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use RuntimeException;
 
 class BillingController extends Controller
 {
-    public function index(Request $request, EntitlementService $entitlements, QuotaManager $quotas, SystemSettings $settings): View
+    public function index(Request $request, EntitlementService $entitlements, QuotaManager $quotas, SystemSettings $settings)
     {
         $managedServersEnabled = $settings->managedServersEnabled();
         $resources = $managedServersEnabled
@@ -28,15 +28,32 @@ class BillingController extends Controller
         $user = $request->user();
         $addonActive = in_array($user->os_backup_stripe_subscription_status, ['active', 'trialing'], true);
 
-        return view('billing.index', [
+        return Inertia::render('Billing/Index', [
+            'title' => 'Billing',
+            'empty' => 'No plans are available yet',
             'plan' => $plan,
             'subscription' => $entitlements->subscription($user),
-            'plans' => Plan::where('active', true)->where('public', true)->orderBy('sort_order')->get(),
-            'usage' => collect($resources)->mapWithKeys(fn ($resource) => [$resource => [
-                'used' => $quotas->usage($user, $resource),
-                'limit' => $entitlements->limit($user, $resource),
-                'plan_limit' => $entitlements->planLimit($user, $resource),
-            ]])->all(),
+            'plans' => Plan::where('active', true)->where('public', true)->orderBy('sort_order')->get()->map(fn (Plan $available) => [
+                ...$available->toArray(),
+                'monthly_price_label' => $available->formattedPrice('monthly_price'),
+                'yearly_price_label' => $available->yearly_price ? $available->formattedPrice('yearly_price') : null,
+                'quota_lines' => $available->quotaLines($managedServersEnabled),
+                'feature_labels' => $available->enabledFeatureLabels(),
+                'unlimited' => collect($available->limits ?? [])->contains(fn ($limit) => $limit < 0) ? 'Unlimited' : null,
+            ]),
+            'usage' => collect($resources)->mapWithKeys(function ($resource) use ($quotas, $entitlements, $user) {
+                $used = $quotas->usage($user, $resource);
+                $limit = $entitlements->limit($user, $resource);
+
+                $planLimit = $entitlements->planLimit($user, $resource);
+
+                return [$resource => [
+                    'used' => $used,
+                    'limit' => $limit,
+                    'plan_limit' => $planLimit,
+                    'label' => $planLimit < 0 ? 'Unlimited' : ($used.' / '.$planLimit),
+                ]];
+            })->all(),
             'requests' => $user->billingRequests()->with('plan')->latest()->limit(10)->get(),
             'invoices' => $user->billingInvoices()->latest()->limit(20)->get(),
             'stripeEnabled' => (bool) config('services.stripe.secret'),
@@ -44,6 +61,11 @@ class BillingController extends Controller
             'osBackupGbPriceCents' => $settings->osBackupGbPriceCents(),
             'osBackupAddonGb' => $addonActive ? (int) $user->os_backup_addon_gb : 0,
             'osBackupAddonActive' => $addonActive,
+            'osBackupTitle' => 'OS backup storage',
+            'osBackupCta' => 'Buy with Stripe',
+            'checkoutLabel' => 'Pay & subscribe',
+            'requestLabel' => 'Request this plan',
+            'currentPlanLabel' => 'Current plan:',
         ]);
     }
 

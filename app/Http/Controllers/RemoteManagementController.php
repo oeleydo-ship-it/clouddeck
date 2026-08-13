@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Site;
 use App\Services\SiteRelativePath;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class RemoteManagementController extends Controller
 {
-    public function __invoke(Request $request, Site $site, SiteRelativePath $paths): View
+    public function __invoke(Request $request, Site $site, SiteRelativePath $paths)
     {
         $this->authorize('view', $site);
         $path = $paths->normalize($request->query('path', '.'));
@@ -18,7 +18,7 @@ class RemoteManagementController extends Controller
         $readOperation = $editor ? $site->fileOperations()->where('action', 'read')->where('path', $editor)->where('status', 'successful')->latest()->first() : null;
         $pending = $site->fileOperations()->whereIn('status', ['pending', 'running'])->exists() || $site->terminalCommands()->whereIn('status', ['pending', 'running'])->exists() || $site->configurations()->whereIn('status', ['pending', 'applying'])->exists();
 
-        return view('sites.remote', [
+        return Inertia::render('Sites/Remote', [
             'site' => $site->load('server'),
             'configurations' => $site->configurations()->latest()->limit(20)->get(),
             'operations' => $site->fileOperations()->latest()->limit(20)->get(),

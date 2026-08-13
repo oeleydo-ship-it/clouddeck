@@ -38,7 +38,7 @@ class BackupApplicationSiteJob implements ShouldQueue
         $output = $ssh->runScript($site->server, resource_path('scripts/app-backup.sh'), [
             'DOMAIN' => $site->domain,
             'BACKUP_ID' => $backup->id,
-            'PLATFORM' => $site->isWordPress() ? 'wordpress' : 'laravel',
+            'PLATFORM' => $site->platform ?: 'laravel',
             'DB_ENGINE' => $database?->engine ?: 'mysql',
             'DB_NAME' => $database?->name ?: '',
         ], 3600);

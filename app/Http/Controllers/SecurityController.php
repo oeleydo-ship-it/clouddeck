@@ -16,18 +16,22 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class SecurityController extends Controller
 {
-    public function index(Request $request, SecurityDetectionSettings $settings): View
+    public function index(Request $request, SecurityDetectionSettings $settings)
     {
         $resolved = $settings->forUser($request->user());
         $servers = $settings->serverQueryFor($request->user())->withCount('sites')->orderBy('name')->get();
         $protected = $servers->where('status', ServerStatus::Ready)->whereNotNull('ssh_key_id');
         $incidents = SecurityIncident::query()->accessibleTo($request->user());
 
-        return view('security.index', [
+        return Inertia::render('Security/Index', [
+            'title' => 'Security',
+            'empty' => $servers->isEmpty() ? 'Add a server to start protecting it' : null,
+            'default_label' => 'Default: on',
+            'copy' => ['Never', 'Scanning…', 'disabled', 'Failed', 'Queued too long — is the operations worker running?'],
             'servers' => $servers,
             'rules' => collect($resolved['rules'])->map(fn (array $rule, string $key) => [
                 'key' => $key,

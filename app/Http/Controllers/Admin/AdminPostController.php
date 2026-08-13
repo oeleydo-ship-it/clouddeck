@@ -12,14 +12,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use RuntimeException;
 
 class AdminPostController extends Controller
 {
-    public function index(Request $request, BlogPostGenerator $generator): View
+    public function index(Request $request, BlogPostGenerator $generator)
     {
-        return view('admin.posts', [
+        return Inertia::render('Admin/Posts', [
+            'title' => 'Blog',
+            'copy' => $generator->enabled()
+                ? ['Generate with AI', 'Suggest topics', 'Generate draft']
+                : ['Generate with AI', 'Enable in AI settings'],
             'aiBlogEnabled' => $generator->enabled(),
             'posts' => Post::with('author')
                 ->when($request->query('search'), fn ($query, $search) => $query->where('title', 'like', '%'.$search.'%'))

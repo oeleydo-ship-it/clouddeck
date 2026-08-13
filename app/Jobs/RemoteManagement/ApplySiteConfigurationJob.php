@@ -37,6 +37,7 @@ class ApplySiteConfigurationJob implements ShouldQueue
             $ssh->runScript($site->server, resource_path('scripts/apply-nginx-settings.sh'), [
                 'DOMAIN' => $site->domain,
                 'PHP_VERSION' => $site->php_version,
+                'PLATFORM' => $site->platform ?: 'laravel',
                 'CLIENT_MAX_BODY_MB' => $settings['client_max_body_mb'],
                 'STATIC_CACHE' => ! empty($settings['static_cache']) ? '1' : '0',
                 'INCLUDE_WWW' => ! empty($settings['include_www']) ? '1' : '0',

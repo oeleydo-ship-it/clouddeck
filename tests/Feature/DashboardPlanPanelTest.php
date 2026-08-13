@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
@@ -22,10 +23,12 @@ class DashboardPlanPanelTest extends TestCase
 
         $this->actingAs($user)->get('/dashboard')
             ->assertOk()
-            ->assertSee('Current plan')
-            ->assertSee('Starter')
-            ->assertSee('0 / 2')
-            ->assertSee('0 / 5');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->where('plan.heading', 'Current plan')
+                ->where('plan.plan.name', 'Starter')
+                ->where('plan.usage.servers.label', '0 / 2')
+                ->where('plan.usage.sites.label', '0 / 5'));
     }
 
     public function test_a_cheaper_plan_is_offered_the_next_one_up_by_name(): void
@@ -35,14 +38,25 @@ class DashboardPlanPanelTest extends TestCase
         Plan::create(['name' => 'Scale', 'slug' => 'scale', 'monthly_price' => 9000, 'limits' => ['servers' => 50], 'active' => true, 'public' => true]);
 
         // The cheapest plan above the current one, not merely the most expensive on offer.
-        $this->actingAs($user)->get('/dashboard')->assertOk()->assertSee('Upgrade to Growth')->assertDontSee('Upgrade to Scale');
+        $this->actingAs($user)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->where('plan.upgrade.name', 'Growth')
+                ->where('plan.upgrade_label', 'Upgrade to Growth'));
     }
 
     public function test_the_top_plan_is_not_offered_an_upgrade_that_does_not_exist(): void
     {
         $user = $this->subscribed('Scale', 9000, ['servers' => 50]);
 
-        $this->actingAs($user)->get('/dashboard')->assertOk()->assertDontSee('Upgrade to')->assertSee('nothing to upgrade to');
+        $this->actingAs($user)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->where('plan.upgrade', null)
+                ->where('plan.upgrade_label', null)
+                ->where('plan.no_upgrade', 'nothing to upgrade to'));
     }
 
     public function test_a_plan_at_its_limit_says_so_rather_than_showing_a_quiet_full_bar(): void
@@ -53,7 +67,13 @@ class DashboardPlanPanelTest extends TestCase
             'region' => 'ams3', 'size' => 's-1vcpu-1gb', 'status' => 'ready',
         ]);
 
-        $this->actingAs($user)->get('/dashboard')->assertOk()->assertSee('1 / 1')->assertSee('Limit reached');
+        $this->actingAs($user)->get('/dashboard')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Dashboard')
+                ->where('plan.usage.servers.label', '1 / 1')
+                ->where('plan.usage.servers.at_limit', true)
+                ->where('plan.limit_reached', 'Limit reached'));
     }
 
     private function subscribed(string $name, int $price, array $limits): User

@@ -13,16 +13,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class AuthController extends Controller
 {
     use RedirectsAfterAuthentication;
 
-    public function loginForm(SystemSettings $settings): View
+    public function loginForm(SystemSettings $settings): Response
     {
-        return view('auth.login', [
+        return Inertia::render('Auth/Login', [
             'googleAuthEnabled' => $settings->googleAuthEnabled(),
+            'googleButtonLabel' => $settings->googleAuthEnabled() ? 'Continue with Google' : null,
+            'googleRedirect' => $settings->googleAuthEnabled() ? route('auth.google.redirect') : null,
+            'passwordRequestHref' => route('password.request'),
         ]);
     }
 
@@ -50,12 +54,14 @@ class AuthController extends Controller
         return $this->redirectAfterLogin($request);
     }
 
-    public function registerForm(SystemSettings $settings): View
+    public function registerForm(SystemSettings $settings): Response
     {
         abort_if(SystemSetting::where('key', 'registration_enabled')->first()?->value === '0', 403, 'Registration is temporarily disabled.');
 
-        return view('auth.register', [
+        return Inertia::render('Auth/Register', [
             'googleAuthEnabled' => $settings->googleAuthEnabled(),
+            'googleButtonLabel' => $settings->googleAuthEnabled() ? 'Continue with Google' : null,
+            'googleRedirect' => $settings->googleAuthEnabled() ? route('auth.google.redirect') : null,
         ]);
     }
 

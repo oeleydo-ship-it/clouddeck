@@ -70,9 +70,11 @@ class IncidentController extends Controller
                 'status' => $incident->status,
                 'severity' => $incident->severity,
                 'detail' => trim(($incident->metric ?? '').' '.($incident->value ?? '').' / threshold '.($incident->threshold ?? '')),
-                'started_at' => $incident->started_at,
-                'resolved_at' => $incident->resolved_at,
-                'server' => $incident->server,
+                'started_at' => $incident->started_at?->toIso8601String(),
+                'started_at_human' => $incident->started_at?->diffForHumans(),
+                'resolved_at' => $incident->resolved_at?->toIso8601String(),
+                'resolved_at_human' => $incident->resolved_at?->diffForHumans(),
+                'server' => $incident->server ? $incident->server->only(['id', 'name', 'public_ip']) : null,
                 'site' => null,
                 'href' => route('servers.manage', ['server' => $incident->server_id, 'tab' => 'monitoring']),
                 'security' => null,
@@ -105,10 +107,12 @@ class IncidentController extends Controller
                     default => 'warning',
                 },
                 'detail' => str_replace('_', ' ', $incident->type),
-                'started_at' => $incident->started_at,
-                'resolved_at' => $incident->resolved_at,
-                'server' => $incident->site?->server,
-                'site' => $incident->site,
+                'started_at' => $incident->started_at?->toIso8601String(),
+                'started_at_human' => $incident->started_at?->diffForHumans(),
+                'resolved_at' => $incident->resolved_at?->toIso8601String(),
+                'resolved_at_human' => $incident->resolved_at?->diffForHumans(),
+                'server' => $incident->site?->server ? $incident->site->server->only(['id', 'name']) : null,
+                'site' => $incident->site ? $incident->site->only(['id', 'domain']) : null,
                 'href' => $incident->site_id
                     ? route('sites.show', ['site' => $incident->site_id]).'?tab=monitoring'
                     : null,
@@ -137,14 +141,22 @@ class IncidentController extends Controller
                 'detail' => $incident->rule_name
                     .($incident->source_ip ? ' · '.$incident->source_ip : '')
                     .' · '.$incident->occurrence_count.' occurrences',
-                'started_at' => $incident->first_seen_at,
-                'resolved_at' => $incident->resolved_at,
-                'server' => $incident->server,
-                'site' => $incident->site,
+                'started_at' => $incident->first_seen_at?->toIso8601String(),
+                'started_at_human' => $incident->first_seen_at?->diffForHumans(),
+                'resolved_at' => $incident->resolved_at?->toIso8601String(),
+                'resolved_at_human' => $incident->resolved_at?->diffForHumans(),
+                'server' => $incident->server ? $incident->server->only(['id', 'name', 'public_ip']) : null,
+                'site' => $incident->site ? $incident->site->only(['id', 'domain']) : null,
                 'href' => $incident->site
                     ? route('sites.show', $incident->site)
                     : ($incident->server ? route('servers.manage', $incident->server) : null),
-                'security' => $incident,
+                'security' => [
+                    'id' => $incident->id,
+                    'summary' => $incident->summary,
+                    'evidence' => $incident->evidence,
+                    'source_ip' => $incident->source_ip,
+                    'firewall_rule_id' => $incident->firewall_rule_id,
+                ],
             ]);
 
         /** @var Collection<int, array<string, mixed>> $incidents */
@@ -152,13 +164,13 @@ class IncidentController extends Controller
             ->concat($siteIncidents)
             ->concat($securityIncidents)
             ->when($type !== 'all', fn (Collection $rows) => $rows->where('source', $type))
-            ->sortByDesc(fn (array $row) => $row['started_at']?->timestamp ?? 0)
+            ->sortByDesc(fn (array $row) => $row['started_at'] ?? '')
             ->values()
             ->take(100);
 
         return [
-            'incidents' => $incidents,
-            'servers' => $servers,
+            'incidents' => $incidents->all(),
+            'servers' => $servers->map(fn (Server $server) => $server->only(['id', 'name', 'public_ip']))->values()->all(),
             'filters' => [
                 'status' => $status,
                 'severity' => $severity,

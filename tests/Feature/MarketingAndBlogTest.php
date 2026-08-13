@@ -67,29 +67,34 @@ class MarketingAndBlogTest extends TestCase
                 ->assertDontSee('app-sidebar', false)
                 ->assertDontSee('app-shell', false)
                 ->assertSee('aria-label="Primary"', false)
-                ->assertSee('Open console');
+                ->assertSee('Open console')
+                ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                    ->where('onMarketing', true)
+                    ->where('chrome.open_console', 'Open console'));
         }
 
         // Console pages keep the sidebar for the same user.
         $this->actingAs($admin)
             ->get('/dashboard')
             ->assertOk()
-            ->assertSee('app-sidebar', false);
+            ->assertSee('app-sidebar', false)
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Dashboard')
+                ->where('onMarketing', false));
     }
 
     public function test_console_sidebar_links_to_the_public_homepage_in_a_new_tab(): void
     {
-        $html = $this->actingAs(User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->get('/dashboard')
             ->assertOk()
-            ->getContent();
-
-        $sidebar = str($html)->after('<aside')->before('</aside>')->toString();
-
-        $this->assertStringContainsString('View website', $sidebar);
-        $this->assertStringContainsString('href="'.route('home').'"', $sidebar);
-        $this->assertStringContainsString('target="_blank"', $sidebar);
-        $this->assertStringContainsString('rel="noopener noreferrer"', $sidebar);
+            ->assertSee('View website')
+            ->assertSee('href="'.route('home').'"', false)
+            ->assertSee('target="_blank"', false)
+            ->assertSee('rel="noopener noreferrer"', false)
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->where('chrome.view_website', 'View website')
+                ->where('chrome.home_href', route('home')));
     }
 
     public function test_the_blog_shows_published_posts_and_hides_drafts_and_future_ones(): void

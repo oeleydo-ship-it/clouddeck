@@ -10,63 +10,58 @@ use App\Services\SystemSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 use Throwable;
 
 class PageController extends Controller
 {
-    public function home(): View
+    public function home(): Response
     {
-        $seo = app(SystemSettings::class)->pageSeo('home');
+        $settings = app(SystemSettings::class);
+        $seo = $settings->pageSeo('home');
+        $managed = $settings->managedServersEnabled();
 
-        return view('marketing.home', [
-            'posts' => Post::published()->latest('published_at')->limit(3)->get(),
+        return Inertia::render('Marketing/Home', [
+            'posts' => Post::published()->latest('published_at')->limit(3)->get(['id', 'title', 'slug', 'excerpt', 'published_at', 'cover_path'])->map(fn (Post $post) => $this->postCard($post)),
             'plans' => Plan::query()
                 ->where('active', true)
                 ->where('public', true)
                 ->orderBy('sort_order')
                 ->orderBy('monthly_price')
-                ->get(),
-            'landing' => app(SystemSettings::class)->landing(),
-            'managedServersEnabled' => app(SystemSettings::class)->managedServersEnabled(),
+                ->get()
+                ->map(fn (Plan $plan) => [
+                    ...$plan->toArray(),
+                    'quota_lines' => $plan->quotaLines($managed),
+                ]),
+            'landing' => $settings->landing(),
+            'managedServersEnabled' => $managed,
+            'dnsEnabled' => $settings->dnsEnabled(),
+            'stagingSitesEnabled' => $settings->stagingSitesEnabled(),
             'title' => $seo['title'],
             'metaDescription' => $seo['description'],
             'ogImage' => $seo['og_image'],
         ]);
     }
 
-    public function about(): View
+    public function about(): Response
     {
-        $seo = app(SystemSettings::class)->pageSeo('about');
-
-        return view('marketing.about', [
-            'managedServersEnabled' => app(SystemSettings::class)->managedServersEnabled(),
-            'title' => $seo['title'],
-            'metaDescription' => $seo['description'],
-            'ogImage' => $seo['og_image'],
-        ]);
+        return $this->marketingPage('about', 'Marketing/About');
     }
 
-    public function features(): View
+    public function features(): Response
     {
-        $seo = app(SystemSettings::class)->pageSeo('features');
-
-        return view('marketing.features', [
-            'managedServersEnabled' => app(SystemSettings::class)->managedServersEnabled(),
-            'title' => $seo['title'],
-            'metaDescription' => $seo['description'],
-            'ogImage' => $seo['og_image'],
-        ]);
+        return $this->marketingPage('features', 'Marketing/Features');
     }
 
-    public function useCases(): View
+    public function useCases(): Response
     {
-        return $this->marketingPage('use_cases', 'marketing.use-cases');
+        return $this->marketingPage('use_cases', 'Marketing/UseCases');
     }
 
-    public function contact(): View
+    public function contact(): Response
     {
-        return $this->marketingPage('contact', 'marketing.contact');
+        return $this->marketingPage('contact', 'Marketing/Contact');
     }
 
     public function submitContact(Request $request, SystemSettings $settings): RedirectResponse
@@ -78,9 +73,6 @@ class PageController extends Controller
             'body' => ['required', 'string', 'max:5000'],
         ]);
 
-        // Stored first and always. Mail is optional configuration, and an enquiry that only
-        // ever existed as an email is lost the moment SMTP is wrong — which is exactly the
-        // state a brand new instance is in.
         $message = ContactMessage::create([...$data, 'ip_address' => $request->ip()]);
 
         if ($support = $settings->get('support_email')) {
@@ -94,14 +86,43 @@ class PageController extends Controller
         return back()->with('status', 'Thanks — your message reached us. We will reply to '.$data['email'].'.');
     }
 
-    private function marketingPage(string $page, string $view): View
+    private function marketingPage(string $page, string $component): Response
     {
-        $seo = app(SystemSettings::class)->pageSeo($page);
+        $settings = app(SystemSettings::class);
+        $seo = $settings->pageSeo($page);
 
-        return view($view, [
+        $headings = [
+            'about' => 'About',
+            'features' => 'Features',
+            'use_cases' => 'Use cases',
+            'contact' => 'Send us a message.',
+        ];
+
+        return Inertia::render($component, [
             'title' => $seo['title'],
+            'heading' => $headings[$page] ?? $seo['title'],
             'metaDescription' => $seo['description'],
             'ogImage' => $seo['og_image'],
+            'landing' => $settings->landing(),
+            'managedServersEnabled' => $settings->managedServersEnabled(),
+            'dnsEnabled' => $settings->dnsEnabled(),
+            'stagingSitesEnabled' => $settings->stagingSitesEnabled(),
+            'supportEmail' => $settings->get('support_email'),
         ]);
+    }
+
+    /**
+     * @return array{id: mixed, title: string, slug: string, excerpt: ?string, published_at: ?string, cover_url: ?string}
+     */
+    private function postCard(Post $post): array
+    {
+        return [
+            'id' => $post->id,
+            'title' => $post->title,
+            'slug' => $post->slug,
+            'excerpt' => $post->excerpt,
+            'published_at' => $post->published_at?->toIso8601String(),
+            'cover_url' => $post->cover_url,
+        ];
     }
 }

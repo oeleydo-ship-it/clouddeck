@@ -11,7 +11,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class DnsController extends Controller
 {
@@ -22,9 +22,9 @@ class DnsController extends Controller
      */
     private const TYPES = ['A', 'AAAA', 'CNAME', 'TXT', 'MX', 'NS'];
 
-    public function index(Request $request): View
+    public function index(Request $request)
     {
-        return view('dns.index', [
+        return Inertia::render('Dns/Index', [
             'accounts' => $request->user()->dnsAccounts()->withCount('zones')->latest()->get(),
             'zones' => DnsZone::where('user_id', $request->user()->id)->with('account')->orderBy('name')->get(),
         ]);
@@ -86,7 +86,7 @@ class DnsController extends Controller
         return back()->with('status', count($zones).' '.str('zone')->plural(count($zones)).' available from Cloudflare.');
     }
 
-    public function show(Request $request, DnsZone $dnsZone): View
+    public function show(Request $request, DnsZone $dnsZone): \Inertia\Response
     {
         $this->authorizeZone($request, $dnsZone);
         $records = [];
@@ -100,7 +100,7 @@ class DnsController extends Controller
             $error = 'Could not reach Cloudflare, so these records could not be read.';
         }
 
-        return view('dns.zone', [
+        return Inertia::render('Dns/Zone', [
             'zone' => $dnsZone,
             'records' => $records,
             'error' => $error,

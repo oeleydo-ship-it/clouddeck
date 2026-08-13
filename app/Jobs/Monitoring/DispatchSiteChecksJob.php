@@ -40,7 +40,7 @@ class DispatchSiteChecksJob implements ShouldQueue
                 CheckSiteUptimeJob::dispatch($site->id)->onQueue('monitoring');
                 CheckSiteDnsJob::dispatch($site->id)->onQueue('monitoring');
 
-                if ($includeQueue && ! $site->isWordPress()) {
+                if ($includeQueue && $site->isLaravel()) {
                     CheckSiteQueueHealthJob::dispatch($site->id)->onQueue('operations');
                 }
             });

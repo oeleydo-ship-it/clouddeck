@@ -39,7 +39,10 @@ class FileManagerController extends Controller
         $operation = $site->fileOperations()->create(['user_id' => $request->user()->id, 'action' => $action, 'path' => $path, 'destination' => $destination, 'payload' => $action === 'write' ? ($data['content'] ?? '') : ($action === 'chmod' ? $data['mode'] : null), 'disk' => $disk, 'storage_path' => $storagePath]);
         ExecuteFileOperationJob::dispatch($operation->id);
 
-        $query = ['path' => $action === 'list' ? $path : ($request->input('current_path', '.'))];
+        $query = [
+            'path' => $action === 'list' ? $path : ($request->input('current_path', '.')),
+            'tab' => 'files',
+        ];
         if ($action === 'read') {
             $query['editor'] = $path;
         }

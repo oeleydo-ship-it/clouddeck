@@ -13,7 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 /**
  * Attaching a server the operator already runs, anywhere — another provider, a bare metal
@@ -23,10 +23,19 @@ use Illuminate\View\View;
  */
 class CustomServerController extends Controller
 {
-    public function create(Request $request, SshKeyGenerator $generator): View
+    public function create(Request $request, SshKeyGenerator $generator)
     {
-        return view('servers.custom', [
-            'key' => $this->managedKey($request, $generator),
+        $managedKey = $this->managedKey($request, $generator);
+
+        return Inertia::render('Servers/Custom', [
+            'title' => 'Add a server by IP',
+            'sshKey' => [
+                'id' => $managedKey->id,
+                'name' => $managedKey->name,
+                'public_key' => $managedKey->public_key,
+            ],
+            'authorizedKeysPath' => 'authorized_keys',
+            'sshNote' => 'Servers attached by IP over SSH',
             // Carried over when the operator arrived from connecting a provider Uplary
             // cannot drive, so they do not retype the address they just gave us.
             'account' => $request->user()->cloudAccounts()->find($request->query('cloud_account')),

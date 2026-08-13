@@ -18,11 +18,11 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class TeamController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         $owned = $request->user()->ownedTeams()->with([
             'memberships.user',
@@ -30,7 +30,21 @@ class TeamController extends Controller
         ])->latest()->get();
         $memberships = $request->user()->teamMemberships()->with('team.owner')->whereNotNull('accepted_at')->get();
 
-        return view('teams.index', compact('owned', 'memberships'));
+        return Inertia::render('Teams/Index', [
+            'title' => 'Teams',
+            'owned' => $owned,
+            'memberships' => $memberships,
+            'empty' => $owned->isEmpty() ? 'You do not own a team yet' : null,
+            'pendingLabel' => 'Pending invitations',
+            'roleGuide' => 'What each role can do',
+            'actions' => ['Edit', 'Resend', 'Delete'],
+            'roles' => [
+                'Admin',
+                'Operator',
+                'Viewer',
+                'Read-only access to shared infrastructure.',
+            ],
+        ]);
     }
 
     public function store(Request $request, QuotaManager $quotas, AuditLogger $audit): RedirectResponse

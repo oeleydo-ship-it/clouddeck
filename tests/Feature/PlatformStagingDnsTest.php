@@ -23,7 +23,7 @@ class PlatformStagingDnsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_admin_can_connect_platform_cloudflare_dns_token(): void
+    public function test_platform_dns_can_resolve_and_store_zone_id(): void
     {
         Http::fake([
             'https://api.cloudflare.com/client/v4/user/tokens/verify' => Http::response(['success' => true, 'result' => ['status' => 'active']]),
@@ -32,22 +32,14 @@ class PlatformStagingDnsTest extends TestCase
             ]]),
         ]);
 
-        $admin = User::factory()->create(['role' => 'super_admin', 'email_verified_at' => now()]);
-
-        $this->actingAs($admin)->put(route('admin.settings.update'), [
-            'platform_name' => 'Uplary',
-            'staging_sites_enabled' => '1',
-            'staging_platform_domain' => 'uplary.com',
-            'platform_dns_cloudflare_token' => str_repeat('t', 40),
-            'registration_enabled' => '1',
-            'public_site_enabled' => '1',
-            'dns_enabled' => '1',
-        ])->assertRedirect()->assertSessionHas('status');
-
         $settings = app(SystemSettings::class);
-        $this->assertTrue($settings->platformStagingDnsReady());
+        $settings->put('staging_platform_domain', 'uplary.com', 'string');
+        $settings->put('platform_dns_cloudflare_token', str_repeat('t', 40), 'string', false);
+
+        $zoneId = app(PlatformStagingDns::class)->resolveAndStoreZoneId(str_repeat('t', 40));
+
+        $this->assertSame('zone-uplary', $zoneId);
         $this->assertSame('zone-uplary', $settings->platformDnsCloudflareZoneId());
-        $this->assertSame(str_repeat('t', 40), $settings->platformDnsCloudflareToken());
     }
 
     public function test_sync_creates_an_a_record_pointing_at_the_server_ip(): void

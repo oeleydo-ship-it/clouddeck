@@ -242,6 +242,7 @@ final class SystemSettings
      *     steps_eyebrow: string,
      *     steps_headline: string,
      *     steps_subcopy: string,
+     *     steps: list<array{title: string, body: string}>,
      *     cta_headline: string,
      *     cta_subcopy: string,
      *     cta_button: string
@@ -257,8 +258,8 @@ final class SystemSettings
             'hero_eyebrow' => $this->get('landing_hero_eyebrow') ?: $name,
             'hero_headline' => $this->get('landing_hero_headline') ?: 'Provision servers. Deploy sites. Stay in control.',
             'hero_subcopy' => $this->get('landing_hero_subcopy') ?: ($managed
-                ? "{$name} can provision a managed server for you, or connect a VPS you already pay for — deploy Laravel and WordPress and run day-to-day ops from one panel."
-                : "{$name} is the SaaS panel for auto-provisioning your VPS, deploying Laravel and WordPress, and running day-to-day ops — your cloud bill stays with your provider."),
+                ? "{$name} can provision a managed server for you, or connect a VPS you already pay for — deploy Laravel, WordPress, and React, and run day-to-day ops from one panel."
+                : "{$name} is the SaaS panel for connecting a VPS you already pay for — deploy Laravel, WordPress, and React, and run day-to-day ops. Your cloud bill stays with your provider."),
             'hero_cta_primary' => $this->get('landing_hero_cta_primary') ?: 'Create free account',
             'hero_cta_secondary' => $this->get('landing_hero_cta_secondary') ?: 'See how it works',
             'hero_microcopy' => $this->get('landing_hero_microcopy') ?: ($managed
@@ -269,6 +270,22 @@ final class SystemSettings
             'steps_subcopy' => $this->get('landing_steps_subcopy') ?: ($managed
                 ? "Pick a managed server or connect your own VPS. {$name} installs the stack so you do not write server scripts by hand."
                 : "You do not need to write server scripts by hand. {$name} sets up the common pieces for you."),
+            'steps' => [
+                [
+                    'title' => $this->get('landing_step_1_title') ?: ($managed ? 'Provision or connect a server' : 'Connect a server'),
+                    'body' => $this->get('landing_step_1_body') ?: ($managed
+                        ? "Launch a platform-hosted size, or attach a VPS over SSH. {$name} installs nginx, PHP, and the worker stack."
+                        : "Attach a DigitalOcean, Hetzner, or other VPS over SSH. {$name} installs nginx, PHP, and the worker stack."),
+                ],
+                [
+                    'title' => $this->get('landing_step_2_title') ?: 'Create a Laravel, WordPress, or React site',
+                    'body' => $this->get('landing_step_2_body') ?: 'Point a domain, pick the stack, and the console writes the vhost, release root, and environment for you.',
+                ],
+                [
+                    'title' => $this->get('landing_step_3_title') ?: 'Deploy, SSL, and monitor',
+                    'body' => $this->get('landing_step_3_body') ?: 'Push from git, issue Let’s Encrypt, and watch uptime — with rollback if a release fails.',
+                ],
+            ],
             'cta_headline' => $this->get('landing_cta_headline') ?: 'Ready to try it?',
             'cta_subcopy' => $this->get('landing_cta_subcopy') ?: ($managed
                 ? "Make an account, provision a managed server or connect your own, and deploy your next site with {$name}."

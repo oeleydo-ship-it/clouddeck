@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ServerStatus;
 use App\Jobs\Operations\InstallCustomSslCertificateJob;
 use App\Jobs\Operations\InstallSslCertificateJob;
+use App\Jobs\Operations\RemoveSslCertificateJob;
 use App\Models\CloudAccount;
 use App\Models\Server;
 use App\Models\Site;
@@ -36,7 +37,7 @@ class CustomSslTest extends TestCase
                 'private_key_pem' => $privateKey,
             ])
             ->assertRedirect(route('sites.show', ['site' => $site, 'tab' => 'ssl']))
-            ->assertSessionHas('status', 'Custom SSL install queued.');
+            ->assertSessionHas('status', 'Custom certificate install queued.');
 
         $certificate = $site->sslCertificates()->sole();
         $this->assertSame('custom', $certificate->provider);
@@ -179,6 +180,73 @@ class CustomSslTest extends TestCase
         $this->assertSame('/etc/ssl/clouddeck/app.example.com/fullchain.pem', $custom->remoteCertificatePath());
         $this->assertSame('/etc/ssl/clouddeck/app.example.com/privkey.pem', $custom->remotePrivateKeyPath());
         $this->assertSame('/etc/letsencrypt/live/app.example.com/fullchain.pem', $le->remoteCertificatePath());
+    }
+
+    public function test_ssl_destroy_queues_remove_job_for_lets_encrypt(): void
+    {
+        Queue::fake();
+        [$user, , $site] = $this->infrastructure();
+
+        $certificate = $site->sslCertificates()->create([
+            'user_id' => $user->id,
+            'domains' => [$site->domain],
+            'provider' => 'letsencrypt',
+            'status' => 'active',
+            'force_https' => true,
+            'auto_renew' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('sites.show', ['site' => $site, 'tab' => 'ssl']))
+            ->delete(route('ssl.destroy', $site), ['_tab' => 'ssl'])
+            ->assertRedirect(route('sites.show', ['site' => $site, 'tab' => 'ssl']))
+            ->assertSessionHas('status');
+
+        $this->assertSame('removing', $certificate->fresh()->status);
+        Queue::assertPushedOn('operations', RemoveSslCertificateJob::class);
+    }
+
+    public function test_ssl_destroy_queues_remove_job_for_custom_certificate(): void
+    {
+        Queue::fake();
+        [$user, , $site] = $this->infrastructure();
+
+        $site->sslCertificates()->create([
+            'user_id' => $user->id,
+            'domains' => [$site->domain],
+            'provider' => 'custom',
+            'status' => 'active',
+            'force_https' => true,
+            'auto_renew' => false,
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('ssl.destroy', $site))
+            ->assertSessionHas('status');
+
+        $this->assertSame('removing', $site->sslCertificates()->sole()->status);
+        Queue::assertPushedOn('operations', RemoveSslCertificateJob::class);
+    }
+
+    public function test_ssl_destroy_is_blocked_while_issuing(): void
+    {
+        Queue::fake();
+        [$user, , $site] = $this->infrastructure();
+
+        $site->sslCertificates()->create([
+            'user_id' => $user->id,
+            'domains' => [$site->domain],
+            'provider' => 'letsencrypt',
+            'status' => 'issuing',
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('sites.show', ['site' => $site, 'tab' => 'ssl']))
+            ->delete(route('ssl.destroy', $site), ['_tab' => 'ssl'])
+            ->assertRedirect(route('sites.show', ['site' => $site, 'tab' => 'ssl']))
+            ->assertSessionHasErrors('ssl');
+
+        Queue::assertNothingPushed();
     }
 
     /**

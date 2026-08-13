@@ -1,6 +1,0 @@
-@extends('layouts.admin')
-@section('admin-title', 'Billing review')
-@section('admin-description', 'Plan change requests awaiting an administrator decision.')
-@section('admin')
-@forelse($billingRequests as $change)<article class="panel"><div class="flex justify-between"><div><h2>{{ $change->user->email }} / {{ $change->plan->name }}</h2><p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ $change->billing_cycle }} / {{ $change->customer_note }}</p></div><span class="text-amber-600 dark:text-amber-300">Pending</span></div><form method="POST" action="{{ route('admin.billing-requests.update',$change) }}" class="mt-4 flex flex-wrap gap-3">@csrf @method('PATCH')<select class="field mt-0 max-w-36" name="decision"><option value="approve">Approve</option><option value="reject">Reject</option></select><input class="field mt-0 max-w-32" name="period_days" type="number" value="{{ $change->billing_cycle==='yearly'?365:30 }}"><input class="field mt-0 grow" name="admin_note" placeholder="Review note"><button class="button-primary">Complete review</button></form></article>@empty<div class="panel text-center text-slate-500 dark:text-slate-400">No pending billing requests.</div>@endforelse
-@endsection

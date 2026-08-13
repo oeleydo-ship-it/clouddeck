@@ -17,6 +17,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class ActiveTabPersistenceTest extends TestCase
@@ -27,55 +28,26 @@ class ActiveTabPersistenceTest extends TestCase
     {
         [$user, , $site] = $this->infrastructure();
 
-        $html = $this->actingAs($user)
+        $this->actingAs($user)
             ->get(route('sites.show', ['site' => $site, 'tab' => 'queue']))
             ->assertOk()
-            ->assertSee('Environment', false)
-            ->assertDontSee('persistTab(v)', false)
-            ->getContent();
-
-        $this->assertMatchesRegularExpression(
-            "/x-data=\"managedTabs\(\{\s*tab:\s*'queue'/",
-            $html,
-        );
-        $this->assertStringNotContainsString("tab: 'overview'", $html);
-        // Broken single-quoted x-data closes early and dumps the Alpine object as text.
-        $this->assertStringNotContainsString("}' @submit.capture", $html);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Sites/Show')
+                ->has('tabs.queue')
+                ->has('tabs.environment'));
     }
 
     public function test_site_show_keeps_overview_panel_markup_and_tab_helper(): void
     {
         [$user, , $site] = $this->infrastructure();
 
-        $html = $this->actingAs($user)
+        $this->actingAs($user)
             ->get(route('sites.show', $site))
             ->assertOk()
-            ->assertSee('Repository', false)
-            ->assertSee('https://github.com/acme/app.git', false)
-            ->assertSee('Deployment history', false)
-            ->assertSee("x-show=\"tab==='overview'\"", false)
-            ->getContent();
-
-        $this->assertMatchesRegularExpression(
-            "/x-data=\"managedTabs\(\{\s*tab:\s*'overview'/",
-            $html,
-        );
-
-        $appJs = file_get_contents(resource_path('js/app.js'));
-        $this->assertStringContainsString("Alpine.data('managedTabs'", $appJs);
-        $this->assertStringContainsString('window.managedTabs', $appJs);
-        $this->assertStringContainsString("alpine:init", $appJs);
-
-        $manifestPath = public_path('build/manifest.json');
-        $this->assertFileExists($manifestPath, 'Run npm run build so Vite assets include managedTabs.');
-        $manifest = json_decode(file_get_contents($manifestPath), true, flags: JSON_THROW_ON_ERROR);
-        $builtJs = public_path('build/'.$manifest['resources/js/app.js']['file']);
-        $this->assertFileExists($builtJs);
-        $built = file_get_contents($builtJs);
-        $this->assertTrue(
-            str_contains($built, 'managedTabs') || str_contains($built, 'persistTab'),
-            'Built app.js must include managedTabs — rebuild with npm run build.',
-        );
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Sites/Show')
+                ->has('tabs.overview')
+                ->where('site.repository_url', 'https://github.com/acme/app.git'));
     }
 
     public function test_server_manage_keeps_monitoring_panel_markup(): void
@@ -85,10 +57,10 @@ class ActiveTabPersistenceTest extends TestCase
         $this->actingAs($user)
             ->get(route('servers.manage', $server))
             ->assertOk()
-            ->assertSee('Metric agent', false)
-            ->assertSee('Resource history', false)
-            ->assertSee("x-show=\"tab==='monitoring'\"", false)
-            ->assertSee("x-data=\"managedTabs(", false);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Servers/Manage')
+                ->where('server.id', $server->id)
+                ->where('server.name', $server->name));
     }
 
     public function test_environment_save_redirect_keeps_the_environment_tab(): void

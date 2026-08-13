@@ -10,13 +10,14 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class PasswordResetController extends Controller
 {
-    public function requestForm(): View
+    public function requestForm(): Response
     {
-        return view('auth.forgot-password');
+        return Inertia::render('Auth/ForgotPassword');
     }
 
     public function send(Request $request): RedirectResponse
@@ -27,9 +28,9 @@ class PasswordResetController extends Controller
         return $status === Password::RESET_LINK_SENT ? back()->with('status', __($status)) : back()->withErrors(['email' => __($status)]);
     }
 
-    public function resetForm(Request $request, string $token): View
+    public function resetForm(Request $request, string $token): Response
     {
-        return view('auth.reset-password', ['token' => $token, 'email' => $request->string('email')]);
+        return Inertia::render('Auth/ResetPassword', ['token' => $token, 'email' => $request->string('email')]);
     }
 
     public function reset(Request $request): RedirectResponse

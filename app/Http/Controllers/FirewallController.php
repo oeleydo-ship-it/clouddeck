@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class FirewallController extends Controller
 {
@@ -27,7 +27,7 @@ class FirewallController extends Controller
         'Nginx HTTPS',
     ];
 
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         $servers = $request->user()->accessibleServers()
             ->orderBy('name')
@@ -45,11 +45,13 @@ class FirewallController extends Controller
             $rules = $selected->firewallRules()->latest()->get();
         }
 
-        return view('firewall.index', [
+        return Inertia::render('Firewall/Index', [
+            'title' => 'Firewall',
             'servers' => $servers,
             'selected' => $selected,
             'rules' => $rules,
             'namedPorts' => self::NAMED_PORTS,
+            'lastSyncLabel' => 'Last sync',
         ]);
     }
 

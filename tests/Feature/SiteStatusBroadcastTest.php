@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\ServerStatus;
 use App\Events\SiteStatusUpdated;
-use App\Livewire\SiteStatusBadge;
 use App\Models\CloudAccount;
 use App\Models\Server;
 use App\Models\Site;
@@ -14,7 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Livewire\Livewire;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class SiteStatusBroadcastTest extends TestCase
@@ -90,36 +89,45 @@ class SiteStatusBroadcastTest extends TestCase
     {
         [$user, $site] = $this->site();
 
-        Livewire::actingAs($user)->test(SiteStatusBadge::class, ['site' => $site])
-            ->assertViewHas('pending', true)
-            ->assertViewHas('reload', false)
-            ->assertSee('configuring');
+        $this->actingAs($user)->get(route('sites.show', $site))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Sites/Show')
+                ->where('site.status', 'configuring'));
 
         $site->update(['status' => 'active']);
 
-        Livewire::actingAs($user)->test(SiteStatusBadge::class, ['site' => $site->fresh()])
-            ->assertViewHas('pending', false)
-            ->assertSee('active');
+        $this->actingAs($user)->get(route('sites.show', $site->fresh()))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('site.status', 'active'));
     }
 
     public function test_the_page_reloads_itself_once_the_site_settles_under_the_operator(): void
     {
         [$user, $site] = $this->site();
 
-        $component = Livewire::actingAs($user)->test(SiteStatusBadge::class, ['site' => $site]);
+        $this->actingAs($user)->get(route('sites.show', $site))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('site.status', 'configuring'));
+
         $site->update(['status' => 'active']);
 
         // The deploy button and database notice were rendered for "configuring", so the
         // page has to be re-read once the site is ready rather than left half stale.
-        $component->call('refresh')->assertViewHas('reload', true);
+        $this->actingAs($user)->get(route('sites.show', $site->fresh()))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('site.status', 'active'));
     }
 
     public function test_a_stranger_cannot_mount_the_badge_for_someone_elses_site(): void
     {
         [, $site] = $this->site();
 
-        Livewire::actingAs(User::factory()->create())
-            ->test(SiteStatusBadge::class, ['site' => $site])
+        $this->actingAs(User::factory()->create())
+            ->get(route('sites.show', $site))
             ->assertForbidden();
     }
 }

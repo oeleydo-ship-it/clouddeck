@@ -15,13 +15,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use RuntimeException;
 use Throwable;
 
 class ServerManagementController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request)
     {
         $servers = $request->user()->accessibleServers()
             ->with(['sites', 'latestMetric', 'cloudAccount', 'team'])
@@ -38,7 +38,12 @@ class ServerManagementController extends Controller
             ->where('recorded_at', '>=', now()->subDay())
             ->avg('cpu_percent');
 
-        return view('servers.index', [
+        return Inertia::render('Servers/Index', [
+            'title' => 'Servers',
+            'provisionLabel' => 'Provision server',
+            'managedLabel' => 'Managed server',
+            'managedHref' => route('servers.managed'),
+            'empty' => $servers->total() === 0 ? 'No servers yet' : null,
             'servers' => $servers,
             'summary' => [
                 'total' => $servers->total(),
@@ -52,11 +57,26 @@ class ServerManagementController extends Controller
         ]);
     }
 
-    public function show(Request $request, Server $server, TeamAccess $teams): View
+    public function show(Request $request, Server $server, TeamAccess $teams)
     {
         $this->authorize('view', $server);
 
-        return view('servers.manage', [
+        return Inertia::render('Servers/Manage', [
+            'title' => $server->name,
+            'operations' => ['Software hardening', 'Update Ubuntu packages', 'Major release upgrade'],
+            'copyIpLabel' => 'Copy IP address',
+            'notificationLinks' => [
+                'incidents' => route('notifications.index', ['tab' => 'incidents', 'server' => $server->id]),
+                'email' => route('notifications.index', ['tab' => 'email']),
+                'view_all' => 'View all incidents',
+                'manage' => 'Manage notifications',
+            ],
+            'cronPresets' => $server->sites()->get()->filter->isLaravel()->map(fn ($site) => [
+                'label' => 'Laravel · '.$site->domain,
+                'name' => 'Laravel scheduler',
+                'expression' => '* * * * *',
+                'command' => 'cd /var/www/'.$site->domain.'/current && php artisan schedule:run',
+            ])->values()->all(),
             'server' => $server->load([
                 'databases.backups',
                 'databases.site',
@@ -71,7 +91,18 @@ class ServerManagementController extends Controller
                 'backupPolicies.snapshots' => fn ($q) => $q->latest()->limit(1),
                 'snapshots' => fn ($q) => $q->latest()->limit(30),
             ]),
+            'backupCopy' => [
+                'policy' => 'Automated backup policy',
+                'os' => 'OS backups (provider snapshots)',
+                'database' => 'Database backup',
+                'disk' => 'Storage disk',
+                'snapshot' => 'Create snapshot',
+                'custom' => 'database backup policies',
+                'upgrade_os' => 'Upgrade for OS backups',
+                'os_note' => 'OS backup (provider snapshot) copies the whole disk at the cloud provider.',
+            ],
             'backupDiskOptions' => app(\App\Services\BackupStorage::class)->privateDiskOptions(),
+            'phpMyAdminPort' => app(\App\Services\ServerPortRegistry::class)->allocate($server, \App\Services\ServerPortRegistry::PHPMYADMIN_DEFAULT),
             'transferTeams' => $request->user()->teamMemberships()->with('team')->whereNotNull('accepted_at')->get()->filter(fn ($membership) => $teams->canManage($request->user(), $membership->team))->pluck('team'),
         ]);
     }

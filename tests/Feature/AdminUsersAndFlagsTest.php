@@ -48,7 +48,8 @@ class AdminUsersAndFlagsTest extends TestCase
 
         $response->assertSee('Restore');
         // The button posts the inverse of the current state, so a suspended account offers 0.
-        $response->assertSee('name="suspend" value="0"', false);
+        $response->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->where('suspendValue', 0));
     }
 
     public function test_suspending_still_works_from_the_redesigned_row(): void

@@ -11,6 +11,8 @@ class SiteBackup extends Model
 
     protected $guarded = [];
 
+    protected $appends = ['size_for_humans'];
+
     protected function casts(): array
     {
         return ['completed_at' => 'datetime'];

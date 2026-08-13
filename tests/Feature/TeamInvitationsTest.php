@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class TeamInvitationsTest extends TestCase
@@ -104,13 +105,14 @@ class TeamInvitationsTest extends TestCase
 
         $this->actingAs($owner)->get('/teams')
             ->assertOk()
-            ->assertSee('pinoycurl@gmail.com')
-            ->assertSee('Pending invitations')
-            ->assertSee('Edit')
-            ->assertSee('Resend')
-            ->assertSee('Delete')
-            ->assertSee('What each role can do')
-            ->assertSee(route('teams.invitations.resend', [$team, $invitation], false), false);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Teams/Index')
+                ->where('pendingLabel', 'Pending invitations')
+                ->where('roleGuide', 'What each role can do')
+                ->where('actions.0', 'Edit')
+                ->where('actions.1', 'Resend')
+                ->where('actions.2', 'Delete')
+                ->where('owned.0.invitations.0.email', 'pinoycurl@gmail.com'));
     }
 
     private function pendingInvitation(?\DateTimeInterface $expiresAt = null, string $email = 'invitee@example.com', string $role = 'operator'): array

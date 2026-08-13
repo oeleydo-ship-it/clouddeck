@@ -61,7 +61,10 @@ class AdminNavigationTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/settings')
             ->assertOk()
-            ->assertSee('aria-current="page"', false)
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Admin/Settings')
+                ->has('adminNav')
+                ->where('title', 'Settings'))
             // Every section stays reachable from wherever the operator happens to be.
             ->assertSee(route('admin.users'), false)
             ->assertSee(route('admin.managed-servers'), false)

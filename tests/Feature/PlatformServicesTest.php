@@ -9,6 +9,7 @@ use App\Services\PlatformRuntime\FakePlatformProcessLauncher;
 use App\Services\PlatformRuntime\FakePlatformSslProbe;
 use App\Services\PlatformRuntime\PlatformPidStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class PlatformServicesTest extends TestCase
@@ -48,14 +49,16 @@ class PlatformServicesTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('admin.platform-services'))
             ->assertOk()
-            ->assertSee('Platform services')
-            ->assertSee('Control-plane runtime')
-            ->assertSee('Redis')
-            ->assertSee('Horizon')
-            ->assertSee('Queue workers')
-            ->assertSee('Reverb')
-            ->assertSee('SSL / TLS')
-            ->assertSee('Renew certificate');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/PlatformServices')
+                ->where('title', 'Platform services')
+                ->where('heading', 'Control-plane runtime')
+                ->where('renewLabel', 'Renew certificate')
+                ->where('initial.services.redis.name', 'Redis')
+                ->where('initial.services.horizon.name', 'Horizon')
+                ->where('initial.services.queue.name', 'Queue workers')
+                ->where('initial.services.reverb.name', 'Reverb')
+                ->where('initial.ssl.name', 'SSL / TLS'));
     }
 
     public function test_super_admin_can_fetch_status_json(): void
@@ -249,7 +252,9 @@ class PlatformServicesTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee(route('admin.platform-services'), false)
-            ->assertSee('Platform services');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Overview')
+                ->has('adminNav')
+                ->where('adminNav', fn ($nav) => $nav->contains(fn ($item) => ($item['route'] ?? null) === 'admin.platform-services' && ($item['label'] ?? null) === 'Platform services')));
     }
 }

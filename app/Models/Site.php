@@ -98,13 +98,41 @@ class Site extends Model
         return $this->platform === 'wordpress';
     }
 
+    public function isLaravel(): bool
+    {
+        return ($this->platform ?? 'laravel') === 'laravel';
+    }
+
+    public function isReact(): bool
+    {
+        return $this->platform === 'react';
+    }
+
+    public function usesPhp(): bool
+    {
+        return ! $this->isReact();
+    }
+
+    public function platformLabel(): string
+    {
+        return match (true) {
+            $this->isWordPress() => 'WordPress',
+            $this->isReact() => 'React',
+            default => 'Laravel',
+        };
+    }
+
     /**
-     * Laravel serves from public/; WordPress serves from the install root. Nginx and the
-     * deployment both need this, so it lives with the site rather than in each of them.
+     * Laravel serves from public/; WordPress from the install root; React/Vite from dist/.
+     * Nginx and the deployment both need this, so it lives with the site.
      */
     public function documentRoot(): string
     {
-        return $this->isWordPress() ? 'current' : 'current/public';
+        return match (true) {
+            $this->isWordPress() => 'current',
+            $this->isReact() => 'current/dist',
+            default => 'current/public',
+        };
     }
 
     public function server()

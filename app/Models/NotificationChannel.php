@@ -33,6 +33,7 @@ class NotificationChannel extends Model
         'dns_mismatch' => 'DNS mismatch',
         'deploy_complete' => 'Deploy complete',
         'ssl_installed' => 'SSL certificate issued',
+        'ssl_removed' => 'SSL certificate removed',
         'ssl_expiring' => 'SSL certificate expiring',
         'queue_failed' => 'Queue failed',
         'backup_failed' => 'Backup failed',

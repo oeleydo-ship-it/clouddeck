@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 DOMAIN={{DOMAIN}}
 PHP_VERSION={{PHP_VERSION}}
+PLATFORM={{PLATFORM}}
 CLIENT_MAX_BODY_MB={{CLIENT_MAX_BODY_MB}}
 STATIC_CACHE={{STATIC_CACHE}}
 INCLUDE_WWW={{INCLUDE_WWW}}
@@ -15,12 +16,18 @@ TARGET="/etc/nginx/sites-available/${DOMAIN}"
 BACKUP="/etc/clouddeck/backups/nginx/${DOMAIN}-$(date +%s)"
 TEMP=$(mktemp /etc/nginx/sites-available/.clouddeck-XXXXXX)
 mkdir -p "$(dirname "$BACKUP")"
-[[ -S "/run/php/clouddeck-${DOMAIN}.sock" ]] || { echo 'Apply PHP pool settings before Nginx settings' >&2; exit 1; }
+if [ "${PLATFORM}" != "react" ]; then
+    [[ -S "/run/php/clouddeck-${DOMAIN}.sock" ]] || { echo 'Apply PHP pool settings before Nginx settings' >&2; exit 1; }
+fi
 SERVER_NAMES="$DOMAIN"
 [[ "$INCLUDE_WWW" == "1" ]] && SERVER_NAMES="$DOMAIN www.$DOMAIN"
 STATIC_BLOCK=""
 if [[ "$STATIC_CACHE" == "1" ]]; then
-    STATIC_BLOCK='location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico|webp|woff2?)$ { expires 30d; access_log off; try_files $uri /index.php?$query_string; }'
+    if [ "${PLATFORM}" = "react" ]; then
+        STATIC_BLOCK='location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico|webp|woff2?)$ { expires 30d; access_log off; try_files $uri /index.html; }'
+    else
+        STATIC_BLOCK='location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|ico|webp|woff2?)$ { expires 30d; access_log off; try_files $uri /index.php?$query_string; }'
+    fi
 fi
 # Chat widgets and similar embeds load this site in a cross-origin iframe. SAMEORIGIN
 # blocks that (blank gray rectangle on the host page). Opt in only when the site is
@@ -47,6 +54,32 @@ server {
 }
 NGINX
 fi
+if [ "${PLATFORM}" = "react" ]; then
+cat >> "$TEMP" <<NGINX
+server {
+    $([[ "$SSL_ENABLED" == "1" ]] || echo 'listen 80;')
+    $([[ "$SSL_ENABLED" == "1" ]] || echo 'listen [::]:80;')
+    ${TLS_LINES}
+    server_name ${SERVER_NAMES};
+    root ${ROOT}/${DOCUMENT_ROOT};
+    index index.html;
+    charset utf-8;
+    client_max_body_size ${CLIENT_MAX_BODY_MB}M;
+${FRAME_OPTIONS_HEADER}
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    location ^~ /.well-known/acme-challenge/ {
+        root ${ROOT}/shared/acme;
+        default_type text/plain;
+    }
+    location / { try_files \$uri \$uri/ /index.html; }
+    ${STATIC_BLOCK}
+    location ~ /\.(?!well-known).* { deny all; }
+    access_log /var/log/nginx/${DOMAIN}.access.log;
+    error_log /var/log/nginx/${DOMAIN}.error.log;
+}
+NGINX
+else
 cat >> "$TEMP" <<NGINX
 server {
     $([[ "$SSL_ENABLED" == "1" ]] || echo 'listen 80;')
@@ -74,6 +107,7 @@ ${FRAME_OPTIONS_HEADER}
     error_log /var/log/nginx/${DOMAIN}.error.log;
 }
 NGINX
+fi
 [[ -f "$TARGET" ]] && cp -a "$TARGET" "$BACKUP"
 mv "$TEMP" "$TARGET"
 ln -sfn "$TARGET" "/etc/nginx/sites-enabled/${DOMAIN}"

@@ -21,7 +21,10 @@ class StoreSiteRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        $this->merge(['platform' => $this->input('platform', 'laravel')]);
+        $this->merge([
+            'platform' => $this->input('platform', 'laravel'),
+            'php_version' => $this->input('php_version') ?: config('clouddeck.default_php_version'),
+        ]);
     }
 
     public function rules(): array
@@ -37,11 +40,11 @@ class StoreSiteRequest extends FormRequest
                 Rule::unique('sites', 'domain')->where(fn ($query) => $query->where('server_id', $this->input('server_id'))->whereNull('deleted_at')),
             ],
             'php_version' => ['required', Rule::in(config('clouddeck.php_versions'))],
-            'platform' => ['required', Rule::in(['laravel', 'wordpress'])],
+            'platform' => ['required', Rule::in(['laravel', 'wordpress', 'react'])],
             // WordPress is downloaded from wordpress.org rather than cloned, so a repository
-            // is required for Laravel and meaningless for WordPress.
-            'repository_url' => ['required_if:platform,laravel', 'nullable', 'string', 'max:2048', new GitRepositoryUrl],
-            'branch' => ['required_if:platform,laravel', 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
+            // is required for Laravel and React and meaningless for WordPress.
+            'repository_url' => ['required_if:platform,laravel,react', 'nullable', 'string', 'max:2048', new GitRepositoryUrl],
+            'branch' => ['required_if:platform,laravel,react', 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
             'auto_deploy' => ['sometimes', 'boolean'],
             'zero_downtime' => ['sometimes', 'boolean'],
         ];

@@ -26,7 +26,12 @@ class RollbackDeploymentJob implements ShouldQueue
         $deployment = Deployment::with('site.server.sshKey')->findOrFail($this->deploymentId);
         $started = now();
         $deployment->update(['status' => DeploymentStatus::Running, 'started_at' => $started, 'progress' => 20]);
-        $result = $ssh->runScriptStreaming($deployment->site->server, resource_path('scripts/rollback-release.sh'), ['DOMAIN' => $deployment->site->domain, 'RELEASE' => $deployment->release, 'PHP_VERSION' => $deployment->site->php_version], function (string $type, string $output) use ($deployment) {
+        $result = $ssh->runScriptStreaming($deployment->site->server, resource_path('scripts/rollback-release.sh'), [
+            'DOMAIN' => $deployment->site->domain,
+            'RELEASE' => $deployment->release,
+            'PHP_VERSION' => $deployment->site->php_version,
+            'PLATFORM' => $deployment->site->platform ?: 'laravel',
+        ], function (string $type, string $output) use ($deployment) {
             if (trim($output) === '') {
                 return;
             }

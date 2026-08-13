@@ -6,6 +6,7 @@ use App\Http\Middleware\EnsureImpersonationWriteAccess;
 use App\Http\Middleware\EnsureInstalled;
 use App\Http\Middleware\EnsureNotSuspended;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PreserveActiveTab;
 use App\Http\Middleware\RequireFeature;
 use Illuminate\Foundation\Application;
@@ -24,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
         $middleware->web(prepend: [EnsureInstalled::class], append: [
+            HandleInertiaRequests::class,
             PreserveActiveTab::class,
             EnsureImpersonationIntegrity::class,
             EnsureImpersonationWriteAccess::class,

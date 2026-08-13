@@ -7,14 +7,17 @@ use App\Services\SshKeyGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use RuntimeException;
 
 class SshKeyController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request)
     {
-        return view('ssh-keys.index', ['keys' => $request->user()->sshKeys()->latest()->get()]);
+        return Inertia::render('SshKeys/Index', [
+            'title' => 'SSH keys',
+            'keys' => $request->user()->sshKeys()->latest()->get(),
+        ]);
     }
 
     public function generate(Request $request, SshKeyGenerator $generator): RedirectResponse

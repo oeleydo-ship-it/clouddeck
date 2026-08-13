@@ -9,13 +9,31 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class CloudAccountController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request)
     {
-        return view('cloud-accounts.index', ['accounts' => $request->user()->cloudAccounts()->withCount('servers')->latest()->get()]);
+        $providers = config('clouddeck.providers');
+
+        return Inertia::render('CloudAccounts/Index', [
+            'title' => 'Cloud providers',
+            'sshNote' => 'Servers attached by IP over SSH',
+            'addByIp' => 'Add a server by IP',
+            'accounts' => $request->user()->cloudAccounts()->withCount('servers')->latest()->get()->map(function (CloudAccount $account) use ($providers) {
+                $api = (bool) ($providers[$account->provider]['api'] ?? false);
+
+                return [
+                    ...$account->toArray(),
+                    'status_label' => $account->validated_at ? 'Validated' : 'Pending',
+                    'connection_note' => $api ? null : 'Servers attached by IP over SSH',
+                    'action_label' => $api ? 'Discover and connect' : 'Add a server by IP',
+                    'servers_url' => $api ? route('cloud-accounts.servers', $account) : route('servers.custom', ['cloud_account' => $account->id]),
+                ];
+            }),
+            'providers' => $providers,
+        ]);
     }
 
     public function store(Request $request, CloudProviderManager $providers): RedirectResponse

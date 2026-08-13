@@ -9,17 +9,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
+use Inertia\Inertia;
 
 class AccountController extends Controller
 {
-    public function show(Request $request, TwoFactorService $twoFactor): View
+    public function show(Request $request, TwoFactorService $twoFactor)
     {
-        return view('account.show', [
+        return Inertia::render('Account/Show', [
+            'title' => 'Account',
             'tokens' => $request->user()->tokens()->latest()->get(),
             'sessions' => DB::table('sessions')->where('user_id', $request->user()->id)->orderByDesc('last_activity')->get(),
             'provisioningUri' => $request->user()->two_factor_secret && ! $request->user()->two_factor_confirmed_at
                 ? $twoFactor->provisioningUri($request->user(), $request->user()->two_factor_secret) : null,
+            'twoFactorConfirmed' => (bool) $request->user()->two_factor_confirmed_at,
         ]);
     }
 

@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class BillingLifecycleTest extends TestCase
@@ -40,10 +41,11 @@ class BillingLifecycleTest extends TestCase
 
         $this->actingAs($user)->get('/billing')
             ->assertOk()
-            ->assertSee('Pay & subscribe')
-            ->assertSee(route('billing.checkout'), false)
-            ->assertDontSee('Continue to secure checkout')
-            ->assertSee('Request this plan');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Billing/Index')
+                ->where('checkoutLabel', 'Pay & subscribe')
+                ->where('requestLabel', 'Request this plan')
+                ->where('stripeEnabled', true));
     }
 
     public function test_billing_usage_shows_subscribed_plan_limits_for_super_admins(): void
@@ -84,11 +86,12 @@ class BillingLifecycleTest extends TestCase
 
         $this->actingAs($admin)->get('/billing')
             ->assertOk()
-            ->assertSee('Current plan:')
-            ->assertSee('Pro')
-            ->assertSee('0 / 10')
-            ->assertSee('0 / 50')
-            ->assertDontSee('0 / Unlimited');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Billing/Index')
+                ->where('currentPlanLabel', 'Current plan:')
+                ->where('plan.name', 'Pro')
+                ->where('usage.servers.label', '0 / 10')
+                ->where('usage.sites.label', '0 / 50'));
     }
 
     public function test_hosted_checkout_uses_mapped_price_and_customer_metadata(): void

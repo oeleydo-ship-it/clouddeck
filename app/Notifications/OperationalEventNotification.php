@@ -51,7 +51,7 @@ class OperationalEventNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        return ['event' => $this->event, 'title' => $this->title, 'body' => $this->body, 'severity' => $this->severity, ...$this->context];
+        return ['event' => $this->event, 'title' => $this->title, 'body' => $this->body, 'severity' => $this->severity, 'url' => $this->url, ...$this->context];
     }
 
     /** Which subscription this belongs to. The notifiable routes the mail from it. */

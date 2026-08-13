@@ -8,57 +8,57 @@
 @source '../../storage/framework/views/*.php';
 @source "../**/*.blade.php";
 @source "../**/*.js";
+@source "../**/*.tsx";
 @source "../**/*.vue";
 
-/* Uplary design tokens. The authenticated console intentionally follows Cursor's
-   compact, neutral UI typography; marketing can still build hierarchy with weight. */
+/* Uplary / Clouddeck tokens. Console follows a 2026 hosting-PaaS density
+   (Linear / Vercel / Railway); marketing keeps more display hierarchy. */
 @theme {
     --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif, 'Apple Color Emoji',
         'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
     --font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-    --color-surface: #f7f9fb;
-    --color-surface-container: #eceef0;
+    --color-surface: #f6f5f2;
+    --color-surface-container: #eceae4;
     --color-primary: #0058bc;
     --color-primary-container: #0070eb;
     --color-secondary-container: #00d2fd;
-    --color-outline-variant: #c1c6d7;
-    --color-inverse-surface: #2d3133;
+    --color-outline-variant: #d4d0c8;
+    --color-inverse-surface: #18181b;
 
-    --radius-card: 0.375rem;
+    --radius-card: 1rem;
+    --radius-control: 0.625rem;
 
     --spacing-gutter: 24px;
     --spacing-margin-x: 40px;
     --container-shell: 1440px;
 
-    /* Console type scale, while retaining Uplary's color tokens. */
-    --text-meta: 0.8125rem;      /* 13px — labels, eyebrows, table heads */
+    --text-meta: 0.8125rem;
     --text-meta--line-height: 1.35;
-    --text-meta-lg: 0.875rem;    /* 14px — secondary meta */
+    --text-meta-lg: 0.875rem;
     --text-meta-lg--line-height: 1.4;
-    --text-body-sm: 0.875rem;    /* 14px — sidebar, buttons, compact UI */
+    --text-body-sm: 0.875rem;
     --text-body-sm--line-height: 1.45;
-    --text-body: 0.96875rem;     /* 15.5px — body copy */
+    --text-body: 0.9375rem;
     --text-body--line-height: 1.5;
-    --text-card: 0.96875rem;     /* 15.5px — card / section titles */
+    --text-card: 0.9375rem;
     --text-card--line-height: 1.4;
-    --text-page: 1.3125rem;      /* 21px — page titles */
+    --text-page: 1.5rem;
     --text-page--line-height: 1.2;
-    --text-page-lg: 1.3125rem;   /* 21px — desktop page titles */
+    --text-page-lg: 1.5rem;
     --text-page-lg--line-height: 1.15;
-    --text-metric: 1.8125rem;    /* 29px — stat / big numbers */
+    --text-metric: 1.75rem;
     --text-metric--line-height: 1.15;
 }
 
 @layer base {
     body {
-        @apply bg-[#f7f9fb] font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+        @apply bg-[#f6f5f2] font-sans text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
         font-size: var(--text-body);
         line-height: 1.5;
     }
     h1, .font-display { font-family: var(--font-display); }
-    ::selection { @apply bg-cyan-400/30; }
-    /* Tabular figures keep metric cards from jittering as live counters update. */
+    ::selection { @apply bg-sky-400/25; }
     .tnum { font-variant-numeric: tabular-nums; }
 }
 
@@ -67,95 +67,109 @@
     .app-shell {
         @apply flex min-h-screen;
     }
-    /* The open/closed transform is bound in the markup, not here: a component-layer
-       `lg:translate-x-0` loses to the plain `-translate-x-full` utility Alpine applies,
-       which would slide the sidebar off-screen on desktop too. */
     .app-sidebar {
-        @apply fixed inset-y-0 left-0 z-60 flex w-[216px] flex-col border-r border-white/10 bg-[#22262a] py-3
-        transition-transform duration-200;
+        @apply fixed inset-y-0 left-0 z-60 flex w-[240px] flex-col border-r border-white/[0.07] bg-[#161719] py-4
+        transition-transform duration-200 ease-out;
     }
     .sidebar-brand {
         @apply flex min-w-0 items-center gap-2.5;
     }
     .sidebar-brand-mark {
-        @apply grid size-[34px] shrink-0 place-items-center rounded object-contain;
+        @apply grid size-8 shrink-0 place-items-center rounded-[10px] object-contain;
     }
     .sidebar-brand-name {
-        @apply block truncate font-display font-semibold text-white;
+        @apply block truncate font-display font-semibold tracking-[-0.02em] text-white;
         font-size: 0.9375rem;
         line-height: 1.25;
     }
     .sidebar-brand-subtitle {
-        @apply block truncate text-slate-400;
+        @apply block truncate text-zinc-500;
         font-size: 0.6875rem;
         line-height: 1.35;
     }
+    .sidebar-group {
+        @apply space-y-0.5 px-2;
+    }
     .sidebar-section-label {
-        @apply px-3 font-medium uppercase tracking-[0.08em] text-slate-400/70;
-        font-size: var(--text-meta);
+        @apply px-2.5 pb-1 pt-4 font-medium uppercase tracking-[0.14em] text-zinc-500;
+        font-size: 0.6875rem;
+        line-height: 1.3;
+    }
+    .sidebar-group:first-child .sidebar-section-label {
+        @apply pt-0;
     }
     .side-link {
-        @apply mx-1.5 flex min-h-[34px] items-center gap-2.5 rounded px-2.5 py-1.5 font-normal text-slate-300
-        transition-colors hover:bg-white/10 hover:text-white;
+        @apply relative flex min-h-[34px] items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 font-normal text-zinc-400
+        transition-[color,background-color,box-shadow] duration-150 hover:bg-white/[0.06] hover:text-zinc-100;
         font-size: var(--text-body-sm);
         line-height: 1.35;
     }
     .side-link-active {
-        @apply bg-primary-container font-medium text-white hover:bg-primary-container hover:text-white;
+        @apply bg-white/[0.08] font-medium text-white hover:bg-white/[0.1] hover:text-white;
+    }
+    .side-link-active::before,
+    .side-link-admin-active::before {
+        content: '';
+        @apply absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full;
+        background: var(--color-primary-container);
     }
     .side-link-admin-active {
-        @apply bg-amber-500/20 font-medium text-amber-100 hover:bg-amber-500/25 hover:text-amber-50;
+        @apply bg-amber-500/[0.12] font-medium text-amber-50 hover:bg-amber-500/[0.16] hover:text-amber-50;
+    }
+    .side-link-admin-active::before {
+        background: rgb(245 158 11);
     }
     .app-sidebar-admin {
-        @apply border-amber-500/20;
+        @apply border-amber-500/15;
+        box-shadow: inset 2px 0 0 0 rgb(245 158 11 / 0.55);
+    }
+    .app-sidebar-admin .sidebar-section-label {
+        @apply font-semibold tracking-[0.12em] text-amber-500/75;
+    }
+    .app-sidebar-admin .side-mini-link {
+        @apply text-amber-100/70 hover:bg-amber-500/10 hover:text-amber-50;
     }
     .side-mini-link {
-        @apply flex min-h-[34px] items-center gap-2.5 rounded px-2.5 py-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white;
+        @apply flex min-h-[32px] items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 text-zinc-500 transition-[color,background-color] duration-150 hover:bg-white/[0.05] hover:text-zinc-100;
         font-size: var(--text-body-sm);
         line-height: 1.35;
     }
-    /* Fixed sidebar needs an explicit content offset; without this the page sits underneath. */
     .app-content {
-        @apply flex min-h-screen w-full min-w-0 flex-1 flex-col lg:ml-[216px];
+        @apply flex min-h-screen w-full min-w-0 flex-1 flex-col lg:ml-[240px];
     }
     .app-topbar {
         @apply sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-slate-200/70
-        bg-[#f7f9fb]/80 px-5 backdrop-blur-md lg:px-10 dark:border-white/10 dark:bg-slate-950/80;
+        bg-[#f6f5f2]/75 px-4 backdrop-blur-xl backdrop-saturate-150 lg:px-7
+        dark:border-white/[0.07] dark:bg-zinc-950/75;
     }
     .app-main {
-        @apply mx-auto w-full max-w-[1280px] px-4 py-5 lg:px-7 lg:py-6;
+        @apply mx-auto w-full max-w-[1280px] px-4 py-6 lg:px-7 lg:py-8;
     }
-    /* Breadcrumb and console controls sit in the page body, aligned to the same grid as
-       the content below them. Deliberately not sticky: nothing should hover over the page. */
     .page-context {
         @apply mx-auto flex w-full max-w-[1280px] items-center justify-between gap-3 px-4 pt-4 lg:px-7;
     }
-    /* Keep the compact mobile gap, then give desktop page content a little more
-       separation from the context/search row without moving that row itself. */
-    .page-context ~ .app-main {
-        padding-top: 1rem;
-    }
-    @media (min-width: 1024px) {
-        .page-context ~ .app-main {
-            padding-top: 2rem;
-        }
-    }
     .breadcrumb {
-        @apply font-medium tracking-[0.02em] text-slate-500 dark:text-slate-400;
+        @apply inline-flex items-center gap-2 font-medium tracking-[-0.01em] text-slate-400 dark:text-zinc-500;
         font-size: var(--text-meta-lg);
     }
+    .breadcrumb-sep {
+        @apply text-slate-300 dark:text-zinc-700;
+    }
     .breadcrumb-current {
-        @apply text-[#0058bc] dark:text-cyan-300;
+        @apply text-slate-700 dark:text-zinc-200;
     }
 
     /* ---- Page headers ----------------------------------------------------- */
     .page-eyebrow {
-        @apply font-semibold uppercase tracking-[0.12em] text-[#0058bc] dark:text-cyan-300;
-        font-size: var(--text-meta);
+        @apply font-medium uppercase tracking-[0.14em] text-sky-700 dark:text-sky-400;
+        font-size: 0.6875rem;
         line-height: 1.35;
     }
+    .page-eyebrow-admin {
+        @apply text-amber-700 dark:text-amber-400;
+    }
     .page-title {
-        @apply mt-1 font-display font-semibold tracking-[-0.01em] text-slate-900 dark:text-white;
+        @apply mt-1.5 font-display font-semibold tracking-[-0.03em] text-slate-900 dark:text-white;
         font-size: var(--text-page);
         line-height: 1.2;
     }
@@ -166,12 +180,12 @@
         }
     }
     .page-subtitle {
-        @apply mt-1 max-w-2xl text-slate-500 dark:text-slate-400;
+        @apply mt-1.5 max-w-2xl text-slate-500 dark:text-zinc-400;
         font-size: var(--text-body);
-        line-height: 1.5;
+        line-height: 1.55;
     }
     .section-title {
-        @apply font-semibold text-slate-900 dark:text-white;
+        @apply font-semibold tracking-[-0.02em] text-slate-900 dark:text-white;
         font-family: var(--font-sans);
         font-size: var(--text-card);
         line-height: 1.35;
@@ -179,84 +193,108 @@
 
     /* ---- Surfaces --------------------------------------------------------- */
     .panel {
-        @apply rounded-md border border-slate-200/80 bg-white p-3
-        dark:border-white/10 dark:bg-white/[.04] dark:shadow-none;
+        @apply border border-slate-200/80 bg-white p-4
+        dark:border-white/[0.08] dark:bg-zinc-900/60 dark:shadow-none;
+        border-radius: var(--radius-card);
     }
     .panel-interactive {
-        @apply transition-colors hover:border-[#0070eb] dark:hover:border-cyan-400/40;
+        @apply transition-[border-color,box-shadow] duration-150 hover:border-sky-400/50 hover:shadow-sm dark:hover:border-sky-400/30;
     }
     .stat-card {
-        @apply relative overflow-hidden rounded-md border border-slate-200/80 bg-white p-3
-        transition-colors hover:border-[#0070eb]
-        dark:border-white/10 dark:bg-white/[.04] dark:shadow-none dark:hover:border-cyan-400/40;
+        @apply relative overflow-hidden border border-slate-200/80 bg-white p-4
+        transition-[border-color,box-shadow] duration-150 hover:border-sky-400/50 hover:shadow-sm
+        dark:border-white/[0.08] dark:bg-zinc-900/60 dark:shadow-none dark:hover:border-sky-400/30;
+        border-radius: var(--radius-card);
     }
     .stat-label {
-        @apply font-medium tracking-[0.04em] text-slate-500 dark:text-slate-400;
+        @apply font-medium tracking-[0.06em] text-slate-500 dark:text-zinc-400;
         font-size: var(--text-meta);
         line-height: 1.35;
         text-transform: uppercase;
     }
     .stat-value {
-        @apply tabular-nums font-semibold tracking-tight text-slate-900 dark:text-white;
+        @apply tabular-nums font-semibold tracking-[-0.03em] text-slate-900 dark:text-white;
         font-family: var(--font-sans);
         font-size: var(--text-metric);
         line-height: 1.15;
     }
     .stat-icon {
-        @apply grid size-7 shrink-0 place-items-center rounded;
+        @apply grid size-8 shrink-0 place-items-center rounded-[10px];
     }
     .dashed-cta {
-        @apply flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed
-        border-slate-300 px-6 py-10 text-center transition hover:border-[#0070eb] hover:bg-white/60
-        dark:border-white/15 dark:hover:border-cyan-400/40 dark:hover:bg-white/[.03];
+        @apply flex w-full flex-col items-center justify-center gap-2 border border-dashed
+        border-slate-300 px-6 py-10 text-center transition-[border-color,background-color] duration-150
+        hover:border-sky-400 hover:bg-white/60
+        dark:border-white/15 dark:hover:border-sky-400/40 dark:hover:bg-white/[.03];
+        border-radius: var(--radius-card);
     }
-    /* A menu floating over content needs an opaque surface of its own: the panel's
-       translucent dark background lets whatever sits beneath show through the items. */
     .menu-panel {
-        @apply absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200
-        bg-white shadow-lg shadow-slate-900/10 dark:border-white/10 dark:bg-slate-900 dark:shadow-black/40;
+        @apply absolute right-0 z-50 mt-2 w-56 overflow-hidden border border-slate-200
+        bg-white shadow-lg shadow-slate-900/8 dark:border-white/[0.08] dark:bg-zinc-900 dark:shadow-black/40;
+        border-radius: var(--radius-card);
     }
     .menu-item {
-        @apply block w-full px-4 py-2 text-left text-slate-600 transition
-        hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-white/5;
+        @apply block w-full px-3.5 py-2 text-left text-slate-600 transition-[color,background-color] duration-150
+        hover:bg-slate-50 dark:text-zinc-300 dark:hover:bg-white/[0.05];
         font-size: var(--text-body-sm);
         line-height: 1.4;
     }
     .menu-item-active {
-        @apply bg-slate-50 font-medium text-slate-900 dark:bg-white/5 dark:text-white;
+        @apply bg-slate-50 font-medium text-slate-900 dark:bg-white/[0.05] dark:text-white;
     }
 
     /* ---- Controls --------------------------------------------------------- */
     .field {
-        @apply mt-1.5 min-h-8 w-full rounded border border-slate-200 bg-white px-2.5 py-1.5 text-slate-900 outline-none transition
-        placeholder:text-slate-400 focus:border-[#0070eb] focus:ring-2 focus:ring-[#0070eb]/10
-        dark:border-white/10 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-cyan-400/20;
+        @apply mt-1.5 min-h-9 w-full border border-slate-200 bg-white px-3 py-2 text-slate-900 outline-none
+        transition-[border-color,box-shadow] duration-150
+        placeholder:text-slate-400 focus:border-[#0070eb] focus:ring-2 focus:ring-[#0070eb]/15
+        dark:border-white/[0.1] dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:ring-sky-400/20;
+        border-radius: var(--radius-control);
         font-size: var(--text-body);
     }
+    .field-label {
+        @apply block text-sm heading;
+    }
+    .field-hint {
+        @apply mt-1 text-xs muted;
+    }
+    .check-row {
+        @apply flex items-start gap-3 rounded-[10px] border border-slate-200/80 bg-[#eceae4]/40 px-3.5 py-3 text-sm heading
+        dark:border-white/[0.08] dark:bg-white/[0.03];
+    }
+    .check-row input[type='checkbox'],
+    .check-row input[type='radio'] {
+        @apply mt-0.5 size-4 shrink-0 accent-sky-600;
+    }
     .button-primary {
-        @apply inline-flex min-h-8 items-center justify-center gap-1.5 rounded bg-primary-container
-        px-3 py-1.5 font-medium text-white transition
-        hover:bg-primary active:scale-95
-        disabled:cursor-not-allowed disabled:opacity-50;
+        @apply inline-flex min-h-9 items-center justify-center gap-1.5 bg-primary-container
+        px-3.5 py-1.5 font-medium text-white shadow-sm shadow-sky-700/20
+        transition-[background-color,box-shadow,opacity] duration-150
+        hover:bg-primary hover:shadow-md hover:shadow-sky-700/25
+        disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none;
+        border-radius: var(--radius-control);
         font-size: var(--text-body-sm);
         line-height: 1.25;
     }
     .button-secondary {
-        @apply inline-flex min-h-8 items-center justify-center gap-1.5 rounded border border-slate-200 bg-white px-3 py-1.5
-        font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50
+        @apply inline-flex min-h-9 items-center justify-center gap-1.5 border border-slate-200/90 bg-white/70 px-3.5 py-1.5
+        font-medium text-slate-700 transition-[background-color,border-color] duration-150
+        hover:border-slate-300 hover:bg-white
         disabled:cursor-not-allowed disabled:opacity-50
-        dark:border-white/10 dark:bg-transparent dark:text-slate-200 dark:hover:bg-white/5;
+        dark:border-white/[0.1] dark:bg-transparent dark:text-zinc-200 dark:hover:bg-white/[0.05];
+        border-radius: var(--radius-control);
         font-size: var(--text-body-sm);
         line-height: 1.25;
     }
     .button-ghost {
-        @apply inline-flex min-h-7 items-center justify-center gap-1.5 rounded px-2 py-1 font-medium text-slate-600
-        transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white
+        @apply inline-flex min-h-8 items-center justify-center gap-1.5 px-2.5 py-1 font-medium text-slate-600
+        transition-[background-color,color] duration-150 hover:bg-slate-100 hover:text-slate-900
+        dark:text-zinc-400 dark:hover:bg-white/[0.06] dark:hover:text-white
         disabled:cursor-not-allowed disabled:opacity-50;
+        border-radius: var(--radius-control);
         font-size: var(--text-body-sm);
         line-height: 1.25;
     }
-    /* Destructive actions keep rose when views override text color. */
     .button-secondary.\!text-rose-600,
     .button-secondary.\!text-rose-300,
     .button-ghost.\!text-rose-600,
@@ -267,29 +305,40 @@
         dark:!border-rose-400/30 dark:!bg-rose-400/10 dark:!text-rose-300 dark:hover:!bg-rose-400/15;
     }
     .link-action {
-        @apply font-medium text-[#0058bc] transition hover:underline dark:text-cyan-300;
+        @apply font-medium text-[#0058bc] transition-colors duration-150 hover:underline dark:text-sky-300;
         font-size: var(--text-body-sm);
     }
     .nav-link {
-        @apply rounded-lg px-3 py-2 font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900
-        dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-white;
+        @apply rounded-[10px] px-3 py-2 font-medium text-slate-500 transition-[background-color,color] duration-150
+        hover:bg-slate-100 hover:text-slate-900
+        dark:text-zinc-400 dark:hover:bg-white/[0.05] dark:hover:text-white;
         font-size: var(--text-body-sm);
     }
     .icon-button {
-        @apply grid size-7 place-items-center rounded text-slate-500 transition
-        hover:bg-slate-200/60 hover:text-slate-900
-        dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white;
+        @apply grid size-8 place-items-center text-slate-500 transition-[background-color,color] duration-150
+        hover:bg-slate-200/70 hover:text-slate-900
+        dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-white;
+        border-radius: var(--radius-control);
     }
     .search-input {
-        @apply h-8 w-full rounded border border-slate-200 bg-white pl-8 pr-3 text-slate-900 outline-none
-        transition placeholder:text-slate-400 focus:border-[#0070eb] focus:ring-2 focus:ring-[#0070eb]/10
-        dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-500;
+        @apply h-9 w-full border border-slate-200/80 bg-white/80 pl-9 pr-14 text-slate-900 outline-none
+        transition-[border-color,box-shadow] duration-150 placeholder:text-slate-400
+        focus:border-[#0070eb] focus:ring-2 focus:ring-[#0070eb]/15
+        dark:border-white/[0.1] dark:bg-white/[0.05] dark:text-zinc-100 dark:placeholder:text-zinc-500;
+        border-radius: var(--radius-control);
         font-size: var(--text-body-sm);
+    }
+    .search-kbd {
+        @apply pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-md border
+        border-slate-200 bg-[#eceae4] px-1.5 py-0.5 font-medium text-slate-400 sm:inline
+        dark:border-white/10 dark:bg-white/[0.04] dark:text-zinc-500;
+        font-size: 0.625rem;
+        line-height: 1.2;
     }
 
     /* ---- Status ----------------------------------------------------------- */
     .badge {
-        @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-semibold;
+        @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium;
         font-size: var(--text-meta);
         line-height: 1.35;
     }
@@ -299,125 +348,280 @@
     .badge-success { @apply bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300; }
     .badge-warning { @apply bg-amber-50 text-amber-700 dark:bg-amber-400/10 dark:text-amber-300; }
     .badge-danger  { @apply bg-rose-50 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300; }
-    .badge-neutral { @apply bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300; }
-    .badge-info    { @apply bg-blue-50 text-[#0058bc] dark:bg-blue-400/10 dark:text-blue-200; }
-    /* Progress bars stay square-ended: rounded caps read as decorative, and these are data. */
+    .badge-neutral { @apply bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-zinc-300; }
+    .badge-info    { @apply bg-sky-50 text-[#0058bc] dark:bg-sky-400/10 dark:text-sky-200; }
     .meter {
-        @apply h-1 w-full overflow-hidden bg-slate-200 dark:bg-white/10;
+        @apply h-1 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10;
     }
     .meter-fill {
         @apply block h-full bg-[#0058bc];
     }
+    .flash-success {
+        @apply border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-sm text-emerald-800
+        dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-200;
+        border-radius: var(--radius-card);
+    }
+    .flash-danger {
+        @apply border border-rose-200/80 bg-rose-50 p-4 text-sm text-rose-700
+        dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-200;
+        border-radius: var(--radius-card);
+    }
+    .flash-warning {
+        @apply border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-800
+        dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200;
+        border-radius: var(--radius-card);
+    }
+    .flash-info {
+        @apply border border-sky-200/80 bg-sky-50 px-4 py-3 text-sm text-sky-800
+        dark:border-sky-400/20 dark:bg-sky-400/10 dark:text-sky-200;
+        border-radius: var(--radius-card);
+    }
+    .choice-card {
+        @apply flex cursor-pointer items-center gap-4 border border-slate-200/80 bg-transparent p-4
+        transition-[border-color,background-color] duration-150 dark:border-white/[0.08];
+        border-radius: var(--radius-card);
+    }
+    .choice-card-active {
+        @apply border-sky-400/60 bg-sky-50/70 dark:border-sky-400/40 dark:bg-sky-400/10;
+    }
+    .well {
+        @apply border border-slate-200/70 bg-[#eceae4]/55 p-4
+        dark:border-white/[0.08] dark:bg-white/[0.04];
+        border-radius: var(--radius-card);
+    }
+    .panel-flush {
+        @apply overflow-hidden border border-slate-200/80 bg-white p-0
+        dark:border-white/[0.08] dark:bg-zinc-900/60;
+        border-radius: var(--radius-card);
+    }
+    .panel-flush > .data-row {
+        padding: 1rem 1.25rem;
+    }
+    .panel-danger {
+        @apply !border-rose-200/80 dark:!border-rose-400/25;
+    }
+    .log-pane {
+        @apply max-h-[34rem] overflow-auto border border-slate-800/70 bg-[#111316] p-4 font-mono text-xs leading-6 text-zinc-300
+        dark:border-white/10;
+        border-radius: var(--radius-card);
+    }
+    .code-block {
+        @apply mt-2 block break-all bg-[#eceae4]/80 p-3 font-mono text-sm text-slate-800
+        dark:bg-white/[0.05] dark:text-zinc-200;
+        border-radius: var(--radius-control);
+    }
+    .chip {
+        @apply inline-flex items-center rounded-[10px] border border-slate-200/80 bg-transparent px-3 py-1.5
+        font-medium text-slate-600 transition-colors duration-150 hover:bg-[#eceae4]
+        dark:border-white/10 dark:text-zinc-300 dark:hover:bg-white/5;
+        font-size: var(--text-body-sm);
+    }
+    .chip-active {
+        @apply border-transparent bg-slate-900 text-white hover:bg-slate-900 dark:bg-white dark:text-zinc-900 dark:hover:bg-white;
+    }
+    .wizard-track {
+        @apply mb-8 flex gap-2;
+    }
+    .wizard-step {
+        @apply h-1.5 flex-1 rounded-full bg-slate-200 dark:bg-white/10;
+    }
+    .wizard-step-on {
+        @apply bg-primary-container;
+    }
+    .link-danger {
+        @apply font-medium text-rose-600 transition-colors duration-150 hover:underline dark:text-rose-300;
+        font-size: var(--text-body-sm);
+    }
 
-    /* Not ".table-row": that is a built-in Tailwind display utility and would override display:grid. */
     .data-row {
-        @apply border-b border-slate-100 px-3 py-2.5 transition last:border-0 hover:bg-slate-50/80
+        @apply border-b border-slate-100 px-3 py-2.5 transition-colors duration-150 last:border-0 hover:bg-[#eceae4]/50
         dark:border-white/5 dark:hover:bg-white/[.03];
         font-size: var(--text-body);
     }
     .table-head {
-        @apply border-b border-slate-100 bg-slate-50/60 px-3 py-2 font-semibold uppercase
-        tracking-[0.06em] text-slate-500 dark:border-white/5 dark:bg-white/[.02] dark:text-slate-400;
+        @apply border-b border-slate-100 bg-[#eceae4]/45 px-3 py-2 font-semibold uppercase
+        tracking-[0.06em] text-slate-500 dark:border-white/5 dark:bg-white/[.02] dark:text-zinc-400;
         font-size: var(--text-meta);
     }
     .muted {
-        @apply text-slate-500 dark:text-slate-400;
+        @apply text-slate-500 dark:text-zinc-400;
     }
     .heading {
         @apply text-slate-900 dark:text-white;
     }
 
+    /* ---- Tabs / pagination (shared chrome) -------------------------------- */
+    .tab-bar {
+        @apply mt-8 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-white/[0.08];
+    }
+    .tab-item {
+        @apply shrink-0 border-b-2 px-3.5 py-2.5 font-medium transition-colors duration-150;
+        font-size: var(--text-body-sm);
+    }
+    .tab-item-active {
+        @apply border-sky-500 text-slate-900 dark:border-sky-400 dark:text-white;
+    }
+    .tab-item-idle {
+        @apply border-transparent text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-200;
+    }
+    .page-link {
+        @apply inline-flex min-h-8 min-w-8 items-center justify-center px-2.5 py-1 font-medium transition-colors duration-150;
+        border-radius: var(--radius-control);
+        font-size: var(--text-body-sm);
+    }
+    .page-link-active {
+        @apply bg-slate-900 text-white dark:bg-white dark:text-zinc-900;
+    }
+    .page-link-idle {
+        @apply bg-transparent text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-white/10;
+    }
+
+    /* ---- Auth ------------------------------------------------------------- */
+    .auth-shell {
+        @apply relative flex min-h-screen flex-col overflow-hidden;
+    }
+    .auth-mesh {
+        @apply pointer-events-none absolute inset-0;
+        background:
+            radial-gradient(80% 60% at 15% -10%, rgba(0, 112, 235, 0.18), transparent 55%),
+            radial-gradient(70% 50% at 95% 10%, rgba(0, 210, 253, 0.16), transparent 50%),
+            radial-gradient(50% 40% at 50% 100%, rgba(0, 88, 188, 0.08), transparent 60%),
+            linear-gradient(180deg, #f6f5f2 0%, #eef1f4 100%);
+    }
+    .dark .auth-mesh {
+        background:
+            radial-gradient(80% 60% at 15% -10%, rgba(0, 112, 235, 0.22), transparent 55%),
+            radial-gradient(70% 50% at 95% 10%, rgba(14, 165, 233, 0.12), transparent 50%),
+            radial-gradient(50% 40% at 50% 100%, rgba(0, 88, 188, 0.12), transparent 60%),
+            linear-gradient(180deg, #09090b 0%, #0c1220 100%);
+    }
+    .auth-card {
+        @apply relative border border-slate-200/80 bg-white/90 p-8 shadow-sm shadow-slate-900/5 backdrop-blur-sm
+        dark:border-white/[0.08] dark:bg-zinc-900/70 dark:shadow-black/20;
+        border-radius: 1.125rem;
+    }
+
     /* ---- Marketing / landing --------------------------------------------- */
+    .marketing-header {
+        @apply sticky top-0 z-40 border-b border-slate-200/60 bg-white/70 backdrop-blur-xl backdrop-saturate-150
+        dark:border-white/[0.07] dark:bg-zinc-950/70;
+    }
+    .marketing-page {
+        @apply relative;
+    }
     .landing-hero {
-        @apply bg-[#e8f4fc] dark:bg-slate-950;
+        @apply relative overflow-hidden;
     }
     .landing-hero-wash {
         @apply pointer-events-none absolute inset-0;
         background:
-            radial-gradient(90% 70% at 10% 0%, rgba(14, 165, 233, 0.35), transparent 55%),
-            radial-gradient(70% 60% at 90% 20%, rgba(56, 189, 248, 0.28), transparent 50%),
-            linear-gradient(180deg, #dbeafe 0%, #e8f4fc 45%, #f8fafc 100%);
+            radial-gradient(90% 70% at 8% -10%, rgba(0, 112, 235, 0.22), transparent 55%),
+            radial-gradient(70% 55% at 92% 8%, rgba(0, 210, 253, 0.18), transparent 50%),
+            linear-gradient(180deg, #eef4fa 0%, #f6f5f2 58%, #f6f5f2 100%);
     }
     .dark .landing-hero-wash {
         background:
-            radial-gradient(90% 70% at 10% 0%, rgba(14, 165, 233, 0.22), transparent 55%),
-            radial-gradient(70% 60% at 90% 20%, rgba(2, 132, 199, 0.18), transparent 50%),
-            linear-gradient(180deg, #0b1220 0%, #0f172a 55%, #020617 100%);
+            radial-gradient(90% 70% at 8% -10%, rgba(0, 112, 235, 0.28), transparent 55%),
+            radial-gradient(70% 55% at 92% 8%, rgba(14, 165, 233, 0.14), transparent 50%),
+            linear-gradient(180deg, #0a1220 0%, #09090b 60%, #09090b 100%);
     }
     .landing-hero-grid {
-        @apply pointer-events-none absolute inset-0 opacity-[0.35];
+        @apply pointer-events-none absolute inset-0 opacity-[0.28];
         background-image:
-            linear-gradient(rgba(14, 165, 233, 0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(14, 165, 233, 0.08) 1px, transparent 1px);
-        background-size: 48px 48px;
-        mask-image: linear-gradient(180deg, black 0%, transparent 85%);
+            linear-gradient(rgba(0, 88, 188, 0.07) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0, 88, 188, 0.07) 1px, transparent 1px);
+        background-size: 56px 56px;
+        mask-image: linear-gradient(180deg, black 0%, transparent 80%);
     }
     .landing-cta-wash {
         background:
-            radial-gradient(80% 80% at 50% 0%, rgba(14, 165, 233, 0.28), transparent 60%),
-            linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 50%, #ffffff 100%);
+            radial-gradient(80% 80% at 50% 0%, rgba(0, 112, 235, 0.16), transparent 60%),
+            linear-gradient(180deg, #eef4fa 0%, #f6f5f2 100%);
     }
     .dark .landing-cta-wash {
         background:
-            radial-gradient(80% 80% at 50% 0%, rgba(14, 165, 233, 0.2), transparent 60%),
-            linear-gradient(180deg, #0c1929 0%, #020617 100%);
+            radial-gradient(80% 80% at 50% 0%, rgba(0, 112, 235, 0.18), transparent 60%),
+            linear-gradient(180deg, #0c1524 0%, #09090b 100%);
+    }
+    .landing-bento {
+        @apply grid gap-4 sm:grid-cols-2 lg:grid-cols-3;
+    }
+    .landing-bento-wide {
+        @apply sm:col-span-2;
+    }
+    .landing-strip {
+        @apply border-y border-slate-200/80 dark:border-white/[0.07];
+    }
+    .landing-chip {
+        @apply rounded-full border border-slate-200/80 bg-white/80 px-3 py-1 text-xs font-medium heading
+        dark:border-white/10 dark:bg-white/[0.04];
+    }
+    .landing-kicker {
+        @apply text-[11px] font-medium uppercase tracking-[0.14em] muted;
+    }
+    .plan-featured {
+        @apply border-sky-400/50 ring-1 ring-sky-400/30 dark:border-sky-400/40 dark:ring-sky-400/20;
+    }
+    .marketing-footer {
+        @apply border-t border-slate-200/80 bg-white dark:border-white/[0.07] dark:bg-zinc-950;
     }
     .landing-fade-up {
-        animation: landing-rise 0.7s ease-out both;
+        animation: landing-rise 0.55s ease-out both;
     }
     .landing-fade-up-delay {
-        animation-delay: 0.12s;
+        animation-delay: 0.1s;
     }
     .landing-terminal {
-        animation: landing-terminal 8s ease-in-out infinite;
+        animation: none;
     }
     .landing-product {
-        animation: landing-float 6s ease-in-out infinite;
+        animation: none;
     }
 }
 
 @keyframes landing-rise {
-    from { opacity: 0; transform: translateY(18px); }
+    from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
 }
 @keyframes landing-float {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
+    50% { transform: translateY(-4px); }
 }
 @keyframes landing-terminal {
     0%, 70%, 100% { opacity: 1; }
     75%, 85% { opacity: 0.55; }
 }
 
-/* Authenticated-console normalization. These selectors deliberately sit outside
-   Tailwind's layers so legacy utility-heavy views follow the compact shell too. */
+/* Authenticated-console normalization. These selectors sit outside Tailwind
+   layers so utility-heavy views follow the compact shell. */
 .console-body {
     font-size: var(--text-body);
-    letter-spacing: -0.005em;
+    letter-spacing: -0.011em;
 }
-.console-body .text-sm { font-size: 15.5px !important; line-height: 1.45 !important; }
-.console-body .text-xs { font-size: 13px !important; line-height: 1.4 !important; }
-.console-body .text-\[11px\] { font-size: 14px !important; line-height: 1.45 !important; }
-.console-body .text-\[10px\] { font-size: 13px !important; line-height: 1.4 !important; }
-.console-body .text-\[9px\] { font-size: 12px !important; line-height: 1.35 !important; }
-.console-body .rounded-xl,
-.console-body .rounded-2xl { border-radius: 6px !important; }
+.console-body .text-sm { font-size: 0.9375rem !important; line-height: 1.45 !important; }
+.console-body .text-xs { font-size: 0.8125rem !important; line-height: 1.4 !important; }
+.console-body .text-\[11px\] { font-size: 0.8125rem !important; line-height: 1.45 !important; }
+.console-body .text-\[10px\] { font-size: 0.75rem !important; line-height: 1.4 !important; }
+.console-body .text-\[9px\] { font-size: 0.6875rem !important; line-height: 1.35 !important; }
+.console-body .rounded-xl { border-radius: 14px !important; }
+.console-body .rounded-2xl,
+.console-body .rounded-3xl { border-radius: 16px !important; }
 .console-body .shadow-lg,
 .console-body .shadow-xl,
-.console-body .shadow-2xl { box-shadow: 0 2px 8px rgb(15 23 42 / 0.08) !important; }
-.console-body .h-12 { height: 34px !important; }
+.console-body .shadow-2xl { box-shadow: 0 8px 24px rgb(15 23 42 / 0.06) !important; }
+.console-body .h-12 { height: 36px !important; }
 .console-body .app-sidebar svg { width: 16px; height: 16px; }
-.console-body .panel > :is(header, div):first-child[class*="border-b"],
-.console-body .panel > div:first-child[class*="border-b"] {
-    padding: 12px 14px !important;
+.console-body .panel > :is(header, div):first-child[class*="border-b"]:not(.data-row),
+.console-body .panel > div:first-child[class*="border-b"]:not(.data-row) {
+    padding: 14px 16px !important;
 }
 .console-body .app-main input:not([type="checkbox"], [type="radio"], [type="file"]),
 .console-body .app-main select {
-    min-height: 34px;
+    min-height: 36px;
 }
 .console-body .app-main textarea {
     line-height: 1.45;
 }
 @media (max-width: 1023px) {
-    .app-sidebar { width: 256px; }
+    .app-sidebar { width: 240px; }
 }

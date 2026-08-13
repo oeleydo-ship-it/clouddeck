@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Socialite\Contracts\Provider;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
+use Inertia\Testing\AssertableInertia as Assert;
 use Mockery;
 use Tests\TestCase;
 
@@ -30,8 +31,16 @@ class GoogleAuthTest extends TestCase
 
     public function test_google_button_appears_when_configured(): void
     {
-        $this->get('/login')->assertOk()->assertSee('Continue with Google', false)->assertSee(route('auth.google.redirect'), false);
-        $this->get('/register')->assertOk()->assertSee('Continue with Google', false)->assertSee(route('auth.google.redirect'), false);
+        $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Login')
+            ->where('googleAuthEnabled', true)
+            ->where('googleButtonLabel', 'Continue with Google')
+            ->where('googleRedirect', route('auth.google.redirect')));
+        $this->get('/register')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Register')
+            ->where('googleAuthEnabled', true)
+            ->where('googleButtonLabel', 'Continue with Google')
+            ->where('googleRedirect', route('auth.google.redirect')));
     }
 
     public function test_google_button_is_hidden_when_not_configured(): void
@@ -42,7 +51,10 @@ class GoogleAuthTest extends TestCase
             'services.google.client_secret' => null,
         ]);
 
-        $this->get('/login')->assertOk()->assertDontSee('Continue with Google', false);
+        $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Login')
+            ->where('googleAuthEnabled', false)
+            ->where('googleButtonLabel', null));
     }
 
     public function test_google_button_is_hidden_when_admin_disables_it(): void
@@ -55,7 +67,10 @@ class GoogleAuthTest extends TestCase
             'services.google.client_secret' => 'test-client-secret',
         ]);
 
-        $this->get('/login')->assertOk()->assertDontSee('Continue with Google', false);
+        $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Login')
+            ->where('googleAuthEnabled', false)
+            ->where('googleButtonLabel', null));
     }
 
     public function test_superadmin_can_save_google_auth_settings_and_buttons_appear(): void
@@ -70,9 +85,11 @@ class GoogleAuthTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/google-auth')
             ->assertOk()
-            ->assertSee('Google Auth', false)
-            ->assertSee('Enable Google sign-in', false)
-            ->assertSee(url('/auth/google/callback'), false)
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/GoogleAuth')
+                ->where('title', 'Google Auth')
+                ->where('enableLabel', 'Enable Google sign-in')
+                ->where('callbackUrl', url('/auth/google/callback')))
             ->assertDontSee('test-secret-value', false);
 
         $this->actingAs($admin)->put('/admin/settings/google-auth', [
@@ -98,13 +115,22 @@ class GoogleAuthTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/google-auth')
             ->assertOk()
-            ->assertSee('Saved — leave blank to keep it', false)
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/GoogleAuth')
+                ->where('secretSaved', true)
+                ->where('secretPlaceholder', 'Saved — leave blank to keep it'))
             ->assertDontSee('GOCSPX-admin-secret', false);
 
         $this->post('/logout');
 
-        $this->get('/login')->assertOk()->assertSee('Continue with Google', false);
-        $this->get('/register')->assertOk()->assertSee('Continue with Google', false);
+        $this->get('/login')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Login')
+            ->where('googleAuthEnabled', true)
+            ->where('googleButtonLabel', 'Continue with Google'));
+        $this->get('/register')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Auth/Register')
+            ->where('googleAuthEnabled', true)
+            ->where('googleButtonLabel', 'Continue with Google'));
     }
 
     public function test_customers_cannot_open_or_save_google_auth_settings(): void

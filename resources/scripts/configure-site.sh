@@ -3,6 +3,7 @@ set -Eeuo pipefail
 DOMAIN={{DOMAIN}}
 PHP_VERSION={{PHP_VERSION}}
 DOCUMENT_ROOT={{DOCUMENT_ROOT}}
+PLATFORM={{PLATFORM}}
 ROOT="/var/www/${DOMAIN}"
 # Never mkdir under current/: that path must stay free for a release symlink.
 # A real current/ directory makes `mv -T current.next current` fail with
@@ -42,12 +43,13 @@ else
   NGINX_ROOT="${PLACEHOLDER}"
 fi
 
-if [ ! -d "/etc/php/${PHP_VERSION}/fpm/pool.d" ]; then
-  echo "PHP ${PHP_VERSION} FPM is not installed (missing /etc/php/${PHP_VERSION}/fpm/pool.d)." >&2
-  exit 1
-fi
+if [ "${PLATFORM}" != "react" ]; then
+  if [ ! -d "/etc/php/${PHP_VERSION}/fpm/pool.d" ]; then
+    echo "PHP ${PHP_VERSION} FPM is not installed (missing /etc/php/${PHP_VERSION}/fpm/pool.d)." >&2
+    exit 1
+  fi
 
-cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/clouddeck-${DOMAIN}.conf" <<POOL
+  cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/clouddeck-${DOMAIN}.conf" <<POOL
 [clouddeck-${DOMAIN}]
 user = www-data
 group = www-data
@@ -60,10 +62,40 @@ pm.start_servers = 2
 pm.min_spare_servers = 1
 pm.max_spare_servers = 3
 POOL
-"php-fpm${PHP_VERSION}" -t
-systemctl reload "php${PHP_VERSION}-fpm"
+  "php-fpm${PHP_VERSION}" -t
+  systemctl reload "php${PHP_VERSION}-fpm"
+fi
 
 write_http_vhost() {
+  if [ "${PLATFORM}" = "react" ]; then
+cat > "${NGINX_SITE}" <<NGINX
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN};
+    root ${NGINX_ROOT};
+    index index.html;
+    charset utf-8;
+    client_max_body_size 100M;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root ${ROOT}/shared/acme;
+        default_type text/plain;
+    }
+
+    location / { try_files \$uri \$uri/ /index.html; }
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt { access_log off; log_not_found off; }
+    location ~ /\.(?!well-known).* { deny all; }
+    access_log /var/log/nginx/${DOMAIN}.access.log;
+    error_log /var/log/nginx/${DOMAIN}.error.log;
+}
+NGINX
+  else
 cat > "${NGINX_SITE}" <<NGINX
 server {
     listen 80;
@@ -99,6 +131,7 @@ server {
     error_log /var/log/nginx/${DOMAIN}.error.log;
 }
 NGINX
+  fi
   echo "Wrote the Nginx server block for ${DOMAIN}"
 }
 

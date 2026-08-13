@@ -9,17 +9,21 @@ use App\Models\Deployment;
 use App\Services\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
 use Throwable;
 
 class DeploymentController extends Controller
 {
-    public function show(Request $request, Deployment $deployment): View
+    public function show(Request $request, Deployment $deployment)
     {
         $deployment->load('site.server');
         $this->authorize('view', $deployment->site);
 
-        return view('deployments.show', ['deployment' => $deployment]);
+        return Inertia::render('Deployments/Show', [
+            'title' => 'Deployment',
+            'live' => in_array($deployment->status, [DeploymentStatus::Pending, DeploymentStatus::Running], true),
+            'deployment' => $deployment->load('logs', 'user'),
+        ]);
     }
 
     /**

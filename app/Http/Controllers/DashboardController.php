@@ -12,11 +12,12 @@ use App\Models\Subscription;
 use App\Services\EntitlementService;
 use App\Services\QuotaManager;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, EntitlementService $entitlements, QuotaManager $quotas): View
+    public function __invoke(Request $request, EntitlementService $entitlements, QuotaManager $quotas): Response
     {
         $servers = $request->user()->accessibleServers();
 
@@ -24,7 +25,9 @@ class DashboardController extends Controller
         $monitoredServers = (clone $servers)->where('monitoring_enabled', true)->get(['id', 'last_seen_at']);
         $offline = $monitoredServers->filter(fn ($server) => ! $server->last_seen_at || $server->last_seen_at->lt(now()->subMinutes(5)))->count();
 
-        return view('dashboard', [
+        return Inertia::render('Dashboard', [
+            'title' => 'Dashboard',
+            'provisionLabel' => 'Provision server',
             'stats' => [
                 'servers' => (clone $servers)->count(),
                 'active' => (clone $servers)->whereIn('status', [ServerStatus::Active, ServerStatus::Ready])->count(),
@@ -58,23 +61,36 @@ class DashboardController extends Controller
     private function plan(Request $request, EntitlementService $entitlements, QuotaManager $quotas): array
     {
         $plan = $entitlements->plan($request->user());
+        $upgrade = $plan
+            ? Plan::where('active', true)->where('public', true)
+                ->where('monthly_price', '>', $plan->monthly_price)
+                ->orderBy('monthly_price')->first()
+            : null;
+        $usage = collect(['servers', 'sites', 'databases'])
+            ->mapWithKeys(function (string $resource) use ($request, $entitlements, $quotas) {
+                $used = $quotas->usage($request->user(), $resource);
+                $limit = $entitlements->planLimit($request->user(), $resource);
+
+                return [$resource => [
+                    'used' => $used,
+                    'limit' => $limit,
+                    'label' => $used.' / '.($limit < 0 ? '∞' : $limit),
+                    'at_limit' => $limit >= 0 && $used >= $limit,
+                ]];
+            })
+            ->all();
 
         return [
             'plan' => $plan,
             'subscription' => $entitlements->subscription($request->user()),
-            'usage' => collect(['servers', 'sites', 'databases'])
-                ->mapWithKeys(fn (string $resource) => [$resource => [
-                    'used' => $quotas->usage($request->user(), $resource),
-                    'limit' => $entitlements->planLimit($request->user(), $resource),
-                ]])
-                ->all(),
+            'usage' => $usage,
             // The cheapest public plan that costs more than this one, so the panel can say
             // what upgrading actually means rather than pointing at a price list.
-            'upgrade' => $plan
-                ? Plan::where('active', true)->where('public', true)
-                    ->where('monthly_price', '>', $plan->monthly_price)
-                    ->orderBy('monthly_price')->first()
-                : null,
+            'upgrade' => $upgrade,
+            'heading' => 'Current plan',
+            'upgrade_label' => $upgrade ? 'Upgrade to '.$upgrade->name : null,
+            'no_upgrade' => $upgrade ? null : 'nothing to upgrade to',
+            'limit_reached' => 'Limit reached',
         ];
     }
 

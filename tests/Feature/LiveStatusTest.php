@@ -6,8 +6,6 @@ use App\Enums\DeploymentStatus;
 use App\Enums\ServerStatus;
 use App\Events\ServerProvisioningUpdated;
 use App\Jobs\Servers\InteractsWithServerProgress;
-use App\Livewire\DeploymentLogStream;
-use App\Livewire\ServerStatusList;
 use App\Models\CloudAccount;
 use App\Models\Server;
 use App\Models\Site;
@@ -17,7 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Livewire\Livewire;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class LiveStatusTest extends TestCase
@@ -105,15 +103,20 @@ class LiveStatusTest extends TestCase
         $user = User::factory()->create();
         $provisioning = $this->server($user);
 
-        Livewire::actingAs($user)->test(ServerStatusList::class, ['servers' => collect([$provisioning])])
-            ->assertSet('serverIds', [$provisioning->id])
-            ->assertViewHas('active', true)
-            ->assertSee('production');
+        $this->actingAs($user)->get('/servers')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Servers/Index')
+                ->where('servers.data.0.id', $provisioning->id)
+                ->where('servers.data.0.name', 'production')
+                ->where('servers.data.0.status', 'provisioning'));
 
         $provisioning->update(['status' => ServerStatus::Ready, 'progress' => 100]);
 
-        Livewire::actingAs($user)->test(ServerStatusList::class, ['servers' => collect([$provisioning])])
-            ->assertViewHas('active', false);
+        $this->actingAs($user)->get('/servers')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('servers.data.0.status', 'ready'));
     }
 
     public function test_the_visit_link_follows_whether_the_site_actually_has_a_certificate(): void
@@ -125,14 +128,17 @@ class LiveStatusTest extends TestCase
         // Linking to https before a certificate exists lands on a browser warning.
         $this->actingAs($user)->get("/sites/{$site->id}")
             ->assertOk()
-            ->assertSee('Visit site')
-            ->assertSee('href="http://app.example.com"', false);
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Sites/Show')
+                ->where('meta.visit_label', 'Visit site')
+                ->where('meta.visit_url', 'http://app.example.com'));
 
         $site->sslCertificates()->create(['user_id' => $user->id, 'domains' => [$site->domain], 'status' => 'active']);
 
         $this->actingAs($user)->get("/sites/{$site->id}")
             ->assertOk()
-            ->assertSee('href="https://app.example.com"', false);
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('meta.visit_url', 'https://app.example.com'));
     }
 
     public function test_the_deployment_log_keeps_itself_current_while_work_is_outstanding(): void
@@ -144,16 +150,17 @@ class LiveStatusTest extends TestCase
 
         // Without the poll this page sat on "Waiting for a deployment worker" through an
         // entire deployment whenever the WebSocket could not be reached.
-        Livewire::actingAs($user)->test(DeploymentLogStream::class, ['deployment' => $deployment])
-            ->assertViewHas('active', true)
-            ->assertSee('wire:poll.2s', false)
-            ->assertSee('Live');
+        $this->actingAs($user)->get(route('deployments.show', $deployment))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Deployments/Show')
+                ->where('live', true));
 
         $deployment->update(['status' => DeploymentStatus::Successful, 'finished_at' => now()]);
 
-        Livewire::actingAs($user)->test(DeploymentLogStream::class, ['deployment' => $deployment->fresh()])
-            ->assertViewHas('active', false)
-            ->assertDontSee('wire:poll', false);
+        $this->actingAs($user)->get(route('deployments.show', $deployment->fresh()))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('live', false));
     }
 
     public function test_a_site_without_a_database_is_warned_and_cannot_press_deploy(): void
@@ -164,13 +171,15 @@ class LiveStatusTest extends TestCase
 
         $this->actingAs($user)->get("/sites/{$site->id}")
             ->assertOk()
-            ->assertSee('Create a database before deploying')
-            ->assertSee('Deploy now');
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('meta.database_notice', 'Create a database before deploying')
+                ->where('meta.deploy_action', 'Deploy now'));
 
         $site->environmentVariables()->create(['key' => 'DB_CONNECTION', 'value' => 'mysql', 'is_secret' => false]);
 
         $this->actingAs($user)->get("/sites/{$site->id}")
             ->assertOk()
-            ->assertDontSee('Create a database before deploying');
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('meta.database_notice', null));
     }
 }

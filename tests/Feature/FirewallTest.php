@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Ssh\SshClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
+use Inertia\Testing\AssertableInertia as Assert;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -39,9 +40,12 @@ class FirewallTest extends TestCase
         $this->actingAs($user)
             ->get('/firewall?server='.$server->id)
             ->assertOk()
-            ->assertSee('Firewall')
-            ->assertSee($server->name)
-            ->assertSee('Last sync');
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Firewall/Index')
+                ->where('title', 'Firewall')
+                ->where('lastSyncLabel', 'Last sync')
+                ->where('selected.id', $server->id)
+                ->where('selected.name', $server->name));
 
         $this->actingAs($user)->post('/firewall/rules', [
             'server_id' => $server->id,

@@ -47,6 +47,11 @@ class PageRenderSmokeTest extends TestCase
             "/sites/{$site->id}",
             "/sites/{$site->id}/remote",
             "/deployments/{$deployment->id}",
+            '/notifications',
+            '/docs',
+            '/admin/platform-services',
+            '/admin/users',
+            '/admin/settings',
         ];
 
         foreach ($urls as $url) {

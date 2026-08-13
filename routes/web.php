@@ -62,8 +62,8 @@ use App\Http\Middleware\EnsureDnsEnabled;
 use App\Http\Middleware\EnsureManagedServersEnabled;
 use App\Http\Middleware\EnsurePublicSiteEnabled;
 use App\Http\Middleware\EnsureStagingSitesEnabled;
-use App\Livewire\ManagedServerProvisionWizard;
-use App\Livewire\ServerProvisionWizard;
+use App\Http\Controllers\ManagedServerProvisionController;
+use App\Http\Controllers\ServerProvisionController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -101,7 +101,7 @@ Route::middleware('guest')->group(function () {
 });
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::post('/impersonation/exit', ImpersonationExitController::class)->middleware(['auth', 'throttle:30,1'])->name('impersonation.exit');
-Route::get('/email/verify', fn () => view('auth.verify-email'))->middleware('auth')->name('verification.notice');
+Route::get('/email/verify', fn () => \Inertia\Inertia::render('Auth/VerifyEmail'))->middleware('auth')->name('verification.notice');
 Route::get('/email/verify/{id}/{hash}', fn (EmailVerificationRequest $request) => tap(redirect('/dashboard'), fn () => $request->fulfill()))->middleware(['auth', 'signed'])->name('verification.verify');
 Route::post('/email/verification-notification', function (Request $request) {
     $request->user()->sendEmailVerificationNotification();
@@ -191,6 +191,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/security/incidents/{securityIncident}/block', [SecurityController::class, 'unblock'])->middleware('throttle:10,1')->name('security.incidents.unblock');
     });
 
+    Route::post('/notifications/read-all', [NotificationSettingsController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [NotificationSettingsController::class, 'markRead'])->name('notifications.read');
+
     Route::middleware('feature:notifications')->group(function () {
         Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
         Route::get('/notifications', [NotificationSettingsController::class, 'index'])->name('notifications.index');
@@ -200,10 +203,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/servers', [ServerManagementController::class, 'index'])->name('servers.index');
     Route::middleware('feature:providers')->group(function () {
-        Route::get('/servers/create', ServerProvisionWizard::class)->name('servers.create');
+        Route::get('/servers/create', [ServerProvisionController::class, 'create'])->name('servers.create');
+        Route::get('/servers/catalog/{cloudAccount}', [ServerProvisionController::class, 'catalog'])->name('servers.catalog');
+        Route::post('/servers', [ServerProvisionController::class, 'store'])->middleware('throttle:10,1')->name('servers.store');
     });
     Route::middleware(['feature:managed_servers', EnsureManagedServersEnabled::class])->group(function () {
-        Route::get('/servers/managed', ManagedServerProvisionWizard::class)->name('servers.managed');
+        Route::get('/servers/managed', [ManagedServerProvisionController::class, 'create'])->name('servers.managed');
+        Route::post('/servers/managed', [ManagedServerProvisionController::class, 'store'])->middleware('throttle:10,1')->name('servers.managed.store');
         Route::get('/servers/{server}/managed-checkout/success', [ServerManagementController::class, 'checkoutSuccess'])->name('servers.managed.checkout-success');
         Route::post('/servers/{server}/managed-checkout', [ServerManagementController::class, 'checkout'])->middleware('throttle:10,1')->name('servers.managed.checkout');
     });
@@ -261,6 +267,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/sites/{site}/ssl', [SslCertificateController::class, 'store'])->name('ssl.store');
     Route::post('/sites/{site}/ssl/custom', [SslCertificateController::class, 'storeCustom'])->name('ssl.custom');
+    Route::delete('/sites/{site}/ssl', [SslCertificateController::class, 'destroy'])->middleware('throttle:6,1')->name('ssl.destroy');
     Route::post('/sites/{site}/cron-jobs', [CronJobController::class, 'storeForSite'])->name('sites.cron-jobs.store');
     Route::post('/sites/{site}/workers', [QueueWorkerController::class, 'store'])->name('workers.store');
     Route::delete('/workers/{queueWorker}', [QueueWorkerController::class, 'destroy'])->name('workers.destroy');
@@ -293,7 +300,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/sites/{site}', [SiteController::class, 'update'])->name('sites.update');
     Route::put('/sites/{site}/environment', [SiteController::class, 'environment'])->name('sites.environment');
     Route::post('/sites/{site}/deployments', [SiteController::class, 'deploy'])->name('sites.deploy');
-    Route::post('/sites/{site}/reconfigure', [SiteController::class, 'reconfigure'])->middleware('throttle:6,1')->name('sites.reconfigure');
     Route::post('/sites/{site}/rollbacks/{deployment}', [SiteController::class, 'rollback'])->name('sites.rollback');
     Route::delete('/sites/{site}', [SiteController::class, 'destroy'])->name('sites.destroy');
     Route::post('/sites/{site}/queue-health', [SiteController::class, 'queueHealth'])->name('sites.queue-health');

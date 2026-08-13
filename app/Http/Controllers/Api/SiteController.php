@@ -29,7 +29,16 @@ class SiteController extends Controller
         $quotas->assertCanCreateSite($request->user(), $server);
         $site = DB::transaction(function () use ($request) {
             $site = $request->user()->sites()->create([...$request->validated(), 'auto_deploy' => $request->boolean('auto_deploy'), 'zero_downtime' => $request->boolean('zero_downtime', true), 'webhook_secret' => Str::random(64), 'status' => 'configuring']);
-            $site->environmentVariables()->createMany(collect(['APP_NAME' => $site->domain, 'APP_ENV' => 'production', 'APP_DEBUG' => 'false', 'APP_URL' => 'https://'.$site->domain, 'APP_KEY' => ''])->map(fn ($value, $key) => ['key' => $key, 'value' => $value, 'is_secret' => $key === 'APP_KEY'])->values()->all());
+            if ($site->isWordPress()) {
+                app(\App\Services\WordPressConfig::class)->ensureSalts($site);
+            } elseif ($site->isReact()) {
+                $site->environmentVariables()->createMany([
+                    ['key' => 'VITE_APP_URL', 'value' => 'https://'.$site->domain, 'is_secret' => false],
+                    ['key' => 'NODE_ENV', 'value' => 'production', 'is_secret' => false],
+                ]);
+            } else {
+                $site->environmentVariables()->createMany(collect(['APP_NAME' => $site->domain, 'APP_ENV' => 'production', 'APP_DEBUG' => 'false', 'APP_URL' => 'https://'.$site->domain, 'APP_KEY' => ''])->map(fn ($value, $key) => ['key' => $key, 'value' => $value, 'is_secret' => $key === 'APP_KEY'])->values()->all());
+            }
 
             return $site;
         });

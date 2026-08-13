@@ -61,15 +61,20 @@ final class WordPressDirectory
                 }
 
                 return collect($response->json($type === 'themes' ? 'themes' : 'plugins') ?? [])
-                    ->map(fn (array $item) => [
-                        'slug' => (string) ($item['slug'] ?? ''),
-                        'name' => $this->text($item['name'] ?? ''),
-                        'author' => $this->text(is_array($item['author'] ?? null) ? ($item['author']['display_name'] ?? '') : ($item['author'] ?? '')),
-                        'rating' => (int) round(((float) ($item['rating'] ?? 0)) / 20),
-                        'installs' => (int) ($item['active_installs'] ?? 0),
-                        'description' => $this->text($item['short_description'] ?? ''),
-                        'screenshot' => $item['screenshot_url'] ?? null,
-                    ])
+                    ->map(function (array $item) {
+                        $installs = (int) ($item['active_installs'] ?? 0);
+
+                        return [
+                            'slug' => (string) ($item['slug'] ?? ''),
+                            'name' => $this->text($item['name'] ?? ''),
+                            'author' => $this->text(is_array($item['author'] ?? null) ? ($item['author']['display_name'] ?? '') : ($item['author'] ?? '')),
+                            'rating' => (int) round(((float) ($item['rating'] ?? 0)) / 20),
+                            'installs' => $installs,
+                            'installs_label' => $installs > 0 ? number_format($installs).'+ installs' : null,
+                            'description' => $this->text($item['short_description'] ?? ''),
+                            'screenshot' => $item['screenshot_url'] ?? null,
+                        ];
+                    })
                     ->filter(fn (array $item) => $item['slug'] !== '')
                     ->values()
                     ->all();
