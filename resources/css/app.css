@@ -51,6 +51,14 @@
     --text-metric--line-height: 1.15;
 }
 
+@utility heading {
+    @apply text-slate-900 dark:text-white;
+}
+
+@utility muted {
+    @apply text-slate-500 dark:text-zinc-400;
+}
+
 @layer base {
     body {
         @apply bg-[#f6f5f2] font-sans text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
@@ -443,13 +451,6 @@
         tracking-[0.06em] text-slate-500 dark:border-white/5 dark:bg-white/[.02] dark:text-zinc-400;
         font-size: var(--text-meta);
     }
-    .muted {
-        @apply text-slate-500 dark:text-zinc-400;
-    }
-    .heading {
-        @apply text-slate-900 dark:text-white;
-    }
-
     /* ---- Tabs / pagination (shared chrome) -------------------------------- */
     .tab-bar {
         @apply mt-8 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-white/[0.08];
