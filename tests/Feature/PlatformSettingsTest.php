@@ -67,6 +67,42 @@ class PlatformSettingsTest extends TestCase
         $this->assertNull(SystemSetting::whereKey('logo_path')->value('value'));
     }
 
+    public function test_a_favicon_is_stored_served_in_the_document_head_and_can_be_removed(): void
+    {
+        Storage::fake('public');
+        $this->markInstalled();
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->post('/admin/settings/favicon', [
+            'favicon' => UploadedFile::fake()->create('uplary.ico', 12, 'image/x-icon'),
+        ])->assertSessionHas('status');
+
+        $path = SystemSetting::whereKey('favicon_path')->value('value');
+        $this->assertNotEmpty($path);
+        Storage::disk('public')->assertExists($path);
+
+        $url = Storage::disk('public')->url($path);
+        $this->actingAs($admin)->get('/admin')->assertOk()->assertSee($url, false);
+
+        $this->post('/logout');
+        $this->get('/')->assertOk()->assertSee($url, false);
+
+        $this->actingAs($admin)->delete('/admin/settings/favicon')->assertSessionHas('status');
+        Storage::disk('public')->assertMissing($path);
+        $this->assertSame('', (string) SystemSetting::whereKey('favicon_path')->value('value'));
+    }
+
+    public function test_the_favicon_upload_rejects_disallowed_extensions(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs($this->admin())
+            ->post('/admin/settings/favicon', ['favicon' => UploadedFile::fake()->create('payload.php', 8, 'application/x-php')])
+            ->assertSessionHasErrors('favicon');
+
+        $this->assertNull(SystemSetting::whereKey('favicon_path')->value('value'));
+    }
+
     public function test_image_only_logo_setting_hides_header_text_across_console_marketing_and_auth_pages(): void
     {
         Storage::fake('public');

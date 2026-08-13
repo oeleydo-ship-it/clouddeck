@@ -10,6 +10,7 @@ export type AuthUser = {
 export type Branding = {
     name: string;
     logo_url: string | null;
+    favicon_url: string | null;
     logo_image_only: boolean;
 };
 

@@ -1,11 +1,15 @@
 import { Link, usePage } from '@inertiajs/react';
-import { PropsWithChildren } from 'react';
+import { PropsWithChildren, useEffect } from 'react';
 import { PageProps } from '../types';
 import { route } from '../lib/route';
+import { persistTheme, isDarkTheme } from '../lib/theme';
 
 export default function GuestLayout({ children, title }: PropsWithChildren<{ title?: string }>) {
     const { branding, flash, errors } = usePage<PageProps>().props;
     const errorList = Object.values(errors || {});
+    useEffect(() => {
+        persistTheme(isDarkTheme());
+    }, []);
 
     return (
         <div className="auth-shell">

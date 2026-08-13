@@ -46,31 +46,35 @@ class Plan extends Model
         $limits = $this->limits ?? [];
         $labels = $managedServersEnabled
             ? [
-                'servers' => 'BYOS servers',
-                'managed_servers' => 'managed servers',
-                'sites' => 'BYOS sites',
-                'managed_sites' => 'managed sites',
-                'databases' => 'databases',
-                'api_tokens' => 'API tokens',
-                'teams' => 'teams',
-                'team_members' => 'team members',
+                'servers' => ['BYOS server', 'BYOS servers'],
+                'managed_servers' => ['managed server', 'managed servers'],
+                'sites' => ['BYOS site', 'BYOS sites'],
+                'managed_sites' => ['managed site', 'managed sites'],
+                'databases' => ['database', 'databases'],
+                'api_tokens' => ['API token', 'API tokens'],
+                'teams' => ['team', 'teams'],
+                'team_members' => ['team member', 'team members'],
             ]
             : [
-                'servers' => 'servers',
-                'sites' => 'sites',
-                'databases' => 'databases',
-                'api_tokens' => 'API tokens',
-                'teams' => 'teams',
-                'team_members' => 'team members',
+                'servers' => ['server', 'servers'],
+                'sites' => ['site', 'sites'],
+                'databases' => ['database', 'databases'],
+                'api_tokens' => ['API token', 'API tokens'],
+                'teams' => ['team', 'teams'],
+                'team_members' => ['team member', 'team members'],
             ];
 
         $lines = [];
-        foreach ($labels as $key => $label) {
+        foreach ($labels as $key => [$singular, $plural]) {
             if (! array_key_exists($key, $limits)) {
                 continue;
             }
-            $value = $limits[$key] < 0 ? 'Unlimited' : $limits[$key];
-            $lines[] = $value.' '.$label;
+            $raw = (int) $limits[$key];
+            if ($raw < 0) {
+                $lines[] = 'Unlimited '.$plural;
+                continue;
+            }
+            $lines[] = $raw.' '.($raw === 1 ? $singular : $plural);
         }
 
         return $lines;

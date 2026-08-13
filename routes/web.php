@@ -375,6 +375,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/settings/branding', [AdminSettingController::class, 'branding'])->name('settings.branding');
         Route::post('/settings/logo', [AdminSettingController::class, 'logo'])->name('settings.logo');
         Route::delete('/settings/logo', [AdminSettingController::class, 'destroyLogo'])->name('settings.logo.destroy');
+        Route::post('/settings/favicon', [AdminSettingController::class, 'favicon'])->name('settings.favicon');
+        Route::delete('/settings/favicon', [AdminSettingController::class, 'destroyFavicon'])->name('settings.favicon.destroy');
         Route::put('/settings/mail', [AdminSettingController::class, 'mail'])->name('settings.mail');
         Route::post('/settings/mail/test', [AdminSettingController::class, 'testMail'])->middleware('throttle:6,1')->name('settings.mail.test');
         Route::put('/settings/notifications', [AdminSettingController::class, 'notifications'])->name('settings.notifications');

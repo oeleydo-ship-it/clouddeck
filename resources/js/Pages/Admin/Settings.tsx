@@ -18,6 +18,7 @@ export default function Settings({ settings }: any) {
         allow_impersonate_admins: checked(settings, 'allow_impersonate_admins', false),
     });
     const logo = useForm({ logo: null as File | null });
+    const favicon = useForm({ favicon: null as File | null });
     const display = useForm({ logo_image_only: branding.logo_image_only });
 
     return (
@@ -61,6 +62,20 @@ export default function Settings({ settings }: any) {
                     </label>
                     <button className="button-secondary" disabled={! branding.logo_url}>Save logo display</button>
                 </form>
+            </section>
+            <section className="panel space-y-5">
+                <h2 className="section-title">Favicon</h2>
+                <p className="field-hint">Shown in the browser tab. Prefer a square .ico; PNG, JPEG, and SVG are also accepted.</p>
+                {branding.favicon_url && <img src={branding.favicon_url} alt="" className="h-8 w-8 object-contain" />}
+                <form onSubmit={(e) => { e.preventDefault(); favicon.post(route('admin.settings.favicon'), { forceFormData: true }); }} className="flex flex-wrap items-center gap-3">
+                    <input type="file" name="favicon" accept=".ico,image/x-icon,image/vnd.microsoft.icon,image/png,image/jpeg,image/svg+xml,image/webp" onChange={(e) => favicon.setData('favicon', e.target.files?.[0] || null)} />
+                    <button className="button-primary">Upload</button>
+                </form>
+                {branding.favicon_url && (
+                    <form onSubmit={(e) => { e.preventDefault(); favicon.delete(route('admin.settings.favicon.destroy')); }}>
+                        <button className="button-secondary !text-rose-600">Remove</button>
+                    </form>
+                )}
             </section>
         </AdminLayout>
     );

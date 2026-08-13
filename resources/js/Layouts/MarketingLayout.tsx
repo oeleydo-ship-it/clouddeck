@@ -2,13 +2,12 @@ import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, useState } from 'react';
 import { PageProps } from '../types';
 import { route } from '../lib/route';
+import { isDarkTheme, persistTheme } from '../lib/theme';
 
 export default function MarketingLayout({ children }: PropsWithChildren) {
     const { branding, auth, flash, chrome, supportEmail } = usePage<PageProps>().props;
     const [menu, setMenu] = useState(false);
-    const [dark, setDark] = useState(() => {
-        try { return localStorage.theme === 'dark'; } catch { return false; }
-    });
+    const [dark, setDark] = useState(() => isDarkTheme());
     const nav = [
         { label: 'Home', href: route('home') },
         { label: 'Features', href: route('features') },
@@ -38,8 +37,7 @@ export default function MarketingLayout({ children }: PropsWithChildren) {
     const toggleDark = () => {
         const next = ! dark;
         setDark(next);
-        document.documentElement.classList.toggle('dark', next);
-        try { localStorage.theme = next ? 'dark' : 'light'; } catch { /* */ }
+        persistTheme(next);
     };
 
     return (

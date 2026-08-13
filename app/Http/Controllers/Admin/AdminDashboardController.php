@@ -186,7 +186,7 @@ class AdminDashboardController extends Controller
                     'price_monthly' => $infra,
                     'spec' => $spec,
                     'infra_label' => $infra > 0 ? '$'.number_format($infra, 2).'/mo' : null,
-                    'suggested' => $systemSettings->managedServerPrice($size),
+                    'suggested' => round($infra * (1 + $systemSettings->managedMarkupPercent() / 100), 2),
                 ];
             })->values()->all(),
             'managedMarkupPercent' => $systemSettings->managedMarkupPercent(),

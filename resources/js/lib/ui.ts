@@ -7,7 +7,8 @@ export function badge(status?: string | null): string {
 }
 
 export function money(cents: number, currency = 'USD'): string {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(cents / 100);
+    const fraction = cents % 100 === 0 ? 0 : 2;
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: fraction, maximumFractionDigits: fraction }).format(cents / 100);
 }
 
 export function setting(settings: Record<string, { value?: string | null } | string | undefined> | undefined, key: string, fallback = ''): string {

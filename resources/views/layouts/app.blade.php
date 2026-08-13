@@ -42,11 +42,16 @@
     @endif
     <script>
         try {
-            if (localStorage.theme === 'dark') {
+            if (localStorage.theme !== 'light') {
                 document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
             }
-        } catch (e) {}
+        } catch (e) {
+            document.documentElement.classList.add('dark');
+        }
     </script>
+    <link rel="icon" href="{{ ($branding['favicon_url'] ?? null) ?: ($branding['logo_url'] ?? null) ?: asset('favicon.svg') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

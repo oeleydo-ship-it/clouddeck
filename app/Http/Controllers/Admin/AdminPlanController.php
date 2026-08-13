@@ -63,9 +63,8 @@ class AdminPlanController extends Controller
     }
 
     /**
-     * Prices are entered the way a person writes them — 29 or 29.99 — and stored in the
-     * minor units Stripe and the rest of the billing code expect. The old form asked for
-     * raw cents, which is a quiet way to charge someone a hundred times too much.
+     * The admin form shows dollars and posts integer cents. Store those cents as-is so a
+     * $29 plan remains 2900 in the column Stripe and the public pricing pages already read.
      */
     private function validated(Request $request, ?Plan $plan = null): array
     {
@@ -76,8 +75,8 @@ class AdminPlanController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'slug' => ['nullable', 'alpha_dash', 'max:100', Rule::unique('plans')->ignore($plan)],
-            'monthly_price' => ['required', 'numeric', 'min:0', 'max:1000000'],
-            'yearly_price' => ['required', 'numeric', 'min:0', 'max:1000000'],
+            'monthly_price' => ['required', 'numeric', 'min:0', 'max:100000000'],
+            'yearly_price' => ['nullable', 'numeric', 'min:0', 'max:100000000'],
             'currency' => ['required', 'size:3'],
             'servers' => ['required', 'integer', 'min:-1'],
             'managed_servers' => ['required', 'integer', 'min:-1'],
@@ -118,8 +117,8 @@ class AdminPlanController extends Controller
         return [
             'name' => $data['name'],
             'slug' => $data['slug'] ?? Str::slug($data['name']),
-            'monthly_price' => (int) round($data['monthly_price'] * 100),
-            'yearly_price' => (int) round($data['yearly_price'] * 100),
+            'monthly_price' => (int) round($data['monthly_price']),
+            'yearly_price' => (int) round($data['yearly_price'] ?? 0),
             'currency' => strtoupper($data['currency']),
             'limits' => $limits,
             'features' => $features,

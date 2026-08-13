@@ -18,8 +18,8 @@ const LIMITS: [string, string][] = [
 const emptyPlan = {
     name: '',
     slug: '',
-    monthly_price: 0,
-    yearly_price: 0,
+    monthly_price: '0.00' as string | number,
+    yearly_price: '' as string | number,
     currency: 'USD',
     sort_order: 10,
     active: true,
@@ -41,8 +41,8 @@ function fromPlan(plan: any) {
     return {
         name: plan.name || '',
         slug: plan.slug || '',
-        monthly_price: Number(((plan.monthly_price || 0) / 100).toFixed(2)),
-        yearly_price: Number(((plan.yearly_price || 0) / 100).toFixed(2)),
+        monthly_price: ((plan.monthly_price || 0) / 100).toFixed(2),
+        yearly_price: plan.yearly_price ? ((plan.yearly_price || 0) / 100).toFixed(2) : '',
         currency: plan.currency || 'USD',
         sort_order: plan.sort_order ?? 10,
         active: Boolean(plan.active),
@@ -86,6 +86,10 @@ export default function Plans({ plans, featureCatalog }: { plans: any[]; feature
                 payload[`feature_${key}`] = data.features[key] ? '1' : '0';
             });
             delete payload.features;
+            payload.monthly_price = Math.round(Number(data.monthly_price || 0) * 100);
+            payload.yearly_price = data.yearly_price === '' || data.yearly_price == null
+                ? 0
+                : Math.round(Number(data.yearly_price) * 100);
             return payload;
         });
         const options = { onSuccess: () => cancel() };
@@ -110,7 +114,7 @@ export default function Plans({ plans, featureCatalog }: { plans: any[]; feature
                                 {! plan.public && <span className="badge badge-neutral">Private</span>}
                             </div>
                             <p className="mt-1 text-sm muted">
-                                {plan.monthly_price_label || `${plan.currency} ${Math.round((plan.monthly_price || 0) / 100)}`}
+                                {plan.monthly_price_label || `${plan.currency} ${((plan.monthly_price || 0) / 100).toFixed(2)}`}
                                 {plan.yearly_price_label ? ` · ${plan.yearly_price_label} / yr` : ''}
                                 {' · '}{plan.unlimited || (plan.limits?.sites === -1 ? 'Unlimited' : `${plan.limits?.sites ?? '—'} sites`)}
                                 {' · '}{plan.subscriptions_label || `${plan.subscriptions_count || 0} subscriptions`}
@@ -135,8 +139,12 @@ export default function Plans({ plans, featureCatalog }: { plans: any[]; feature
                 <div className="grid gap-4 sm:grid-cols-2">
                     <label className="field-label">Name<input className="field" name="name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} required /></label>
                     <label className="field-label">Slug<input className="field font-mono text-xs" name="slug" value={form.data.slug} onChange={(e) => form.setData('slug', e.target.value)} placeholder="auto from name" /></label>
-                    <label className="field-label">Monthly price<input className="field" type="number" min="0" step="0.01" name="monthly_price" value={form.data.monthly_price} onChange={(e) => form.setData('monthly_price', Number(e.target.value))} /></label>
-                    <label className="field-label">Yearly price<input className="field" type="number" min="0" step="0.01" name="yearly_price" value={form.data.yearly_price} onChange={(e) => form.setData('yearly_price', Number(e.target.value))} /></label>
+                    <label className="field-label">Monthly price (USD)
+                        <input className="field" type="number" min="0" step="0.01" name="monthly_price" value={form.data.monthly_price} onChange={(e) => form.setData('monthly_price', e.target.value)} />
+                    </label>
+                    <label className="field-label">Yearly price (optional)
+                        <input className="field" type="number" min="0" step="0.01" name="yearly_price" value={form.data.yearly_price} onChange={(e) => form.setData('yearly_price', e.target.value)} placeholder="Leave blank for none" />
+                    </label>
                     <label className="field-label">Currency<input className="field" name="currency" maxLength={3} value={form.data.currency} onChange={(e) => form.setData('currency', e.target.value)} /></label>
                     <label className="field-label">Sort order<input className="field" type="number" name="sort_order" value={form.data.sort_order} onChange={(e) => form.setData('sort_order', Number(e.target.value))} /></label>
                 </div>

@@ -33,6 +33,8 @@ class PageController extends Controller
                 ->map(fn (Plan $plan) => [
                     ...$plan->toArray(),
                     'quota_lines' => $plan->quotaLines($managed),
+                    'monthly_price_label' => $plan->formattedPrice('monthly_price'),
+                    'yearly_price_label' => $plan->yearly_price ? $plan->formattedPrice('yearly_price') : null,
                 ]),
             'landing' => $settings->landing(),
             'managedServersEnabled' => $managed,

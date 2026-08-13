@@ -21,7 +21,7 @@ class PlanManagementTest extends TestCase
     {
         return [
             'name' => 'Pro', 'slug' => 'pro', 'currency' => 'usd',
-            'monthly_price' => 29, 'yearly_price' => 290, 'sort_order' => 20,
+            'monthly_price' => 2900, 'yearly_price' => 29000, 'sort_order' => 20,
             'servers' => 10, 'managed_servers' => 3, 'sites' => 50, 'managed_sites' => 30, 'databases' => 50, 'api_tokens' => 10,
             'teams' => 3, 'team_members' => 20, 'os_backup_gb' => 50,
             'active' => '1', 'public' => '1', 'feature_monitoring' => '1',
@@ -31,7 +31,7 @@ class PlanManagementTest extends TestCase
 
     public function test_prices_are_entered_as_customers_see_them_and_stored_in_minor_units(): void
     {
-        $this->actingAs($this->admin())->post('/admin/plans', $this->payload(['monthly_price' => 29.99]))->assertSessionHas('status');
+        $this->actingAs($this->admin())->post('/admin/plans', $this->payload(['monthly_price' => 2999]))->assertSessionHas('status');
 
         $plan = Plan::where('slug', 'pro')->sole();
         $this->assertSame(2999, $plan->monthly_price);
@@ -127,5 +127,30 @@ class PlanManagementTest extends TestCase
         $this->actingAs($customer)->post('/admin/plans', $this->payload())->assertForbidden();
         $this->actingAs($customer)->delete("/admin/plans/{$plan->id}")->assertForbidden();
         $this->assertNotSoftDeleted('plans', ['id' => $plan->id]);
+    }
+
+    public function test_public_homepage_uses_stored_plan_cents_not_invented_copy(): void
+    {
+        $this->markInstalled();
+        $this->actingAs($this->admin())->post('/admin/plans', $this->payload());
+        $this->post('/logout');
+
+        $this->get('/')
+            ->assertOk()
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Marketing/Home')
+                ->where('plans.0.monthly_price', 2900)
+                ->where('plans.0.yearly_price', 29000)
+                ->where('plans.0.currency', 'USD')
+                ->where('plans.0.name', 'Pro'));
+    }
+
+    public function test_yearly_price_may_be_omitted_and_stores_zero(): void
+    {
+        $this->actingAs($this->admin())->post('/admin/plans', $this->payload([
+            'yearly_price' => '',
+        ]))->assertSessionHas('status');
+
+        $this->assertSame(0, Plan::where('slug', 'pro')->sole()->yearly_price);
     }
 }

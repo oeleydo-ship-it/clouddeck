@@ -7,7 +7,17 @@ import { money } from '../../lib/ui';
 import { faqs, homepageFeatures, platforms, stackChips } from '../../lib/marketingContent';
 import { PageProps } from '../../types';
 
-type Plan = { id: number; name: string; monthly_price: number; yearly_price: number; currency: string; slug: string; quota_lines?: string[] };
+type Plan = {
+    id: number;
+    name: string;
+    monthly_price: number;
+    yearly_price: number;
+    currency: string;
+    slug: string;
+    quota_lines?: string[];
+    monthly_price_label?: string;
+    yearly_price_label?: string;
+};
 type Step = { title: string; body: string };
 type Landing = Record<string, string> & { steps?: Step[] };
 

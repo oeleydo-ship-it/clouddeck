@@ -174,7 +174,10 @@ final class SystemSettings
         $decoded = json_decode($raw, true);
 
         return is_array($decoded)
-            ? collect($decoded)->map(fn ($price) => round((float) $price, 2))->all()
+            ? collect($decoded)
+                ->filter(fn ($price) => is_numeric($price) && (float) $price > 0)
+                ->map(fn ($price) => round((float) $price, 2))
+                ->all()
             : [];
     }
 
@@ -195,8 +198,8 @@ final class SystemSettings
         $infra = (float) ($size['price_monthly'] ?? 0);
         $overrides = $this->managedSizePrices();
 
-        if ($slug !== '' && array_key_exists($slug, $overrides)) {
-            return $overrides[$slug];
+        if ($slug !== '' && isset($overrides[$slug]) && (float) $overrides[$slug] > 0) {
+            return round((float) $overrides[$slug], 2);
         }
 
         return round($infra * (1 + $this->managedMarkupPercent() / 100), 2);
@@ -219,10 +222,13 @@ final class SystemSettings
     {
         $logo = $this->get('logo_path');
         $logoUrl = $logo && Storage::disk('public')->exists($logo) ? Storage::disk('public')->url($logo) : null;
+        $favicon = $this->get('favicon_path');
+        $faviconUrl = $favicon && Storage::disk('public')->exists($favicon) ? Storage::disk('public')->url($favicon) : null;
 
         return [
             'name' => $this->get('platform_name', config('app.name', 'Uplary')),
             'logo_url' => $logoUrl,
+            'favicon_url' => $faviconUrl,
             // Never suppress the text fallback unless there is an image that can replace it.
             'logo_image_only' => $logoUrl !== null && $this->boolean('logo_image_only'),
         ];

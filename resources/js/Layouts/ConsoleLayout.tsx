@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { PageProps } from '../types';
 import { route } from '../lib/route';
 import { AiGuide } from '../Components/AiGuide';
+import { isDarkTheme, persistTheme } from '../lib/theme';
 
 type Section = { href: string; label: string; icon: string; match?: string; route?: string; locked?: boolean; admin?: boolean };
 type NavGroup = { label: string; items: Section[] };
@@ -136,13 +137,7 @@ export default function ConsoleLayout({ children, crumb }: PropsWithChildren<{ c
     const menuBtnRef = useRef<HTMLButtonElement>(null);
     const alerts = Array.isArray(shellAlerts) ? shellAlerts : [];
     const notificationsHref = route('notifications.index');
-    const [dark, setDark] = useState(() => {
-        try {
-            return localStorage.theme === 'dark';
-        } catch {
-            return false;
-        }
-    });
+    const [dark, setDark] = useState(() => isDarkTheme());
     const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
     const sections: Section[] = useMemo(() => {
@@ -204,12 +199,7 @@ export default function ConsoleLayout({ children, crumb }: PropsWithChildren<{ c
     const toggleDark = () => {
         const next = ! dark;
         setDark(next);
-        document.documentElement.classList.toggle('dark', next);
-        try {
-            localStorage.theme = next ? 'dark' : 'light';
-        } catch {
-            //
-        }
+        persistTheme(next);
     };
 
     const logout = (e: FormEvent) => {

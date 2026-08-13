@@ -23,8 +23,11 @@ export default function Index({ plan, subscription, plans, usage, requests, stri
                     {(plans || []).map((item: any) => (
                         <div key={item.id} className={`panel ${plan?.id === item.id ? 'plan-featured' : ''}`}>
                             <h2 className="font-semibold heading">{item.name}</h2>
-                            <p className="mt-2 text-2xl font-bold">{item.monthly_price_label || (item.monthly_price === 0 ? 'Free' : money(item.monthly_price, item.currency))}<span className="text-sm muted">/mo</span></p>
-                            {item.yearly_price_label && <p className="mt-1 text-sm muted">or {item.yearly_price_label} billed yearly</p>}
+                            <p className="mt-2 text-2xl font-bold">
+                                {item.monthly_price === 0 ? 'Free' : money(item.monthly_price, item.currency)}
+                                {item.monthly_price > 0 && <span className="text-sm muted">/mo</span>}
+                            </p>
+                            {item.yearly_price > 0 && <p className="mt-1 text-sm muted">or {money(item.yearly_price, item.currency)} billed yearly</p>}
                             {item.unlimited && <p className="mt-2 text-sm">{item.unlimited}</p>}
                             <ul className="mt-3 space-y-1 text-sm muted">
                                 {(item.quota_lines || []).map((line: string) => <li key={line}>{line}</li>)}

@@ -393,6 +393,21 @@ class ManagedServersTest extends TestCase
         $this->assertSame(12.5, $settings->managedServerPrice(['slug' => 's-1vcpu-1gb', 'price_monthly' => 6]));
     }
 
+    public function test_a_zero_or_blank_size_override_uses_markup_instead_of_free(): void
+    {
+        $admin = User::factory()->create(['role' => 'super_admin', 'email_verified_at' => now()]);
+
+        $this->actingAs($admin)->put('/admin/settings/managed-servers/pricing', [
+            'markup_percent' => 25,
+            'prices' => ['s-1vcpu-1gb' => '0', 's-1vcpu-4gb' => ''],
+        ])->assertSessionHas('status');
+
+        $settings = app(SystemSettings::class);
+        $this->assertSame([], $settings->managedSizePrices());
+        $this->assertSame(7.5, $settings->managedServerPrice(['slug' => 's-1vcpu-1gb', 'price_monthly' => 6]));
+        $this->assertSame(7.5, $settings->managedServerPrice(['slug' => 's-1vcpu-4gb', 'price_monthly' => 6]));
+    }
+
     public function test_managed_wizard_shows_marked_up_price_and_stores_it_on_the_server(): void
     {
         Bus::fake();
@@ -456,18 +471,18 @@ class ManagedServersTest extends TestCase
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('servers')
+            ->assertSee('1 server')
             ->assertDontSee('managed servers')
             ->assertDontSee('managed sites')
-            ->assertDontSee('BYOS servers');
+            ->assertDontSee('BYOS');
 
         $this->enableManagedPlatform();
 
         $this->get('/')
             ->assertOk()
-            ->assertSee('BYOS servers')
-            ->assertSee('managed servers')
-            ->assertSee('managed sites');
+            ->assertSee('1 BYOS server')
+            ->assertSee('5 managed servers')
+            ->assertSee('5 managed sites');
     }
 
     public function test_byos_and_managed_site_quotas_are_enforced_separately(): void

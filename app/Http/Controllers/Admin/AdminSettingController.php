@@ -103,7 +103,7 @@ class AdminSettingController extends Controller
         $settings->put('managed_markup_percent', (string) ($data['markup_percent'] ?? 0), 'string', true);
 
         $prices = collect($data['prices'] ?? [])
-            ->filter(fn ($price) => $price !== null && $price !== '')
+            ->filter(fn ($price) => $price !== null && $price !== '' && is_numeric($price) && (float) $price > 0)
             ->map(fn ($price) => round((float) $price, 2))
             ->all();
         $settings->saveManagedSizePrices($prices);
@@ -159,6 +159,48 @@ class AdminSettingController extends Controller
         }
 
         return back()->with('status', 'Logo removed.');
+    }
+
+    public function favicon(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $request->validate([
+            'favicon' => [
+                'required',
+                'file',
+                'max:512',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $ext = strtolower((string) $value->getClientOriginalExtension());
+                    if (! in_array($ext, ['ico', 'png', 'jpg', 'jpeg', 'svg', 'webp'], true)) {
+                        $fail('The favicon must be an ico, png, jpeg, svg, or webp file.');
+                    }
+                },
+            ],
+        ]);
+
+        $previous = $settings->get('favicon_path');
+        $path = $request->file('favicon')->store('branding', 'public');
+        $settings->put('favicon_path', $path, 'string', true);
+
+        if ($previous && $previous !== $path) {
+            Storage::disk('public')->delete($previous);
+        }
+
+        $audit->record($request, 'settings.favicon_updated', null, ['favicon_path' => $previous], ['favicon_path' => $path]);
+
+        return back()->with('status', 'Favicon updated.');
+    }
+
+    public function destroyFavicon(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
+    {
+        $previous = $settings->get('favicon_path');
+
+        if ($previous) {
+            Storage::disk('public')->delete($previous);
+            $settings->put('favicon_path', '', 'string', true);
+            $audit->record($request, 'settings.favicon_removed', null, ['favicon_path' => $previous], []);
+        }
+
+        return back()->with('status', 'Favicon removed.');
     }
 
     public function mail(Request $request, AuditLogger $audit, SystemSettings $settings): RedirectResponse
