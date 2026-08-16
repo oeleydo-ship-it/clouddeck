@@ -167,5 +167,58 @@ ln -sfn "${NGINX_SITE}" "/etc/nginx/sites-enabled/${DOMAIN}"
 # servers should not keep it enabled once real sites exist.
 rm -f /etc/nginx/sites-enabled/default
 
+# Cloudflare and other TLS frontends connect to origin :443. configure-site only writes
+# port 80 until Certbot runs, so unmatched HTTPS Host headers fall through to whichever
+# site nginx loads first. A temporary self-signed listener keeps this hostname on its
+# own vhost until Let's Encrypt replaces the certificate.
+ensure_https_listener() {
+  if [ ! -f "${NGINX_SITE}" ]; then
+    return
+  fi
+  if grep -qE 'listen[[:space:]]+443' "${NGINX_SITE}"; then
+    echo "HTTPS already configured for ${DOMAIN}"
+    return
+  fi
+
+  CERT_DIR="/etc/ssl/clouddeck/${DOMAIN}"
+  mkdir -p "${CERT_DIR}"
+  if [ ! -f "${CERT_DIR}/fullchain.pem" ]; then
+    openssl req -x509 -nodes -days 90 -newkey rsa:2048 \
+      -keyout "${CERT_DIR}/privkey.pem" \
+      -out "${CERT_DIR}/fullchain.pem" \
+      -subj "/CN=${DOMAIN}" >/dev/null 2>&1
+    chmod 644 "${CERT_DIR}/fullchain.pem"
+    chmod 600 "${CERT_DIR}/privkey.pem"
+  fi
+
+  FULLCHAIN="${CERT_DIR}/fullchain.pem"
+  PRIVKEY="${CERT_DIR}/privkey.pem"
+  TMP="${NGINX_SITE}.https.tmp"
+
+  awk -v fullchain="${FULLCHAIN}" -v privkey="${PRIVKEY}" '
+    BEGIN { inserted = 0 }
+    {
+      print
+      if (!inserted && $0 ~ /^[[:space:]]*server_name[[:space:]]+/) {
+        print "    listen 443 ssl;"
+        print "    listen [::]:443 ssl;"
+        print "    ssl_certificate " fullchain ";"
+        print "    ssl_certificate_key " privkey ";"
+        inserted = 1
+      }
+    }
+    END {
+      if (!inserted) {
+        print "Could not add HTTPS listener: server_name not found" > "/dev/stderr"
+        exit 1
+      }
+    }
+  ' "${NGINX_SITE}" > "${TMP}"
+  mv "${TMP}" "${NGINX_SITE}"
+  echo "Added temporary HTTPS listener for ${DOMAIN}"
+}
+
+ensure_https_listener
+
 nginx -t
 systemctl reload nginx

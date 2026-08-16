@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Sites;
 
+use App\Actions\Sites\QueueSiteSslIssuance;
 use App\Models\Site;
 use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
@@ -29,6 +30,7 @@ class ConfigureSiteJob implements ShouldQueue
             'PLATFORM' => $site->platform ?: 'laravel',
         ]);
         $site->update(['status' => 'active']);
+        app(QueueSiteSslIssuance::class)->handle($site);
     }
 
     public function failed(Throwable $exception): void

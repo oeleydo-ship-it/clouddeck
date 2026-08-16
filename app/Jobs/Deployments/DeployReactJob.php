@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Deployments;
 
+use App\Actions\Sites\QueueSiteSslIssuance;
 use App\Enums\DeploymentStatus;
 use App\Events\DeploymentFinished;
 use App\Events\DeploymentLogAppended;
@@ -73,6 +74,7 @@ class DeployReactJob implements ShouldQueue
         preg_match('/CLOUDDECK_MESSAGE_BASE64=([^\s]+)/', $result->output(), $message);
         $deployment->update(['status' => DeploymentStatus::Successful, 'finished_at' => $finished, 'duration_ms' => $started->diffInMilliseconds($finished), 'exit_code' => 0, 'progress' => 100, 'commit_hash' => $deployment->commit_hash ?: ($commit[1] ?? null), 'commit_message' => $deployment->commit_message ?: (isset($message[1]) ? base64_decode($message[1], true) : null)]);
         $deployment->site->update(['status' => 'active', 'last_deployed_at' => $finished]);
+        app(QueueSiteSslIssuance::class)->handle($deployment->site);
         $this->log($deployment, 'Deployment completed successfully.');
         $this->broadcastQuietly(fn () => DeploymentFinished::dispatch($deployment->fresh(['site.user'])));
     }

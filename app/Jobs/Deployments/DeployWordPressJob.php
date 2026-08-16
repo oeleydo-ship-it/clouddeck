@@ -2,6 +2,7 @@
 
 namespace App\Jobs\Deployments;
 
+use App\Actions\Sites\QueueSiteSslIssuance;
 use App\Enums\DeploymentStatus;
 use App\Events\DeploymentFinished;
 use App\Events\DeploymentLogAppended;
@@ -95,6 +96,7 @@ class DeployWordPressJob implements ShouldQueue
             'commit_message' => isset($version[1]) ? 'WordPress '.$version[1] : null,
         ]);
         $site->update(['status' => 'active', 'last_deployed_at' => $finished]);
+        app(QueueSiteSslIssuance::class)->handle($site);
         $this->log($deployment, 'Deployment completed successfully.');
         // The files are in place; whether the install has been completed is a separate
         // question, and only the database can answer it.
