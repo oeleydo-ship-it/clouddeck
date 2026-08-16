@@ -10,6 +10,16 @@ class ManagedDatabase extends Model
 {
     use HasUuid, SoftDeletes;
 
+    /** @var list<string> */
+    public const ENVIRONMENT_KEYS = [
+        'DB_CONNECTION',
+        'DB_HOST',
+        'DB_PORT',
+        'DB_DATABASE',
+        'DB_USERNAME',
+        'DB_PASSWORD',
+    ];
+
     protected $guarded = [];
 
     protected $hidden = ['password'];
@@ -40,13 +50,10 @@ class ManagedDatabase extends Model
      */
     public function syncAttachedSiteEnvironment(?Site $previousSite = null): void
     {
-        $keys = array_keys($this->siteEnvironmentValues());
+        $keys = self::ENVIRONMENT_KEYS;
 
         if ($previousSite && $previousSite->id !== $this->site_id) {
-            $currentDatabase = $previousSite->environmentVariables()->where('key', 'DB_DATABASE')->value('value');
-            if ($currentDatabase === $this->name) {
-                $previousSite->environmentVariables()->whereIn('key', $keys)->delete();
-            }
+            $previousSite->environmentVariables()->whereIn('key', $keys)->delete();
         }
 
         if (! $this->site) {

@@ -100,6 +100,9 @@ class StagingSitesTest extends TestCase
         app(SystemSettings::class)->put('staging_sites_enabled', '1', 'boolean');
         [$user, $production] = $this->productionSite();
         $production->environmentVariables()->create(['key' => 'DB_CONNECTION', 'value' => 'mysql', 'is_secret' => false]);
+        foreach (['DB_HOST' => '127.0.0.1', 'DB_PORT' => '3306', 'DB_DATABASE' => 'application', 'DB_USERNAME' => 'application_user', 'DB_PASSWORD' => 'secret'] as $key => $value) {
+            $production->environmentVariables()->create(['key' => $key, 'value' => $value, 'is_secret' => $key === 'DB_PASSWORD']);
+        }
 
         $staging = app(CreateStagingSite::class)->execute($production, [
             'domain' => 'staging.client.com',

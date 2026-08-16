@@ -185,6 +185,24 @@ class Site extends Model
         return $this->hasOne(ManagedDatabase::class);
     }
 
+    public function readyManagedDatabase(): ?ManagedDatabase
+    {
+        $database = $this->relationLoaded('database') ? $this->database : $this->database()->first();
+
+        return $database?->status === 'ready' ? $database : null;
+    }
+
+    /**
+     * When a managed database is attached, its credentials are the source of truth for
+     * deploy — stale DB_* values saved on the Environment tab must not win over it.
+     */
+    public function syncManagedDatabaseEnvironment(): void
+    {
+        $this->readyManagedDatabase()?->syncAttachedSiteEnvironment();
+        $this->unsetRelation('environmentVariables');
+        $this->load('environmentVariables');
+    }
+
     public function configurations()
     {
         return $this->hasMany(SiteConfiguration::class);

@@ -48,6 +48,38 @@ echo "[2/9] Installing Composer dependencies"
 mkdir -p "${SHARED}"
 printf '%s' "${ENVIRONMENT_BASE64}" | base64 -d > "${SHARED}/.env"
 ln -sfn "${SHARED}/.env" .env
+
+# Laravel defaults to SQLite when DB_CONNECTION is missing. Provisioned PHP only ships
+# mysql and pgsql drivers, so a silent fallback fails during package:discover with no
+# useful error. Fail here with the exact gap instead.
+validate_database_env() {
+    local env_file="${SHARED}/.env"
+    local conn host database username
+
+    conn="$(grep -E '^DB_CONNECTION=' "${env_file}" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r')"
+    if [ -z "${conn}" ]; then
+        echo "ERROR: DB_CONNECTION is not set in .env. Laravel would fall back to SQLite, which is not available on provisioned PHP." >&2
+        exit 1
+    fi
+
+    case "${conn}" in
+        mysql|pgsql|mariadb)
+            for key in DB_HOST DB_DATABASE DB_USERNAME; do
+                if ! grep -qE "^${key}=" "${env_file}"; then
+                    echo "ERROR: ${key} is required when DB_CONNECTION=${conn}." >&2
+                    exit 1
+                fi
+                val="$(grep -E "^${key}=" "${env_file}" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r')"
+                if [ -z "${val}" ]; then
+                    echo "ERROR: ${key} must not be empty when DB_CONNECTION=${conn}." >&2
+                    exit 1
+                fi
+            done
+            ;;
+    esac
+}
+validate_database_env
+
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
 if [ -n "${MANAGED_PACKAGES}" ]; then

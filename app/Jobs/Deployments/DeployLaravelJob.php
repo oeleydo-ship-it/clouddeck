@@ -29,7 +29,7 @@ class DeployLaravelJob implements ShouldQueue
 
     public function handle(SshClient $ssh): void
     {
-        $deployment = Deployment::with(['site.server.sshKey', 'site.environmentVariables'])->findOrFail($this->deploymentId);
+        $deployment = Deployment::with(['site.server.sshKey', 'site.database', 'site.environmentVariables'])->findOrFail($this->deploymentId);
 
         // The job can still be waiting in the queue when the operator cancels; running it
         // then would undo the cancellation and deploy something nobody is expecting.
@@ -43,29 +43,31 @@ class DeployLaravelJob implements ShouldQueue
         $deployment->update(['status' => DeploymentStatus::Running, 'started_at' => $started, 'progress' => 5, 'release' => $release, 'previous_release' => $previous]);
         $this->log($deployment, 'Starting release '.$release);
 
-        $this->ensureApplicationKey($deployment->site);
-        $environment = $deployment->site->environmentVariables->map(fn ($variable) => $variable->key.'='.$this->quoteEnv($variable->value))->implode("\n")."\n";
+        $site = $deployment->site;
+        $this->ensureApplicationKey($site);
+        $site->syncManagedDatabaseEnvironment();
+        $environment = $site->environmentVariables->map(fn ($variable) => $variable->key.'='.$this->quoteEnv($variable->value))->implode("\n")."\n";
         // The server block is written once, when the site is created. If that never landed,
         // Nginx has no block for this domain and answers requests for it with whichever site
         // it lists first — the deployment succeeds while the domain serves someone else's
         // application. Confirming it here costs one command and cannot be forgotten. An
         // existing block is left exactly as it is, so Certbot's TLS lines survive.
-        $ssh->runScript($deployment->site->server, resource_path('scripts/configure-site.sh'), [
-            'DOMAIN' => $deployment->site->domain,
-            'PHP_VERSION' => $deployment->site->php_version,
-            'DOCUMENT_ROOT' => $deployment->site->documentRoot(),
-            'PLATFORM' => $deployment->site->platform ?: 'laravel',
+        $ssh->runScript($site->server, resource_path('scripts/configure-site.sh'), [
+            'DOMAIN' => $site->domain,
+            'PHP_VERSION' => $site->php_version,
+            'DOCUMENT_ROOT' => $site->documentRoot(),
+            'PLATFORM' => $site->platform ?: 'laravel',
         ]);
 
-        $result = $ssh->runScriptStreaming($deployment->site->server, resource_path('scripts/deploy-laravel.sh'), [
-            'DOMAIN' => $deployment->site->domain,
-            'REPOSITORY' => $deployment->site->repository_url,
-            'BRANCH' => $deployment->site->branch,
+        $result = $ssh->runScriptStreaming($site->server, resource_path('scripts/deploy-laravel.sh'), [
+            'DOMAIN' => $site->domain,
+            'REPOSITORY' => $site->repository_url,
+            'BRANCH' => $site->branch,
             'RELEASE' => $release,
-            'PHP_VERSION' => $deployment->site->php_version,
+            'PHP_VERSION' => $site->php_version,
             'ENVIRONMENT_BASE64' => base64_encode($environment),
-            'CUSTOM_SCRIPT_BASE64' => base64_encode($deployment->site->deployment_script ?? ''),
-            'MANAGED_PACKAGES' => implode(' ', $deployment->site->managed_packages ?? []),
+            'CUSTOM_SCRIPT_BASE64' => base64_encode($site->deployment_script ?? ''),
+            'MANAGED_PACKAGES' => implode(' ', $site->managed_packages ?? []),
         ], function (string $type, string $output) use ($deployment) {
             if (trim($output) !== '') {
                 if (preg_match('/\[(\d)\/9\]/', $output, $match)) {

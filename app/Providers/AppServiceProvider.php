@@ -34,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        DatabaseBootstrap::enforceConfiguredConnection();
+
         $this->app->bind(BillingGateway::class, ManualBillingGateway::class);
 
         // Feature tests must never spawn long-lived Horizon/queue/Reverb daemons.

@@ -19,8 +19,13 @@ class DeleteDatabaseJob implements ShouldQueue
 
     public function handle(SshClient $ssh): void
     {
-        $database = ManagedDatabase::with('server.sshKey')->findOrFail($this->databaseId);
+        $database = ManagedDatabase::with(['server.sshKey', 'site'])->findOrFail($this->databaseId);
+        $site = $database->site;
+        $database->update(['status' => 'deleting']);
         $ssh->runScript($database->server, resource_path('scripts/manage-database.sh'), ['ACTION' => 'delete', 'ENGINE' => $database->engine, 'DATABASE' => $database->name, 'USERNAME' => $database->username, 'PASSWORD' => '']);
+        if ($site) {
+            $site->environmentVariables()->whereIn('key', ManagedDatabase::ENVIRONMENT_KEYS)->delete();
+        }
         $database->update(['status' => 'deleted']);
         $database->delete();
     }

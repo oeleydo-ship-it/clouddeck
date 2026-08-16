@@ -453,6 +453,9 @@ class DeploymentEngineTest extends TestCase
         // deployable site carries one. test_a_site_without_a_database_cannot_be_deployed
         // covers the case where it does not.
         $site->environmentVariables()->create(['key' => 'DB_CONNECTION', 'value' => 'mysql', 'is_secret' => false]);
+        foreach (['DB_HOST' => '127.0.0.1', 'DB_PORT' => '3306', 'DB_DATABASE' => 'application', 'DB_USERNAME' => 'application_user', 'DB_PASSWORD' => 'secret'] as $key => $value) {
+            $site->environmentVariables()->create(['key' => $key, 'value' => $value, 'is_secret' => $key === 'DB_PASSWORD']);
+        }
 
         return $site;
     }

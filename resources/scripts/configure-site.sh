@@ -35,6 +35,16 @@ if [ ! -f "${PLACEHOLDER}/index.php" ] && [ ! -f "${PLACEHOLDER}/index.html" ]; 
 </body></html>
 HTML
   chown www-data:www-data "${PLACEHOLDER}/index.html"
+elif [ -f "${PLACEHOLDER}/index.html" ] && ! grep -q "<h1>${DOMAIN}</h1>" "${PLACEHOLDER}/index.html"; then
+  cat > "${PLACEHOLDER}/index.html" <<HTML
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>${DOMAIN}</title></head>
+<body style="font-family:system-ui;margin:3rem;line-height:1.5">
+<h1>${DOMAIN}</h1>
+<p>This site is configured on the server. Deploy from Uplary to publish the application.</p>
+</body></html>
+HTML
+  chown www-data:www-data "${PLACEHOLDER}/index.html"
 fi
 
 if [ -L "${ROOT}/current" ] && [ -d "${DOC_ABS}" ]; then

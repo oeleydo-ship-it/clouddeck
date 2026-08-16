@@ -17,6 +17,7 @@ use App\Jobs\Sites\RefreshWordPressInventoryJob;
 use App\Jobs\Monitoring\CheckSiteDnsJob;
 use App\Jobs\Monitoring\CheckSiteUptimeJob;
 use App\Models\Deployment;
+use App\Models\ManagedDatabase;
 use App\Models\Site;
 use App\Models\SiteMonitorIncident;
 use App\Notifications\OperationalEventNotification;
@@ -332,11 +333,18 @@ class SiteController extends Controller
         $this->authorize('update', $site);
         $data = $request->validate(['environment' => ['present', 'string', 'max:65535']]);
         $variables = $environment->parse($data['environment']);
-        DB::transaction(function () use ($site, $variables) {
+        $managedDatabase = $site->readyManagedDatabase();
+        if ($managedDatabase) {
+            foreach (ManagedDatabase::ENVIRONMENT_KEYS as $key) {
+                unset($variables[$key]);
+            }
+        }
+        DB::transaction(function () use ($site, $variables, $managedDatabase) {
             $site->environmentVariables()->whereNotIn('key', array_keys($variables))->delete();
             foreach ($variables as $key => $value) {
                 $site->environmentVariables()->updateOrCreate(['key' => $key], ['value' => $value, 'is_secret' => preg_match('/(KEY|SECRET|TOKEN|PASSWORD|PRIVATE)/', $key) === 1]);
             }
+            $managedDatabase?->syncAttachedSiteEnvironment();
         });
 
         return back()->with('status', 'Environment variables encrypted and saved.');

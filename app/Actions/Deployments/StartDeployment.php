@@ -9,6 +9,7 @@ use App\Jobs\Deployments\DeployWordPressJob;
 use App\Models\Deployment;
 use App\Models\Site;
 use App\Models\User;
+use App\Support\DatabaseBootstrap;
 use Illuminate\Validation\ValidationException;
 
 final class StartDeployment
@@ -18,6 +19,9 @@ final class StartDeployment
         if ($site->deployments()->whereIn('status', [DeploymentStatus::Pending, DeploymentStatus::Running])->exists()) {
             throw ValidationException::withMessages(['deployment' => 'A deployment is already in progress.']);
         }
+
+        $site->load(['database', 'environmentVariables']);
+        $site->syncManagedDatabaseEnvironment();
 
         // React SPAs are static builds and do not need a database. Laravel and WordPress do.
         if (! $site->isReact()) {
@@ -30,6 +34,18 @@ final class StartDeployment
 
             if (! $site->environmentVariables()->where('key', $databaseKey)->exists()) {
                 throw ValidationException::withMessages(['deployment' => 'This site has no database configured. Create one for it from the server\'s Databases tab, or set DB_CONNECTION yourself on the Environment tab if this application does not use a database.']);
+            }
+
+            if (! $site->isWordPress()) {
+                $environment = $site->environmentVariables->pluck('value', 'key')->all();
+                $connection = (string) ($environment['DB_CONNECTION'] ?? '');
+                $missing = DatabaseBootstrap::missingCredentialKeys($connection, $environment);
+
+                if ($missing !== []) {
+                    throw ValidationException::withMessages([
+                        'deployment' => 'Database environment is incomplete: '.implode(', ', $missing).' are required when DB_CONNECTION is '.$connection.'. Attach a managed database from the server\'s Databases tab or set the missing variables on the Environment tab.',
+                    ]);
+                }
             }
         }
 
