@@ -16,15 +16,15 @@ export default function Manage({ server, backupDiskOptions, phpMyAdminPort, tran
     const { branding, flash, features } = usePage<PageProps>().props;
     const tabState = Tabs({ tabs, initial: 'monitoring' });
     const status = enumValue(server.status);
+    const ready = status === 'ready';
     const metrics = [...(server.metrics || [])];
-    const provisioning = ['pending', 'provisioning', 'creating', 'awaiting_payment'].includes(status);
     const phpmyadminUrl = server.phpmyadmin_enabled && server.public_ip
         ? `http://${server.public_ip}:${server.phpmyadmin_port}`
         : (server.phpmyadmin_url || server.phpMyAdminUrl);
     const latestMetric = metrics[0];
 
     useLiveReload({
-        active: provisioning,
+        active: !ready,
         channels: [`servers.${server.id}`],
         events: ['.provisioning-updated'],
         only: ['server'],
@@ -65,6 +65,10 @@ export default function Manage({ server, backupDiskOptions, phpMyAdminPort, tran
                         <form onSubmit={(e) => { e.preventDefault(); router.post(route('servers.retry-provisioning', server.id)); }} className="mt-3"><button className="button-primary">Retry server bootstrap</button></form>
                     </div>
                 )}
+                {!ready ? (
+                    <IncompleteServerPanel server={server} status={status} branding={branding} />
+                ) : (
+                <>
                 <details className="panel mt-5"><summary className="cursor-pointer font-medium">Workspace ownership</summary>
                     <p className="mt-3 text-sm muted">{server.team ? `Shared with ${server.team.name}` : 'Personal workspace'}. Transferring changes who can view and operate this server.</p>
                     <TransferForm server={server} teams={transferTeams} />
@@ -299,8 +303,73 @@ export default function Manage({ server, backupDiskOptions, phpMyAdminPort, tran
                         ))}
                     </section>
                 </TabPanel>
+                </>
+                )}
             </div>
         </ConsoleLayout>
+    );
+}
+
+function incompleteStatusCopy(status: string): string {
+    if (status === 'awaiting_payment') {
+        return 'This server is not ready yet. Complete payment to start provisioning. This page will update automatically.';
+    }
+    if (status === 'failed') {
+        return 'Provisioning did not finish. Retry bootstrap if the host is available, or cancel this server.';
+    }
+    if (status === 'deleting') {
+        return 'This server is being removed.';
+    }
+    if (status === 'creating') {
+        return 'Creating the cloud server. This page will update automatically.';
+    }
+    if (status === 'active') {
+        return 'The host is up. Bootstrap is starting. This page will update automatically.';
+    }
+    if (status === 'provisioning') {
+        return 'Installing and configuring the server. This page will update automatically.';
+    }
+
+    return 'Queued. Provisioning will start shortly. This page will update automatically.';
+}
+
+function IncompleteServerPanel({ server, status, branding }: { server: any; status: string; branding: { name: string } }) {
+    const progress = Math.min(100, Math.max(0, Number(server.progress) || 0));
+    const showProgress = !['awaiting_payment', 'failed', 'deleting'].includes(status);
+
+    return (
+        <section className="panel mt-5">
+            <h2 className="font-semibold">Waiting for this server</h2>
+            <p className="mt-2 text-sm muted">{incompleteStatusCopy(status)}</p>
+            {showProgress && (
+                <div className="mt-4 max-w-md">
+                    <div className="flex items-center justify-between gap-3 text-xs muted">
+                        <span className="truncate">{server.current_step || 'Provisioning'}</span>
+                        <span className="shrink-0 tabular-nums">{progress}%</span>
+                    </div>
+                    <div className="meter mt-1.5"><span className="meter-fill" style={{ width: `${progress}%` }} /></div>
+                </div>
+            )}
+            {status !== 'deleting' && (
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        const confirmation = (e.currentTarget.elements.namedItem('confirmation') as HTMLInputElement).value;
+                        if (confirm(`Permanently delete ${server.hostname}?`)) {
+                            router.delete(route('servers.destroy', server.id), { data: { confirmation } });
+                        }
+                    }}
+                    className="mt-6 flex flex-wrap items-end gap-3"
+                >
+                    <label className="block text-sm">
+                        <span className="muted">{status === 'awaiting_payment' ? 'Cancel this server' : 'Delete this server'}</span>
+                        <input className="field mt-1" name="confirmation" placeholder={`Type ${server.hostname} to confirm`} />
+                    </label>
+                    <button className="button-secondary !text-rose-600">{status === 'awaiting_payment' ? 'Cancel server' : 'Delete server'}</button>
+                    <p className="basis-full text-xs muted">Removes this server from {branding.name}{server.provider_id ? ' and destroys its Droplet at the provider' : ''}.</p>
+                </form>
+            )}
+        </section>
     );
 }
 

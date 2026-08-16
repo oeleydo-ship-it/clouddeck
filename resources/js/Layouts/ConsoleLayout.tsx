@@ -1,9 +1,9 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { FormEvent, PropsWithChildren, ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { FormEvent, PropsWithChildren, useEffect, useMemo, useRef, useState } from 'react';
 import { PageProps } from '../types';
 import { route } from '../lib/route';
 import { AiGuide } from '../Components/AiGuide';
+import { MenuPopover } from '../Components/MenuPopover';
 import { isDarkTheme, persistTheme } from '../lib/theme';
 
 type Section = { href: string; label: string; icon: string; match?: string; route?: string; locked?: boolean; admin?: boolean };
@@ -47,79 +47,6 @@ function groupNav(sections: Section[], admin: boolean): NavGroup[] {
     if (leftover.length) groups.push({ label: 'More', items: leftover });
 
     return groups;
-}
-
-function HeaderPopover({
-    open,
-    anchor,
-    onClose,
-    widthClass = 'w-56',
-    matchWidth = false,
-    children,
-}: {
-    open: boolean;
-    anchor: { current: HTMLElement | null };
-    onClose: () => void;
-    widthClass?: string;
-    matchWidth?: boolean;
-    children: ReactNode;
-}) {
-    const panelRef = useRef<HTMLDivElement>(null);
-    const onCloseRef = useRef(onClose);
-    onCloseRef.current = onClose;
-    const [pos, setPos] = useState({ top: 56, right: 16, left: 16, width: 224 });
-
-    useEffect(() => {
-        if (! open) {
-            return;
-        }
-
-        const place = () => {
-            const rect = anchor.current?.getBoundingClientRect();
-            if (! rect) {
-                return;
-            }
-            setPos({
-                top: rect.bottom + 8,
-                right: Math.max(12, window.innerWidth - rect.right),
-                left: rect.left,
-                width: rect.width,
-            });
-        };
-
-        place();
-        window.addEventListener('resize', place);
-        window.addEventListener('scroll', place, true);
-        const onDoc = (event: MouseEvent) => {
-            const target = event.target as Node;
-            if (anchor.current?.contains(target) || panelRef.current?.contains(target)) {
-                return;
-            }
-            onCloseRef.current();
-        };
-        document.addEventListener('mousedown', onDoc);
-
-        return () => {
-            window.removeEventListener('resize', place);
-            window.removeEventListener('scroll', place, true);
-            document.removeEventListener('mousedown', onDoc);
-        };
-    }, [open, anchor]);
-
-    if (! open || typeof document === 'undefined') {
-        return null;
-    }
-
-    return createPortal(
-        <div
-            ref={panelRef}
-            className={`menu-panel !fixed !mt-0 z-[80] ${matchWidth ? '!w-auto' : widthClass}`}
-            style={matchWidth ? { top: pos.top, left: pos.left, width: pos.width } : { top: pos.top, right: pos.right }}
-        >
-            {children}
-        </div>,
-        document.body,
-    );
 }
 
 export default function ConsoleLayout({ children, crumb }: PropsWithChildren<{ crumb?: string }>) {
@@ -323,16 +250,16 @@ export default function ConsoleLayout({ children, crumb }: PropsWithChildren<{ c
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400 dark:text-zinc-500"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
                             <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} className="search-input w-52 lg:w-64" placeholder="Search sites, servers…" onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) window.location.href = results[0].href; }} />
                             <kbd className="search-kbd">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
-                            <HeaderPopover open={results.length > 0} anchor={searchWrapRef} onClose={() => setQ('')} matchWidth>
+                            <MenuPopover open={results.length > 0} anchor={searchWrapRef} onClose={() => setQ('')} matchWidth>
                                 {results.map((item) => <Link key={item.href} href={item.href} className="menu-item" onClick={() => setQ('')}>{item.label}</Link>)}
-                            </HeaderPopover>
+                            </MenuPopover>
                         </div>
                         <div className="relative">
                             <button ref={alertsBtnRef} type="button" onClick={() => { setAlertsOpen(! alertsOpen); setMenu(false); }} className="icon-button relative" aria-label="Notifications" aria-expanded={alertsOpen}>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4.5"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /></svg>
                                 {alerts.length > 0 && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-rose-500 ring-2 ring-[#f6f5f2] dark:ring-zinc-950" />}
                             </button>
-                            <HeaderPopover open={alertsOpen} anchor={alertsBtnRef} onClose={() => setAlertsOpen(false)} widthClass="!w-80">
+                            <MenuPopover open={alertsOpen} anchor={alertsBtnRef} onClose={() => setAlertsOpen(false)} widthClass="!w-80">
                                 <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 dark:border-white/5">
                                     <p className="text-card font-semibold heading">Notifications</p>
                                     {alerts.some((alert) => alert.id) && (
@@ -355,7 +282,7 @@ export default function ConsoleLayout({ children, crumb }: PropsWithChildren<{ c
                                 <Link href={notificationsHref} className="menu-item block border-t border-slate-100 font-medium text-sky-700 dark:border-white/5 dark:text-sky-300" onClick={() => setAlertsOpen(false)}>
                                     View all notifications
                                 </Link>
-                            </HeaderPopover>
+                            </MenuPopover>
                         </div>
                         <button type="button" onClick={toggleDark} className="icon-button" aria-label="Toggle theme">
                             {dark ? (
@@ -368,7 +295,7 @@ export default function ConsoleLayout({ children, crumb }: PropsWithChildren<{ c
                             <button ref={menuBtnRef} type="button" onClick={() => { setMenu(! menu); setAlertsOpen(false); }} className={`flex items-center gap-2 rounded-[10px] py-1 pl-1 pr-1.5 transition-colors duration-150 hover:bg-slate-200/60 dark:hover:bg-white/10 ${inAccountArea ? 'bg-slate-200/50 dark:bg-white/10' : ''}`} aria-label="Account menu" aria-expanded={menu}>
                                 <span className={`grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-semibold uppercase ${inAdmin ? 'bg-amber-200 text-amber-950' : 'bg-sky-100 text-sky-800 dark:bg-sky-400/20 dark:text-sky-100'}`}>{user.name.slice(0, 2).toUpperCase()}</span>
                             </button>
-                            <HeaderPopover open={menu} anchor={menuBtnRef} onClose={() => setMenu(false)}>
+                            <MenuPopover open={menu} anchor={menuBtnRef} onClose={() => setMenu(false)}>
                                 <div className="border-b border-slate-100 px-3.5 py-3 dark:border-white/5">
                                     <p className="truncate text-sm font-medium heading">{user.name}</p>
                                     <p className="truncate text-xs muted">{user.email}</p>
@@ -378,7 +305,7 @@ export default function ConsoleLayout({ children, crumb }: PropsWithChildren<{ c
                                 <form onSubmit={logout} className="border-t border-slate-100 dark:border-white/5">
                                     <button className="menu-item !text-rose-600 hover:!bg-rose-50 dark:!text-rose-300 dark:hover:!bg-rose-400/10">{chrome.sign_out}</button>
                                 </form>
-                            </HeaderPopover>
+                            </MenuPopover>
                         </div>
                     </div>
                 </header>

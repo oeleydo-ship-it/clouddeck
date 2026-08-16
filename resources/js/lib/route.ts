@@ -30,6 +30,7 @@ export function route(name: string, params?: unknown, absolute = false): string 
         'notifications.read-all': '/notifications/read-all',
         'billing.index': '/billing',
         dashboard: '/dashboard',
+        'site-logs.store': id ? `/sites/${id}/logs` : '/',
     };
 
     return known[name] || '/';

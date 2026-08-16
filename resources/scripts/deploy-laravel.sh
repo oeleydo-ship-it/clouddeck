@@ -45,6 +45,9 @@ echo "CLOUDDECK_COMMIT=${COMMIT_HASH}"
 echo "CLOUDDECK_MESSAGE_BASE64=$(printf '%s' "${COMMIT_MESSAGE}" | base64 -w0)"
 
 echo "[2/9] Installing Composer dependencies"
+mkdir -p "${SHARED}"
+printf '%s' "${ENVIRONMENT_BASE64}" | base64 -d > "${SHARED}/.env"
+ln -sfn "${SHARED}/.env" .env
 composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 
 if [ -n "${MANAGED_PACKAGES}" ]; then
@@ -55,10 +58,8 @@ if [ -n "${MANAGED_PACKAGES}" ]; then
 fi
 
 echo "[3/9] Linking persistent state"
-printf '%s' "${ENVIRONMENT_BASE64}" | base64 -d > "${SHARED}/.env"
 rm -rf storage
 ln -s "${SHARED}/storage" storage
-ln -sfn "${SHARED}/.env" .env
 mkdir -p bootstrap/cache
 chmod -R ug+rwX "${SHARED}/storage" bootstrap/cache
 grep -qE '^APP_KEY="?base64:' "${SHARED}/.env" || php artisan key:generate --force

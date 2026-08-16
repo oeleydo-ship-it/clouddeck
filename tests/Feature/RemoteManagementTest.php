@@ -343,6 +343,27 @@ class RemoteManagementTest extends TestCase
         }
     }
 
+    public function test_remote_page_exposes_terminal_command_and_output(): void
+    {
+        [$user, , $site] = $this->infrastructure();
+        $output = "total 8\ndrwxr-xr-x 2 www-data www-data 4096 Jan 1 00:00 .";
+        $site->terminalCommands()->create([
+            'user_id' => $user->id,
+            'command' => 'ls -la',
+            'output' => $output,
+            'status' => 'successful',
+        ]);
+
+        $this->actingAs($user)
+            ->get("/sites/{$site->id}/remote")
+            ->assertOk()
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+                ->component('Sites/Remote')
+                ->where('commands.0.command', 'ls -la')
+                ->where('commands.0.output', $output)
+                ->where('commands.0.status', 'successful'));
+    }
+
     public function test_remote_management_is_tenant_isolated(): void
     {
         [, , $site] = $this->infrastructure();

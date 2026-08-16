@@ -18,6 +18,7 @@ use App\Services\PlatformRuntime\FakePlatformSslProbe;
 use App\Services\PlatformRuntime\NativePlatformProcessLauncher;
 use App\Services\PlatformRuntime\NativePlatformSslProbe;
 use App\Services\SystemSettings;
+use App\Support\DatabaseBootstrap;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -59,10 +60,13 @@ class AppServiceProvider extends ServiceProvider
     {
         ImpersonationGates::register();
         Event::listen(DeploymentFinished::class, SendDeploymentNotification::class);
-        $this->applyStripeCredentialsFromSettings();
-        $this->applyMailCredentialsFromSettings();
-        $this->applyGoogleCredentialsFromSettings();
-        $this->applyObjectStorageFromSettings();
+
+        if (! DatabaseBootstrap::shouldDeferDatabaseAccess()) {
+            $this->applyStripeCredentialsFromSettings();
+            $this->applyMailCredentialsFromSettings();
+            $this->applyGoogleCredentialsFromSettings();
+            $this->applyObjectStorageFromSettings();
+        }
 
         // Resolved per render rather than shared once, so a logo or name saved on the
         // settings page shows up on the next request instead of after a deploy.
@@ -175,27 +179,31 @@ class AppServiceProvider extends ServiceProvider
      */
     private function applyMailCredentialsFromSettings(): void
     {
-        $settings = app(SystemSettings::class);
-        $host = $settings->get('mail_host');
+        try {
+            $settings = app(SystemSettings::class);
+            $host = $settings->get('mail_host');
 
-        if (blank($host)) {
-            return;
-        }
+            if (blank($host)) {
+                return;
+            }
 
-        $encryption = $settings->get('mail_encryption', 'tls');
+            $encryption = $settings->get('mail_encryption', 'tls');
 
-        config([
-            'mail.default' => 'smtp',
-            'mail.mailers.smtp.host' => $host,
-            'mail.mailers.smtp.port' => (int) $settings->get('mail_port', '587'),
-            'mail.mailers.smtp.username' => $settings->get('mail_username'),
-            'mail.mailers.smtp.password' => $settings->get('mail_password'),
-            'mail.mailers.smtp.encryption' => $encryption === 'none' ? null : $encryption,
-            'mail.mailers.smtp.scheme' => $encryption === 'ssl' ? 'smtps' : 'smtp',
-        ]);
+            config([
+                'mail.default' => 'smtp',
+                'mail.mailers.smtp.host' => $host,
+                'mail.mailers.smtp.port' => (int) $settings->get('mail_port', '587'),
+                'mail.mailers.smtp.username' => $settings->get('mail_username'),
+                'mail.mailers.smtp.password' => $settings->get('mail_password'),
+                'mail.mailers.smtp.encryption' => $encryption === 'none' ? null : $encryption,
+                'mail.mailers.smtp.scheme' => $encryption === 'ssl' ? 'smtps' : 'smtp',
+            ]);
 
-        if ($from = $settings->get('mail_from_address')) {
-            config(['mail.from.address' => $from, 'mail.from.name' => $settings->get('mail_from_name', $settings->branding()['name'])]);
+            if ($from = $settings->get('mail_from_address')) {
+                config(['mail.from.address' => $from, 'mail.from.name' => $settings->get('mail_from_name', $settings->branding()['name'])]);
+            }
+        } catch (Throwable $e) {
+            Log::warning('Could not load mail credentials from settings: '.$e->getMessage());
         }
     }
 

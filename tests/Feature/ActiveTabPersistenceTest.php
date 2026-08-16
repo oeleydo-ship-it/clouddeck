@@ -63,6 +63,33 @@ class ActiveTabPersistenceTest extends TestCase
                 ->where('server.name', $server->name));
     }
 
+    public function test_server_manage_hides_operational_dashboard_until_ready(): void
+    {
+        [$user, $server] = $this->infrastructure();
+        $server->update(['status' => ServerStatus::AwaitingPayment]);
+
+        $this->actingAs($user)
+            ->get(route('servers.manage', $server))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Servers/Manage')
+                ->where('server.status', 'awaiting_payment')
+                ->missing('server.metrics')
+                ->where('cronPresets', [])
+                ->where('phpMyAdminPort', null)
+                ->where('transferTeams', []));
+
+        $server->update(['status' => ServerStatus::Ready]);
+
+        $this->actingAs($user)
+            ->get(route('servers.manage', $server))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Servers/Manage')
+                ->where('server.status', 'ready')
+                ->has('server.metrics'));
+    }
+
     public function test_environment_save_redirect_keeps_the_environment_tab(): void
     {
         [$user, , $site] = $this->infrastructure();
@@ -142,6 +169,18 @@ class ActiveTabPersistenceTest extends TestCase
 
         Queue::assertPushed(CheckSiteUptimeJob::class);
         Queue::assertPushed(CheckSiteDnsJob::class);
+    }
+
+    public function test_read_log_redirect_keeps_the_logs_tab(): void
+    {
+        Queue::fake();
+        [$user, , $site] = $this->infrastructure();
+
+        $this->actingAs($user)
+            ->from(route('sites.show', ['site' => $site, 'tab' => 'logs']))
+            ->post(route('site-logs.store', $site), ['source' => 'laravel', 'lines' => 200, '_tab' => 'logs'])
+            ->assertRedirect(route('sites.show', ['site' => $site, 'tab' => 'logs']))
+            ->assertSessionHas('status');
     }
 
     public function test_worker_status_check_from_the_site_keeps_the_queue_tab(): void

@@ -12,4 +12,13 @@ enum ServerStatus: string
     case Ready = 'ready';
     case Failed = 'failed';
     case Deleting = 'deleting';
+
+    /**
+     * Fully bootstrapped and safe to operate (monitoring, databases, backups, etc.).
+     * Intermediate states such as Active (IP assigned, bootstrap not finished) are not ready.
+     */
+    public function isReady(): bool
+    {
+        return $this === self::Ready;
+    }
 }

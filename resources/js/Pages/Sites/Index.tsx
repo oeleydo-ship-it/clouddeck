@@ -80,40 +80,62 @@ export default function Index({ sites, stagingSitesEnabled, summary }: { sites: 
                             </div>
                         </div>
                     )}
-                    {rows.map((site) => {
-                        const isStaging = site.environment === 'staging';
-                        const platform = platformLabel(site.platform);
+                    {! empty && (
+                        <div className="overflow-x-auto">
+                            <table className="sites-index-table w-full text-left">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Site</th>
+                                        <th scope="col">Server / runtime</th>
+                                        <th scope="col">Source / deploy</th>
+                                        <th scope="col" className="sites-index-actions-head">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((site) => {
+                                        const isStaging = site.environment === 'staging';
+                                        const platform = platformLabel(site.platform);
 
-                        return (
-                            <div key={site.id} className="data-row">
-                                <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <Link href={route('sites.show', site.id)} className="truncate font-semibold heading hover:text-sky-700 dark:hover:text-sky-300">{site.domain}</Link>
-                                            <StatusBadge status={site.status} />
-                                            <span className={`badge ${isStaging ? 'badge-warning' : 'badge-success'}`}>{isStaging ? 'Staging' : 'Production'}</span>
-                                            <span className="badge badge-neutral">{platform}</span>
-                                        </div>
-                                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                            {site.server?.name && <span className="text-xs muted">{site.server.name}</span>}
-                                            {site.branch && <span className="badge badge-neutral font-mono">{site.branch}</span>}
-                                            {usesPhp(site.platform) && site.php_version && <span className="badge badge-neutral">PHP {site.php_version}</span>}
-                                        </div>
-                                        {site.repository_url && <p className="mt-1 truncate font-mono text-xs muted">{site.repository_url}</p>}
-                                        <p className="mt-1 text-xs muted">{deployedLabel(site)}</p>
-                                    </div>
-                                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                                        <Link href={route('sites.show', site.id)} className="button-secondary">Open</Link>
-                                        {stagingSitesEnabled && ! isStaging && site.status === 'active' && (
-                                            site.staging_site
-                                                ? <Link href={route('sites.show', site.staging_site.id)} className="button-secondary">Open staging</Link>
-                                                : <Link href={`${route('sites.show', site.id)}?tab=overview#staging-setup`} className="button-secondary">Create staging</Link>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
+                                        return (
+                                            <tr key={site.id}>
+                                                <td className="sites-index-site">
+                                                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                                        <Link href={route('sites.show', site.id)} className="truncate font-semibold heading hover:text-sky-700 dark:hover:text-sky-300">{site.domain}</Link>
+                                                        <StatusBadge status={site.status} />
+                                                        <span className={`badge ${isStaging ? 'badge-warning' : 'badge-success'}`}>{isStaging ? 'Staging' : 'Production'}</span>
+                                                        <span className="badge badge-neutral">{platform}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="sites-index-runtime">
+                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                        {site.server?.name ? <span className="truncate text-xs muted">{site.server.name}</span> : <span className="text-xs muted">—</span>}
+                                                        {site.branch && <span className="badge badge-neutral font-mono">{site.branch}</span>}
+                                                        {usesPhp(site.platform) && site.php_version && <span className="badge badge-neutral">PHP {site.php_version}</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="sites-index-source">
+                                                    {site.repository_url
+                                                        ? <p className="truncate font-mono text-xs muted" title={site.repository_url}>{site.repository_url}</p>
+                                                        : <p className="text-xs muted">—</p>}
+                                                    <p className="mt-1 text-xs muted">{deployedLabel(site)}</p>
+                                                </td>
+                                                <td className="sites-index-actions">
+                                                    <div className="flex flex-wrap items-center justify-end gap-2">
+                                                        <Link href={route('sites.show', site.id)} className="button-secondary">Open</Link>
+                                                        {stagingSitesEnabled && ! isStaging && site.status === 'active' && (
+                                                            site.staging_site
+                                                                ? <Link href={route('sites.show', site.staging_site.id)} className="button-secondary">Open staging</Link>
+                                                                : <Link href={`${route('sites.show', site.id)}?tab=overview#staging-setup`} className="button-secondary">Create staging</Link>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
                 <Pagination links={sites.links} />
             </div>

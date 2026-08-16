@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\DatabaseBootstrap;
 use App\Models\NotificationChannel;
 use App\Models\Post;
 use App\Models\SystemSetting;
@@ -18,6 +19,10 @@ final class SystemSettings
         // Reached from a view composer and from the provider that configures mail, so this
         // also runs during `migrate` against an empty database. A missing table is not an
         // error there, it just means nothing has been configured yet.
+        if (DatabaseBootstrap::shouldDeferDatabaseAccess()) {
+            return $default;
+        }
+
         try {
             if (! Schema::hasTable('system_settings')) {
                 return $default;

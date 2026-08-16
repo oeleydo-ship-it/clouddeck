@@ -22,7 +22,7 @@ class RemoteManagementController extends Controller
             'site' => $site->load('server'),
             'configurations' => $site->configurations()->latest()->limit(20)->get(),
             'operations' => $site->fileOperations()->latest()->limit(20)->get(),
-            'commands' => $site->terminalCommands()->latest()->limit(20)->get(),
+            'commands' => $site->terminalCommands()->latest()->limit(20)->get()->makeVisible(['command', 'output']),
             'path' => $path,
             'editor' => $editor,
             'listing' => $listingOperation?->result ? json_decode($listingOperation->result, true, flags: JSON_THROW_ON_ERROR) : [],

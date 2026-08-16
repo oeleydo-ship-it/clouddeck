@@ -25,9 +25,11 @@ export default function Show({ site, meta, tabs, logSources, stagingSitesEnabled
     const [envText, setEnvText] = useState(environment || '');
     const [cronPreset, setCronPreset] = useState({ name: '', expression: '* * * * *', command: '' });
     const [logSource, setLogSource] = useState(meta.is_wordpress || meta.is_react ? 'nginx' : 'laravel');
+    const [logError, setLogError] = useState<string | null>(null);
     const snapshots = site.log_snapshots || site.logSnapshots || [];
-    const snapshot = snapshots.find((row: any) => row.source === logSource) || snapshots[0];
+    const snapshot = snapshots.find((row: any) => row.source === logSource);
     const running = snapshot && ['pending', 'running'].includes(snapshot.status);
+    const logsTabActive = tabState.tab === 'logs';
     const canSiteBackups = Boolean(features.site_backups);
     const cert = [...(site.ssl_certificates || site.sslCertificates || [])].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
     const sslBusy = cert && ['pending', 'issuing', 'removing'].includes(cert.status);
@@ -52,7 +54,7 @@ export default function Show({ site, meta, tabs, logSources, stagingSitesEnabled
         interval: 5000,
     });
     useLiveReload({
-        active: Boolean(running),
+        active: logsTabActive && Boolean(running),
         only: ['site'],
         interval: 2000,
     });
@@ -266,16 +268,27 @@ export default function Show({ site, meta, tabs, logSources, stagingSitesEnabled
                     <section className="panel">
                         <div className="flex flex-wrap items-end justify-between gap-4">
                             <div><h2 className="font-semibold heading">Logs</h2><p className="mt-1 text-sm muted">Read from the server on request. Nothing is stored on it.</p></div>
-                            <form onSubmit={(e) => { e.preventDefault(); router.post(route('site-logs.store', site.id), { source: logSource, lines: 200 }); }} className="flex gap-3">
-                                <button className="button-primary">{running ? 'Reading…' : 'Read log'}</button>
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                setLogError(null);
+                                router.post(route('site-logs.store', site.id), { source: logSource, lines: 200, _tab: 'logs' }, {
+                                    preserveScroll: true,
+                                    onError: (errors) => {
+                                        const message = Object.values(errors).flat().join(' ') || 'Could not queue the log read.';
+                                        setLogError(message);
+                                    },
+                                });
+                            }} className="flex gap-3">
+                                <button className="button-primary" disabled={Boolean(running)}>{running ? 'Reading…' : 'Read log'}</button>
                             </form>
                         </div>
                         <div className="mt-5 flex flex-wrap gap-2">
                             {visibleSources.map(([key, label]) => (
-                                <button key={key} type="button" onClick={() => setLogSource(key)} className={`chip ${logSource === key ? 'chip-active' : ''}`}>{String(label)}</button>
+                                <button key={key} type="button" onClick={() => { setLogSource(key); setLogError(null); }} className={`chip ${logSource === key ? 'chip-active' : ''}`}>{String(label)}</button>
                             ))}
                         </div>
-                        <pre className="log-pane mt-4 max-h-[32rem]">{! snapshot ? 'Choose a log and press Read log.' : running ? `Reading ${logSources[snapshot.source] || snapshot.source} from the server…` : snapshot.status === 'failed' ? (snapshot.output || 'The read failed.') : (snapshot.output || 'The log is empty.')}</pre>
+                        {logError && <p className="mt-4 text-sm text-rose-600">{logError}</p>}
+                        <pre className="log-pane mt-4 max-h-[32rem]">{! snapshot ? 'Choose a log and press Read log.' : running ? `Reading ${logSources?.[snapshot.source] || snapshot.source} from the server…` : snapshot.status === 'failed' ? (snapshot.output || 'The read failed.') : (snapshot.output || 'The log is empty.')}</pre>
                     </section>
                 </TabPanel>
 

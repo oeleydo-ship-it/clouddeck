@@ -1,13 +1,30 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import ConsoleLayout from '../../Layouts/ConsoleLayout';
 import { Flash } from '../../Components/Flash';
+import { MenuPopover } from '../../Components/MenuPopover';
 import { Pagination } from '../../Components/Pagination';
 import { StatusBadge } from '../../Components/StatusBadge';
 import { PageProps } from '../../types';
 import { useLiveReload } from '../../lib/live';
 import { route } from '../../lib/route';
 import { enumValue, items } from '../../lib/ui';
+
+function ServerRowMenu({ serverId, open, onToggle, onClose }: { serverId: string; open: boolean; onToggle: () => void; onClose: () => void }) {
+    const buttonRef = useRef<HTMLButtonElement>(null);
+
+    return (
+        <>
+            <button type="button" ref={buttonRef} className="icon-button" aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={onToggle}>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
+            </button>
+            <MenuPopover open={open} anchor={buttonRef} onClose={onClose} widthClass="!w-40">
+                <button type="button" role="menuitem" className="menu-item" onClick={() => { onClose(); router.reload({ only: ['servers', 'summary'] }); }}>Refresh</button>
+                <Link href={`${route('servers.manage', serverId)}#danger-zone`} role="menuitem" className="menu-item !text-rose-600 hover:!bg-rose-50 dark:!text-rose-300 dark:hover:!bg-rose-400/10" onClick={onClose}>Delete</Link>
+            </MenuPopover>
+        </>
+    );
+}
 
 export default function Index({ servers, summary, empty, provisionLabel, managedLabel, managedHref }: { servers: any; summary: { total: number; uptime: number | null; cpu: number | null; alerts: number }; empty?: string | null; provisionLabel?: string; managedLabel?: string; managedHref?: string }) {
     const { managedServersReady, features } = usePage<PageProps>().props;
@@ -123,17 +140,12 @@ export default function Index({ servers, summary, empty, provisionLabel, managed
                                     </div>
                                     <div className="flex shrink-0 items-center justify-end gap-2">
                                         <Link href={route('servers.manage', server.id)} className="button-secondary">Manage</Link>
-                                        <div className="relative">
-                                            <button type="button" className="icon-button" aria-label="More actions" aria-expanded={menuId === server.id} onClick={() => setMenuId(menuId === server.id ? null : server.id)}>
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="size-4"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>
-                                            </button>
-                                            {menuId === server.id && (
-                                                <div className="menu-panel !w-40">
-                                                    <button type="button" className="menu-item" onClick={() => { setMenuId(null); router.reload({ only: ['servers', 'summary'] }); }}>Refresh</button>
-                                                    <Link href={`${route('servers.manage', server.id)}#danger-zone`} className="menu-item !text-rose-600 hover:!bg-rose-50 dark:!text-rose-300 dark:hover:!bg-rose-400/10" onClick={() => setMenuId(null)}>Delete</Link>
-                                                </div>
-                                            )}
-                                        </div>
+                                        <ServerRowMenu
+                                            serverId={server.id}
+                                            open={menuId === server.id}
+                                            onToggle={() => setMenuId(menuId === server.id ? null : server.id)}
+                                            onClose={() => setMenuId(null)}
+                                        />
                                     </div>
                                 </div>
                             </div>

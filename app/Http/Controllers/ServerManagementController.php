@@ -61,9 +61,11 @@ class ServerManagementController extends Controller
     {
         $this->authorize('view', $server);
 
+        $ready = $server->status->isReady();
+
         return Inertia::render('Servers/Manage', [
             'title' => $server->name,
-            'operations' => ['Software hardening', 'Update Ubuntu packages', 'Major release upgrade'],
+            'operations' => $ready ? ['Software hardening', 'Update Ubuntu packages', 'Major release upgrade'] : [],
             'copyIpLabel' => 'Copy IP address',
             'notificationLinks' => [
                 'incidents' => route('notifications.index', ['tab' => 'incidents', 'server' => $server->id]),
@@ -71,13 +73,13 @@ class ServerManagementController extends Controller
                 'view_all' => 'View all incidents',
                 'manage' => 'Manage notifications',
             ],
-            'cronPresets' => $server->sites()->get()->filter->isLaravel()->map(fn ($site) => [
+            'cronPresets' => $ready ? $server->sites()->get()->filter->isLaravel()->map(fn ($site) => [
                 'label' => 'Laravel · '.$site->domain,
                 'name' => 'Laravel scheduler',
                 'expression' => '* * * * *',
                 'command' => 'cd /var/www/'.$site->domain.'/current && php artisan schedule:run',
-            ])->values()->all(),
-            'server' => $server->load([
+            ])->values()->all() : [],
+            'server' => $ready ? $server->load([
                 'databases.backups',
                 'databases.site',
                 'cronJobs',
@@ -90,7 +92,7 @@ class ServerManagementController extends Controller
                 'backupPolicies.databaseBackups' => fn ($q) => $q->latest()->limit(1),
                 'backupPolicies.snapshots' => fn ($q) => $q->latest()->limit(1),
                 'snapshots' => fn ($q) => $q->latest()->limit(30),
-            ]),
+            ]) : $server,
             'backupCopy' => [
                 'policy' => 'Automated backup policy',
                 'os' => 'OS backups (provider snapshots)',
@@ -101,9 +103,11 @@ class ServerManagementController extends Controller
                 'upgrade_os' => 'Upgrade for OS backups',
                 'os_note' => 'OS backup (provider snapshot) copies the whole disk at the cloud provider.',
             ],
-            'backupDiskOptions' => app(\App\Services\BackupStorage::class)->privateDiskOptions(),
-            'phpMyAdminPort' => app(\App\Services\ServerPortRegistry::class)->allocate($server, \App\Services\ServerPortRegistry::PHPMYADMIN_DEFAULT),
-            'transferTeams' => $request->user()->teamMemberships()->with('team')->whereNotNull('accepted_at')->get()->filter(fn ($membership) => $teams->canManage($request->user(), $membership->team))->pluck('team'),
+            'backupDiskOptions' => $ready ? app(\App\Services\BackupStorage::class)->privateDiskOptions() : [],
+            'phpMyAdminPort' => $ready ? app(\App\Services\ServerPortRegistry::class)->allocate($server, \App\Services\ServerPortRegistry::PHPMYADMIN_DEFAULT) : null,
+            'transferTeams' => $ready
+                ? $request->user()->teamMemberships()->with('team')->whereNotNull('accepted_at')->get()->filter(fn ($membership) => $teams->canManage($request->user(), $membership->team))->pluck('team')
+                : [],
         ]);
     }
 

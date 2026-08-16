@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class LogViewerTest extends TestCase
@@ -147,5 +148,42 @@ class LogViewerTest extends TestCase
         // No placeholder may carry a path: the source name is what selects the file.
         $this->assertStringNotContainsString('{{PATH}}', $script);
         $this->assertStringContainsString('tail -n "${LINES}"', $script);
+    }
+
+    public function test_site_show_exposes_log_snapshots_for_the_logs_tab(): void
+    {
+        [$user, $site] = $this->site();
+        $site->logSnapshots()->create([
+            'server_id' => $site->server_id,
+            'user_id' => $user->id,
+            'source' => 'laravel',
+            'lines' => 200,
+            'status' => 'completed',
+            'output' => '[2024-01-01] production.ERROR: queue timeout',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('sites.show', ['site' => $site, 'tab' => 'logs']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Sites/Show')
+                ->has('logSources.laravel')
+                ->has('site.log_snapshots', 1)
+                ->where('site.log_snapshots.0.source', 'laravel')
+                ->where('site.log_snapshots.0.output', '[2024-01-01] production.ERROR: queue timeout'));
+    }
+
+    public function test_read_log_redirect_keeps_the_logs_tab(): void
+    {
+        Queue::fake();
+        [$user, $site] = $this->site();
+
+        $this->actingAs($user)
+            ->from(route('sites.show', ['site' => $site, 'tab' => 'logs']))
+            ->post(route('site-logs.store', $site), ['source' => 'laravel', 'lines' => 200, '_tab' => 'logs'])
+            ->assertRedirect(route('sites.show', ['site' => $site, 'tab' => 'logs']))
+            ->assertSessionHas('status');
+
+        Queue::assertPushedOn('operations', FetchLogJob::class);
     }
 }

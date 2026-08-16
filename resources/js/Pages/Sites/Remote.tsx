@@ -178,9 +178,14 @@ export default function Remote({ site, configurations, operations, commands, pat
                             <button className="button-primary">Run command</button>
                         </form>
                         <div className="mt-4 space-y-2">
-                            {(commands || []).map((cmd: any) => (
-                                <pre key={cmd.id} className="log-pane max-h-64">{`$ ${cmd.command}\n${cmd.output || cmd.status}`}</pre>
-                            ))}
+                            {(commands || []).map((cmd: any) => {
+                                const commandText = cmd.command ?? cmd.command_text ?? cmd.input ?? cmd.body ?? '';
+                                const outputText = cmd.output ?? cmd.stdout ?? cmd.stderr ?? '';
+
+                                return (
+                                    <pre key={cmd.id} className="log-pane max-h-64">{`$ ${commandText}\n${outputText || cmd.status || ''}`}</pre>
+                                );
+                            })}
                         </div>
                     </section>
                 </TabPanel>

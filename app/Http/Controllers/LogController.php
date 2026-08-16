@@ -45,6 +45,8 @@ class LogController extends Controller
 
         FetchLogJob::dispatch($snapshot->id)->onQueue('operations');
 
-        return back()->with('status', 'Reading the '.self::SOURCES[$data['source']].' log.');
+        return redirect()
+            ->route('sites.show', ['site' => $site, 'tab' => 'logs'])
+            ->with('status', 'Reading the '.self::SOURCES[$data['source']].' log.');
     }
 }

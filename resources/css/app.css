@@ -451,6 +451,48 @@
         tracking-[0.06em] text-slate-500 dark:border-white/5 dark:bg-white/[.02] dark:text-zinc-400;
         font-size: var(--text-meta);
     }
+    .panel-flush > .table-head {
+        padding: 0.75rem 1.25rem;
+    }
+    .sites-index-table {
+        min-width: 56rem;
+        border-collapse: collapse;
+        font-size: var(--text-body);
+    }
+    .sites-index-table thead {
+        @apply border-b border-slate-100 bg-[#eceae4]/45 dark:border-white/5 dark:bg-white/[.02];
+    }
+    .sites-index-table thead th {
+        @apply px-5 py-3 text-left font-semibold uppercase tracking-[0.06em] text-slate-500 dark:text-zinc-400;
+        font-size: var(--text-meta);
+    }
+    .sites-index-table thead .sites-index-actions-head {
+        @apply text-right;
+    }
+    .sites-index-table tbody tr {
+        @apply border-b border-slate-100 transition-colors duration-150 last:border-0 hover:bg-[#eceae4]/50
+        dark:border-white/5 dark:hover:bg-white/[.03];
+    }
+    .sites-index-table tbody td {
+        @apply px-5 py-4 align-middle;
+    }
+    .sites-index-table .sites-index-site {
+        min-width: 14rem;
+        width: 28%;
+    }
+    .sites-index-table .sites-index-runtime {
+        min-width: 10rem;
+        width: 18%;
+    }
+    .sites-index-table .sites-index-source {
+        min-width: 12rem;
+        width: 32%;
+    }
+    .sites-index-table .sites-index-actions {
+        min-width: 9rem;
+        width: 1%;
+        white-space: nowrap;
+    }
     /* ---- Tabs / pagination (shared chrome) -------------------------------- */
     .tab-bar {
         @apply mt-8 flex gap-1 overflow-x-auto border-b border-slate-200 dark:border-white/[0.08];
