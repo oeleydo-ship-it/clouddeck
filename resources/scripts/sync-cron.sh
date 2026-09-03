@@ -13,4 +13,7 @@ if [ "${ENABLED}" = "yes" ]; then
 else
     rm -f "${FILE}"
 fi
-systemctl reload cron
+# cron.service declares no reload verb on 26.04 (systemd rejects it outright), and cron picks
+# up /etc/cron.d changes on its own anyway - reload-or-restart keeps older releases on the
+# cheap path and falls back to a restart where reload is not a valid job type.
+systemctl reload-or-restart cron

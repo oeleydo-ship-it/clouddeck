@@ -33,6 +33,7 @@ export default function Custom({ sshKey, account, authorizedKeysPath, sshNote }:
                     <label className="text-sm heading">SSH port<input className="field" type="number" name="ssh_port" value={form.data.ssh_port} onChange={(e) => form.setData('ssh_port', Number(e.target.value))} /></label>
                     <label className="text-sm heading">Image
                         <select className="field" name="image" value={form.data.image} onChange={(e) => form.setData('image', e.target.value)}>
+                            <option value="ubuntu-26-04-x64">Ubuntu 26.04</option>
                             <option value="ubuntu-24-04-x64">Ubuntu 24.04</option>
                             <option value="ubuntu-22-04-x64">Ubuntu 22.04</option>
                         </select>

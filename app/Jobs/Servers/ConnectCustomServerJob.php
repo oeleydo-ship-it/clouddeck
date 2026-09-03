@@ -38,7 +38,7 @@ class ConnectCustomServerJob implements ShouldQueue
         }
 
         if (! str_starts_with($release, 'ubuntu:')) {
-            throw new RuntimeException('This server is not running Ubuntu ('.($release ?: 'unknown').'). Uplary provisions Ubuntu 22.04 and 24.04.');
+            throw new RuntimeException('This server is not running Ubuntu ('.($release ?: 'unknown').'). Uplary provisions Ubuntu 22.04, 24.04 and 26.04.');
         }
 
         $this->progress($server, 25, 'Connected to Ubuntu '.explode(':', $release)[1]);

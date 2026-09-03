@@ -48,8 +48,30 @@ fi
 
 apt_get update
 apt_get -y upgrade
-apt_get install -y nginx git curl jq zip unzip ufw fail2ban supervisor redis-server mysql-server postgresql postgresql-client certbot python3-certbot-nginx software-properties-common
-retry_on_apt_lock add-apt-repository -y ppa:ondrej/php
+apt_get install -y nginx git curl jq zip unzip ufw fail2ban supervisor redis-server mysql-server postgresql postgresql-client certbot python3-certbot-nginx software-properties-common ca-certificates
+
+# PHP comes from Ondrej Sury's builds either way, but they moved house: the ppa: form only
+# publishes for jammy and noble, and from resolute (26.04) onward the same packages live on
+# packages.sury.org. Selecting by codename keeps existing 22.04/24.04 hosts on the repository
+# they were provisioned with, and stops newer releases dying on a 404 at the next apt update.
+. /etc/os-release
+codename="${VERSION_CODENAME:-}"
+if [ -z "$codename" ]; then
+    echo "Cannot determine the Ubuntu codename from /etc/os-release; refusing to guess a PHP repository." >&2
+    exit 1
+fi
+
+case "$codename" in
+    jammy|noble)
+        retry_on_apt_lock add-apt-repository -y ppa:ondrej/php
+        ;;
+    *)
+        curl -fsSLo /tmp/debsuryorg-archive-keyring.deb https://packages.sury.org/debsuryorg-archive-keyring.deb
+        dpkg -i /tmp/debsuryorg-archive-keyring.deb
+        rm -f /tmp/debsuryorg-archive-keyring.deb
+        echo "deb [signed-by=/usr/share/keyrings/debsuryorg-archive-keyring.gpg] https://packages.sury.org/php/ ${codename} main" > /etc/apt/sources.list.d/sury-php.list
+        ;;
+esac
 apt_get update
 
 php_packages=()

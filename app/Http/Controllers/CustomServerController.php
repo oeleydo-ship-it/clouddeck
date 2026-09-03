@@ -52,7 +52,7 @@ class CustomServerController extends Controller
             // the address is what every future SSH connection depends on.
             'public_ip' => ['required', 'ip', Rule::unique('servers', 'public_ip')->whereNull('deleted_at')],
             'ssh_port' => ['required', 'integer', 'between:1,65535'],
-            'image' => ['required', Rule::in(['ubuntu-24-04-x64', 'ubuntu-22-04-x64'])],
+            'image' => ['required', Rule::in(['ubuntu-26-04-x64', 'ubuntu-24-04-x64', 'ubuntu-22-04-x64'])],
             // Scoped to the operator's own accounts so a guessed id cannot file a server
             // under somebody else's provider connection.
             'cloud_account_id' => ['nullable', 'uuid', Rule::exists('cloud_accounts', 'id')->where('user_id', $request->user()->id)],
