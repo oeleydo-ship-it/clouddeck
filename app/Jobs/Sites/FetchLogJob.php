@@ -36,11 +36,11 @@ class FetchLogJob implements ShouldQueue
             'DOMAIN' => $snapshot->site?->domain ?? '',
             'SOURCE' => $snapshot->source,
             'LINES' => (string) $snapshot->lines,
-            'PHP_VERSION' => $snapshot->site?->php_version ?? config('clouddeck.default_php_version'),
+            'PHP_VERSION' => $snapshot->site?->php_version ?? config('uplary.default_php_version'),
         ]);
 
         $path = null;
-        if (preg_match('/CLOUDDECK_LOG_PATH=(\S+)/', $output, $match)) {
+        if (preg_match('/(?:UPLARY|CLOUDDECK)_LOG_PATH=(\S+)/', $output, $match)) {
             $path = $match[1] === 'none' ? null : $match[1];
             $output = trim(str_replace($match[0], '', $output));
         }

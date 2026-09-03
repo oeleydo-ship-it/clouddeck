@@ -17,5 +17,5 @@ do-release-upgrade -f DistUpgradeViewNonInteractive || {
     exit "$status"
 }
 
-echo "CLOUDDECK_RELEASE_UPGRADE_OK=1"
+echo "uplary_RELEASE_UPGRADE_OK=1"
 echo "Release upgrade finished. Reboot the server before continuing production traffic."

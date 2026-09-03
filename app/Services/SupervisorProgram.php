@@ -5,13 +5,13 @@ namespace App\Services;
 /**
  * Canonical Supervisor program names for queue / Horizon / Reverb workers.
  *
- * Sync scripts write clouddeck-{id}; status checks also accept legacy Uplary-{id}.
+ * Sync scripts write uplary-{id}; status checks also accept legacy clouddeck-{id} names.
  */
 final class SupervisorProgram
 {
-    public const PREFIX = 'clouddeck-';
+    public const PREFIX = 'uplary-';
 
-    public const LEGACY_PREFIX = 'Uplary-';
+    public const LEGACY_PREFIX = 'clouddeck-';
 
     public static function name(string $workerId): string
     {

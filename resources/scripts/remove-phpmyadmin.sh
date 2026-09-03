@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 PORT={{PORT}}
 
-rm -f /etc/nginx/sites-enabled/clouddeck-phpmyadmin /etc/nginx/sites-available/clouddeck-phpmyadmin
+rm -f /etc/nginx/sites-enabled/uplary-phpmyadmin /etc/nginx/sites-available/uplary-phpmyadmin
 systemctl reload nginx || true
 ufw delete allow "${PORT}/tcp" || true
 

@@ -73,9 +73,9 @@ final class WordPressConfig
         // which leaves the browser waiting on nothing; hard-coding http would send them back
         // out of TLS the moment a certificate arrives. The host stays fixed, so a forged Host
         // header cannot make WordPress build links to somewhere else.
-        $lines[] = "\$clouddeck_scheme = (! empty(\$_SERVER['HTTPS']) && \$_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';";
-        $lines[] = "define('WP_HOME', \$clouddeck_scheme . '://' . ".var_export($site->domain, true).');';
-        $lines[] = "define('WP_SITEURL', \$clouddeck_scheme . '://' . ".var_export($site->domain, true).');';
+        $lines[] = "\$uplary_scheme = (! empty(\$_SERVER['HTTPS']) && \$_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';";
+        $lines[] = "define('WP_HOME', \$uplary_scheme . '://' . ".var_export($site->domain, true).');';
+        $lines[] = "define('WP_SITEURL', \$uplary_scheme . '://' . ".var_export($site->domain, true).');';
         $lines[] = "define('WP_DEBUG', false);";
         // Updating core in place would be overwritten by the next deployment, and could
         // leave the release directory writable by the web server.

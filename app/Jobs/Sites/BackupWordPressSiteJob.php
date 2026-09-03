@@ -32,7 +32,7 @@ class BackupWordPressSiteJob implements ShouldQueue
             'LABEL' => $backup->label,
         ]);
 
-        preg_match('/CLOUDDECK_BACKUP_BYTES=(\d+)/', $output, $bytes);
+        preg_match('/(?:UPLARY|CLOUDDECK)_BACKUP_BYTES=(\d+)/', $output, $bytes);
         $backup->update([
             'status' => 'completed',
             'size' => isset($bytes[1]) ? (int) $bytes[1] : null,

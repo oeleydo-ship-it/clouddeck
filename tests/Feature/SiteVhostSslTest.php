@@ -30,7 +30,7 @@ class SiteVhostSslTest extends TestCase
 
         $this->assertStringContainsString('ensure_https_listener', $script);
         $this->assertStringContainsString('listen 443 ssl', $script);
-        $this->assertStringContainsString('/etc/ssl/clouddeck/${DOMAIN}', $script);
+        $this->assertStringContainsString('/etc/ssl/uplary/${DOMAIN}', $script);
     }
 
     public function test_configure_site_job_queues_lets_encrypt_issuance(): void

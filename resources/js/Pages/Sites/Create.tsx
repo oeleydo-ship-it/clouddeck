@@ -13,6 +13,8 @@ export default function Create({ servers, phpVersions, defaultPhpVersion }: { se
         domain: '',
         php_version: defaultPhpVersion,
         repository_url: '',
+        repository_username: 'x-access-token',
+        repository_token: '',
         branch: 'main',
         auto_deploy: false,
         zero_downtime: true,
@@ -69,6 +71,14 @@ export default function Create({ servers, phpVersions, defaultPhpVersion }: { se
                             <label className="text-sm heading sm:col-span-2">Git repository
                                 <input className="field" name="repository_url" value={form.data.repository_url} onChange={(e) => form.setData('repository_url', e.target.value)} placeholder="https://gitlab.com/acme/app.git" />
                                 <span className="mt-1 block text-xs muted">GitHub, GitLab, or Bitbucket — HTTPS or SSH.</span>
+                            </label>
+                            <label className="text-sm heading">Git username
+                                <input className="field" name="repository_username" value={form.data.repository_username} onChange={(e) => form.setData('repository_username', e.target.value)} autoComplete="username" />
+                                <span className="mt-1 block text-xs muted">For GitHub tokens, keep <code>x-access-token</code>.</span>
+                            </label>
+                            <label className="text-sm heading">Repository access token
+                                <input className="field" type="password" name="repository_token" value={form.data.repository_token} onChange={(e) => form.setData('repository_token', e.target.value)} autoComplete="new-password" />
+                                <span className="mt-1 block text-xs muted">Required only for private HTTPS repositories. Stored encrypted and never written to deployment logs.</span>
                             </label>
                             <label className="text-sm heading">Branch<input className="field" name="branch" value={form.data.branch} onChange={(e) => form.setData('branch', e.target.value)} /></label>
                             <div className="flex items-end gap-5 pb-3">

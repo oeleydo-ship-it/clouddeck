@@ -292,7 +292,7 @@ class RemoteManagementTest extends TestCase
     {
         [$user, $server, $site] = $this->infrastructure();
         $site->update(['managed_packages' => ['laravel/horizon']]);
-        Process::fake(['*' => Process::result(output: 'CLOUDDECK_COMMIT='.str_repeat('a', 40), exitCode: 0)]);
+        Process::fake(['*' => Process::result(output: 'UPLARY_COMMIT='.str_repeat('a', 40), exitCode: 0)]);
         $deployment = $site->deployments()->create(['user_id' => $user->id, 'status' => DeploymentStatus::Pending, 'trigger' => 'manual']);
 
         (new DeployLaravelJob($deployment->id))->handle(app(SshClient::class));

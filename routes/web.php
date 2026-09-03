@@ -39,6 +39,7 @@ use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PhpExtensionController;
 use App\Http\Controllers\PhpMyAdminController;
 use App\Http\Controllers\QueueWorkerController;
+use App\Http\Controllers\ReconnectServerController;
 use App\Http\Controllers\RemoteManagementController;
 use App\Http\Controllers\RetryServerProvisioningController;
 use App\Http\Controllers\RobotsController;
@@ -215,6 +216,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     Route::get('/servers/custom', [CustomServerController::class, 'create'])->name('servers.custom');
     Route::post('/servers/custom', [CustomServerController::class, 'store'])->middleware('throttle:10,1')->name('servers.custom.store');
+    Route::post('/servers/{server}/reconnect', ReconnectServerController::class)->middleware('throttle:10,1')->name('servers.reconnect');
     Route::get('/servers/{server}/manage', [ServerManagementController::class, 'show'])->name('servers.manage');
     Route::delete('/servers/{server}', [ServerManagementController::class, 'destroy'])->name('servers.destroy');
     Route::post('/servers/{server}/retry-provisioning', RetryServerProvisioningController::class)->name('servers.retry-provisioning');

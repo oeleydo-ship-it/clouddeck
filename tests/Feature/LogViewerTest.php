@@ -77,7 +77,7 @@ class LogViewerTest extends TestCase
 
     public function test_the_output_and_the_path_it_came_from_are_recorded(): void
     {
-        Process::fake(['*' => Process::result(output: "CLOUDDECK_LOG_PATH=/var/log/nginx/app.example.com.error.log\n[error] upstream timed out\n", exitCode: 0)]);
+        Process::fake(['*' => Process::result(output: "UPLARY_LOG_PATH=/var/log/nginx/app.example.com.error.log\n[error] upstream timed out\n", exitCode: 0)]);
         [$user, $site] = $this->site();
         $snapshot = $site->logSnapshots()->create(['server_id' => $site->server_id, 'user_id' => $user->id, 'source' => 'nginx', 'lines' => 200, 'status' => 'pending']);
 
@@ -88,12 +88,12 @@ class LogViewerTest extends TestCase
         $this->assertSame('/var/log/nginx/app.example.com.error.log', $snapshot->path);
         $this->assertStringContainsString('upstream timed out', $snapshot->output);
         // The marker is Uplary's own and has no business in what the operator reads.
-        $this->assertStringNotContainsString('CLOUDDECK_LOG_PATH', $snapshot->output);
+        $this->assertStringNotContainsString('UPLARY_LOG_PATH', $snapshot->output);
     }
 
     public function test_a_log_that_does_not_exist_is_reported_rather_than_failing(): void
     {
-        Process::fake(['*' => Process::result(output: "CLOUDDECK_LOG_PATH=none\nNo redis log exists on this server yet.\n", exitCode: 0)]);
+        Process::fake(['*' => Process::result(output: "UPLARY_LOG_PATH=none\nNo redis log exists on this server yet.\n", exitCode: 0)]);
         [$user, $site] = $this->site();
         $snapshot = $site->logSnapshots()->create(['server_id' => $site->server_id, 'user_id' => $user->id, 'source' => 'redis', 'lines' => 200, 'status' => 'pending']);
 

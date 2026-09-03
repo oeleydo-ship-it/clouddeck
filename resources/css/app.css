@@ -668,3 +668,60 @@
 @media (max-width: 1023px) {
     .app-sidebar { width: 240px; }
 }
+
+/* ---- Documentation (markdown) ----------------------------------------- */
+.docs-prose {
+    @apply text-body-sm text-slate-700 dark:text-zinc-300;
+}
+.docs-prose > :first-child { @apply mt-0; }
+.docs-prose h1 {
+    @apply mt-0 text-xl font-semibold tracking-[-0.02em] heading;
+    font-family: var(--font-sans);
+}
+.docs-prose h2 {
+    @apply mt-8 border-t border-slate-100 pt-8 text-base font-semibold heading first:mt-0 first:border-0 first:pt-0 dark:border-white/5;
+}
+.docs-prose h3 {
+    @apply mt-6 text-sm font-semibold heading;
+}
+.docs-prose p {
+    @apply mt-3 leading-relaxed;
+}
+.docs-prose ul,
+.docs-prose ol {
+    @apply mt-3 space-y-2 pl-5;
+}
+.docs-prose ul { @apply list-disc; }
+.docs-prose ol { @apply list-decimal; }
+.docs-prose li { @apply leading-relaxed; }
+.docs-prose a {
+    @apply font-medium text-sky-700 underline decoration-sky-700/30 underline-offset-2 hover:decoration-sky-700 dark:text-sky-400 dark:decoration-sky-400/40;
+}
+.docs-prose code {
+    @apply rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.8125rem] text-slate-800 dark:bg-white/10 dark:text-zinc-200;
+}
+.docs-prose pre {
+    @apply mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-slate-950 p-4 text-[0.8125rem] leading-relaxed text-slate-100 dark:border-white/10;
+}
+.docs-prose pre code {
+    @apply bg-transparent p-0 text-inherit;
+}
+.docs-prose table {
+    @apply mt-4 w-full border-collapse text-left text-sm;
+}
+.docs-prose th,
+.docs-prose td {
+    @apply border border-slate-200 px-3 py-2 align-top dark:border-white/10;
+}
+.docs-prose th {
+    @apply bg-slate-50 font-semibold heading dark:bg-white/5;
+}
+.docs-prose hr {
+    @apply my-8 border-slate-200 dark:border-white/10;
+}
+.docs-prose blockquote {
+    @apply mt-4 border-l-4 border-sky-500/40 pl-4 italic muted;
+}
+.docs-prose strong {
+    @apply font-semibold heading;
+}

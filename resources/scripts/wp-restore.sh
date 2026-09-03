@@ -18,9 +18,9 @@ sudo -u www-data /usr/local/bin/wp --path="${ROOT}/current" --no-color db export
 gzip -f "${SAFETY}/database.sql"
 tar czf "${SAFETY}/wp-content.tar.gz" -C "${SHARED}" wp-content
 
-gunzip -c "${ARCHIVE}/database.sql.gz" > /tmp/clouddeck-restore.sql
-sudo -u www-data /usr/local/bin/wp --path="${ROOT}/current" --no-color db import /tmp/clouddeck-restore.sql
-rm -f /tmp/clouddeck-restore.sql
+gunzip -c "${ARCHIVE}/database.sql.gz" > /tmp/uplary-restore.sql
+sudo -u www-data /usr/local/bin/wp --path="${ROOT}/current" --no-color db import /tmp/uplary-restore.sql
+rm -f /tmp/uplary-restore.sql
 
 rm -rf "${SHARED}/wp-content.restoring"
 mkdir -p "${SHARED}/wp-content.restoring"

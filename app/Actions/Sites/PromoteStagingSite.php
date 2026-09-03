@@ -37,6 +37,8 @@ final class PromoteStagingSite
 
         $production->update([
             'repository_url' => $staging->repository_url,
+            'repository_username' => $staging->repository_username,
+            'repository_token' => $staging->repository_token,
             'branch' => $staging->branch,
             'deployment_script' => $staging->deployment_script,
             'php_version' => $staging->php_version,

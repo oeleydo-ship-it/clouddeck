@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG_FILE="${CLOUDDECK_MONITOR_CONFIG:-/etc/clouddeck-monitor.conf}"
+CONFIG_FILE="${uplary_MONITOR_CONFIG:-/etc/uplary-monitor.conf}"
 if [[ -f "$CONFIG_FILE" ]]; then
     # shellcheck disable=SC1090
     source "$CONFIG_FILE"
 fi
-: "${CLOUDDECK_URL:?Missing CLOUDDECK_URL}"
-: "${CLOUDDECK_SERVER_ID:?Missing CLOUDDECK_SERVER_ID}"
-: "${CLOUDDECK_MONITORING_SECRET:?Missing CLOUDDECK_MONITORING_SECRET}"
+: "${uplary_URL:?Missing uplary_URL}"
+: "${uplary_SERVER_ID:?Missing uplary_SERVER_ID}"
+: "${uplary_MONITORING_SECRET:?Missing uplary_MONITORING_SECRET}"
 
 # Measured from /proc/stat rather than parsed out of top. top's "%Cpu(s)" line has moved
 # columns between procps versions ("0.0 id" vs "0.0%id"), and when the field lands
@@ -48,7 +48,7 @@ body=$(jq -nc \
     '{cpu_percent:$cpu,memory_percent:$memory,disk_percent:$disk,load_average:$load,memory_used_bytes:$memory_used,memory_total_bytes:$memory_total,disk_used_bytes:$disk_used,disk_total_bytes:$disk_total,network_rx_bytes:$network_rx,network_tx_bytes:$network_tx,services:$services,processes:$processes}')
 timestamp=$(date +%s)
 nonce=$(openssl rand -hex 16)
-signature=$(printf '%s' "$timestamp.$nonce.$body" | openssl dgst -sha256 -hmac "$CLOUDDECK_MONITORING_SECRET" -hex | awk '{print $2}')
+signature=$(printf '%s' "$timestamp.$nonce.$body" | openssl dgst -sha256 -hmac "$uplary_MONITORING_SECRET" -hex | awk '{print $2}')
 
 curl --fail --silent --show-error --max-time 20 \
     -H 'Content-Type: application/json' \
@@ -56,4 +56,4 @@ curl --fail --silent --show-error --max-time 20 \
     -H "X-Monitoring-Nonce: $nonce" \
     -H "X-Monitoring-Signature: $signature" \
     --data-binary "$body" \
-    "$CLOUDDECK_URL/api/monitoring/$CLOUDDECK_SERVER_ID/metrics" >/dev/null
+    "$uplary_URL/api/monitoring/$uplary_SERVER_ID/metrics" >/dev/null

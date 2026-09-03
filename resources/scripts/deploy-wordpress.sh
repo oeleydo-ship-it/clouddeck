@@ -21,12 +21,12 @@ ensure_document_root() {
     # Nothing to do unless some root directive disagrees. Rewriting the whole block would
     # discard the lines Certbot adds for TLS.
     grep -E "^[[:space:]]*root[[:space:]]+" "${vhost}" | grep -qv "root ${expected};" || return 0
-    cp -a "${vhost}" "${vhost}.clouddeck-bak"
+    cp -a "${vhost}" "${vhost}.uplary-bak"
     sed -i -E "s|^([[:space:]]*)root[[:space:]]+[^;]+;|\1root ${expected};|" "${vhost}"
     if nginx -t; then
         echo "Corrected the Nginx document root to ${expected}"
     else
-        cp -a "${vhost}.clouddeck-bak" "${vhost}"
+        cp -a "${vhost}.uplary-bak" "${vhost}"
         echo "Left the Nginx document root alone: the rewritten server block did not validate" >&2
     fi
 }
@@ -35,7 +35,7 @@ ensure_document_root() {
 echo "[1/6] Downloading WordPress"
 mkdir -p "${RELEASE_PATH}"
 curl -fsSL https://wordpress.org/latest.tar.gz | tar xz --strip-components=1 -C "${RELEASE_PATH}"
-echo "CLOUDDECK_WP_VERSION=$(grep "wp_version =" "${RELEASE_PATH}/wp-includes/version.php" | head -1 | cut -d"'" -f2)"
+echo "uplary_WP_VERSION=$(grep "wp_version =" "${RELEASE_PATH}/wp-includes/version.php" | head -1 | cut -d"'" -f2)"
 
 echo "[2/6] Linking persistent state"
 # wp-content holds uploads, plugins, and themes. It lives outside the release, or every

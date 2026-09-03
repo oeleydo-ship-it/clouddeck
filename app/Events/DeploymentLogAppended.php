@@ -33,7 +33,7 @@ class DeploymentLogAppended implements ShouldBroadcastNow
             'log' => [
                 'level' => $this->log->level,
                 'output' => $this->log->output,
-                'created_at' => $this->log->created_at->format('H:i:s'),
+                'created_at' => $this->log->created_at?->format('H:i:s') ?? now()->format('H:i:s'),
             ],
             'status' => $this->deployment->status->value,
             'progress' => $this->deployment->progress,

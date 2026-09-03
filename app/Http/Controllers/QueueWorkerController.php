@@ -33,7 +33,9 @@ class QueueWorkerController extends Controller
             'timeout' => ['nullable', 'integer', 'between:10,3600'],
             'memory' => ['nullable', 'integer', 'between:64,2048'],
             'port' => [
-                'required_if:type,reverb', 'nullable', 'integer', 'between:1024,65535',
+                // Older browser bundles submitted their default 8080 for every worker type.
+                // Excluding it here makes the invariant server-side: only Reverb owns a port.
+                'exclude_unless:type,reverb', 'required', 'integer', 'between:1024,65535',
                 // Soft-deleted workers must not reserve their port forever: removing a Reverb
                 // worker has to free the port for the next one.
                 Rule::unique('queue_workers', 'port')->where(fn ($query) => $query->whereIn('site_id', $server->sites()->pluck('id'))->whereNull('deleted_at')),
@@ -53,7 +55,7 @@ class QueueWorkerController extends Controller
             'tries' => $data['tries'] ?? 3,
             'timeout' => $data['timeout'] ?? 90,
             'memory' => $data['memory'] ?? 256,
-            'port' => $data['port'] ?? null,
+            'port' => $data['type'] === 'reverb' ? $data['port'] : null,
         ]);
 
         // Keep the app's own Reverb config in step with the port Supervisor binds, so a manual

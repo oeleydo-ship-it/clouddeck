@@ -41,7 +41,7 @@ if [ -x "/usr/bin/php${PHP_VER}" ]; then
     update-alternatives --set php "/usr/bin/php${PHP_VER}" 2>/dev/null || true
 fi
 
-cat > /etc/nginx/sites-available/clouddeck-phpmyadmin <<NGINX
+cat > /etc/nginx/sites-available/uplary-phpmyadmin <<NGINX
 server {
     listen ${PORT};
     listen [::]:${PORT};
@@ -66,8 +66,8 @@ server {
 }
 NGINX
 
-ln -sfn /etc/nginx/sites-available/clouddeck-phpmyadmin /etc/nginx/sites-enabled/clouddeck-phpmyadmin
+ln -sfn /etc/nginx/sites-available/uplary-phpmyadmin /etc/nginx/sites-enabled/uplary-phpmyadmin
 nginx -t
 systemctl reload nginx
-ufw allow "${PORT}/tcp" comment 'clouddeck-phpmyadmin' || true
+ufw allow "${PORT}/tcp" comment 'uplary-phpmyadmin' || true
 echo "phpMyAdmin installed on port ${PORT} (fastcgi ${PHP_SOCK})"

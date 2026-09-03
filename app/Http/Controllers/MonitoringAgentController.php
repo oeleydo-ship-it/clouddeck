@@ -11,6 +11,6 @@ class MonitoringAgentController extends Controller
     {
         $this->authorize('view', $server);
 
-        return response()->download(resource_path('scripts/clouddeck-monitor.sh'), 'clouddeck-monitor.sh', ['Content-Type' => 'text/x-shellscript']);
+        return response()->download(resource_path('scripts/uplary-monitor.sh'), 'uplary-monitor.sh', ['Content-Type' => 'text/x-shellscript']);
     }
 }

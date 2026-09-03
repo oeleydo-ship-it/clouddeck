@@ -39,6 +39,7 @@ class HandleInertiaRequests extends Middleware
             'csrf_token' => csrf_token(),
             'flash' => [
                 'status' => fn () => $request->session()->get('status'),
+                'reconnect_server_id' => fn () => $request->session()->get('reconnect_server_id'),
                 'download_key' => fn () => $request->session()->get('download_key'),
                 'database_password' => fn () => $request->session()->get('database_password'),
                 'monitoring_secret' => fn () => $request->session()->get('monitoring_secret'),

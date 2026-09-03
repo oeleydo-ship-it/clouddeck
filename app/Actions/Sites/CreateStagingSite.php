@@ -56,6 +56,8 @@ final class CreateStagingSite
                 'platform' => $production->platform,
                 'php_version' => $production->php_version,
                 'repository_url' => $production->repository_url,
+                'repository_username' => $production->repository_username,
+                'repository_token' => $production->repository_token,
                 'branch' => $input['branch'] ?? ($production->branch ?: 'staging'),
                 'deployment_script' => $production->deployment_script,
                 'auto_deploy' => false,

@@ -250,14 +250,14 @@ class ServerOperationsTest extends TestCase
 
     public function test_maintenance_operation_job_runs_the_matching_script(): void
     {
-        Process::fake(['*' => Process::result(output: "CLOUDDECK_HARDEN_OK=1\n", exitCode: 0)]);
+        Process::fake(['*' => Process::result(output: "UPLARY_HARDEN_OK=1\n", exitCode: 0)]);
         [$user, $server] = $this->infrastructure();
         $operation = $server->operations()->create(['user_id' => $user->id, 'type' => 'system:harden', 'target' => 'system', 'status' => 'pending']);
 
         (new RunServerOperationJob($operation->id))->handle(app(SshClient::class));
 
         $this->assertSame('successful', $operation->fresh()->status);
-        $this->assertStringContainsString('CLOUDDECK_HARDEN_OK=1', $operation->fresh()->output);
+        $this->assertStringContainsString('UPLARY_HARDEN_OK=1', $operation->fresh()->output);
     }
 
     public function test_database_import_and_export_are_private_queued_operations(): void
@@ -390,6 +390,31 @@ class ServerOperationsTest extends TestCase
         Queue::assertPushedOn('operations', SyncQueueWorkerJob::class);
     }
 
+    public function test_horizon_and_queue_workers_ignore_a_stale_reverb_port_from_the_browser(): void
+    {
+        Queue::fake();
+        [$user, $server, $site] = $this->infrastructure();
+        $server->update(['status' => ServerStatus::Ready]);
+        $other = Site::create(['user_id' => $user->id, 'server_id' => $server->id, 'domain' => 'other.example.com', 'php_version' => '8.4', 'repository_url' => 'https://github.com/acme/app.git', 'branch' => 'main', 'status' => 'active']);
+        $other->queueWorkers()->create(['user_id' => $user->id, 'name' => 'reverb', 'type' => 'reverb', 'port' => 8080, 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256]);
+
+        $this->actingAs($user)->post("/sites/{$site->id}/workers", ['name' => 'horizon', 'type' => 'horizon', 'port' => 8080])->assertSessionHas('status');
+        $this->actingAs($user)->post("/sites/{$site->id}/workers", ['name' => 'emails', 'type' => 'queue', 'connection' => 'redis', 'queue' => 'emails', 'processes' => 2, 'port' => 8080])->assertSessionHas('status');
+
+        $this->assertDatabaseHas('queue_workers', ['site_id' => $site->id, 'name' => 'horizon', 'type' => 'horizon', 'port' => null]);
+        $this->assertDatabaseHas('queue_workers', ['site_id' => $site->id, 'name' => 'emails', 'type' => 'queue', 'port' => null]);
+    }
+
+    public function test_server_management_suggests_the_next_free_reverb_port(): void
+    {
+        [$user, $server, $site] = $this->infrastructure();
+        $site->queueWorkers()->create(['user_id' => $user->id, 'name' => 'reverb', 'type' => 'reverb', 'port' => 8080, 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256]);
+
+        $this->actingAs($user)->get("/servers/{$server->id}/manage?tab=workers")
+            ->assertOk()
+            ->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page->where('reverbPort', 8081));
+    }
+
     public function test_reverb_worker_requires_a_port_and_rejects_collision_with_phpmyadmin(): void
     {
         Queue::fake();
@@ -458,12 +483,12 @@ class ServerOperationsTest extends TestCase
         $this->assertNotNull($worker->fresh()->runtime_checked_at);
     }
 
-    public function test_worker_status_check_parses_clouddeck_supervisor_program(): void
+    public function test_worker_status_check_parses_uplary_supervisor_program(): void
     {
         [$user, , $site] = $this->infrastructure();
         $worker = $site->queueWorkers()->create(['user_id' => $user->id, 'name' => 'default', 'type' => 'queue', 'connection' => 'redis', 'queue' => 'default', 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256]);
 
-        $line = "clouddeck-{$worker->id}:clouddeck-{$worker->id}_00   RUNNING   pid 4242, uptime 0:12:01";
+        $line = "uplary-{$worker->id}:uplary-{$worker->id}_00   RUNNING   pid 4242, uptime 0:12:01";
         Process::fake(['*' => Process::result(output: $line, exitCode: 0)]);
         (new CheckQueueWorkerStatusJob($worker->id))->handle(app(SshClient::class));
 
@@ -471,13 +496,13 @@ class ServerOperationsTest extends TestCase
         $this->assertStringContainsString($line, (string) $worker->fresh()->runtime_output);
     }
 
-    public function test_worker_status_prefers_clouddeck_program_over_legacy_uplary(): void
+    public function test_worker_status_prefers_uplary_program_over_legacy_clouddeck(): void
     {
         [, , $site] = $this->infrastructure();
         $worker = $site->queueWorkers()->create(['user_id' => $site->user_id, 'name' => 'horizon', 'type' => 'horizon', 'processes' => 1, 'tries' => 3, 'timeout' => 90, 'memory' => 256]);
 
-        $output = "clouddeck-{$worker->id}:clouddeck-{$worker->id}_00   RUNNING   pid 10, uptime 1:00:00\n"
-            ."Uplary-{$worker->id}: ERROR (no such process)";
+        $output = "uplary-{$worker->id}:uplary-{$worker->id}_00   RUNNING   pid 10, uptime 1:00:00\n"
+            ."clouddeck-{$worker->id}: ERROR (no such process)";
         Process::fake(['*' => Process::result(output: $output, exitCode: 0)]);
         (new CheckQueueWorkerStatusJob($worker->id))->handle(app(SshClient::class));
 

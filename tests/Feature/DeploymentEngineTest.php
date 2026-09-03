@@ -43,6 +43,47 @@ class DeploymentEngineTest extends TestCase
         Queue::assertPushedOn('provisioning', ConfigureSiteJob::class);
     }
 
+    public function test_private_repository_credentials_are_encrypted_and_hidden(): void
+    {
+        Queue::fake();
+        [$user, $server] = $this->infrastructure();
+
+        $this->actingAs($user)->post('/sites', [
+            'server_id' => $server->id,
+            'domain' => 'private.example.com',
+            'php_version' => '8.4',
+            'repository_url' => 'https://github.com/acme/private-app.git',
+            'repository_username' => 'x-access-token',
+            'repository_token' => 'github-secret-token',
+            'branch' => 'main',
+        ])->assertRedirect();
+
+        $site = $user->sites()->where('domain', 'private.example.com')->firstOrFail();
+        $this->assertSame('github-secret-token', $site->repository_token);
+        $this->assertStringNotContainsString('github-secret-token', \DB::table('sites')->where('id', $site->id)->value('repository_token'));
+        $this->assertArrayNotHasKey('repository_token', $site->toArray());
+    }
+
+    public function test_deployment_uses_askpass_without_putting_repository_token_in_the_script(): void
+    {
+        Process::fake(['*ssh*' => Process::result(output: "Build complete\n", exitCode: 0)]);
+        [$user, $server] = $this->infrastructure();
+        $site = $this->site($user, $server, [
+            'repository_username' => 'x-access-token',
+            'repository_token' => 'github-secret-token',
+        ]);
+
+        (new DeployLaravelJob(app(StartDeployment::class)->execute($site, $user)->id))->handle(app(SshClient::class));
+
+        Process::assertRan(function ($process) {
+            $input = (string) ($process->input ?? '');
+
+            return str_contains($input, 'GIT_ASKPASS_PATH')
+                && str_contains($input, base64_encode('github-secret-token'))
+                && ! str_contains($input, 'github-secret-token');
+        });
+    }
+
     public function test_environment_editor_replaces_variables_and_keeps_values_encrypted(): void
     {
         [$user, $server] = $this->infrastructure();
@@ -276,6 +317,29 @@ class DeploymentEngineTest extends TestCase
         $site->refresh();
         $this->assertSame('https://github.com/acme/renamed-app.git', $site->repository_url);
         $this->assertSame('develop', $site->branch);
+    }
+
+    public function test_blank_repository_token_preserves_it_and_explicit_clear_removes_it(): void
+    {
+        [$user, $server] = $this->infrastructure();
+        $site = $this->site($user, $server, [
+            'repository_username' => 'x-access-token',
+            'repository_token' => 'existing-token',
+        ]);
+
+        $settings = [
+            'repository_url' => $site->repository_url,
+            'repository_username' => 'x-access-token',
+            'repository_token' => '',
+            'branch' => 'main',
+            'php_version' => '8.4',
+        ];
+        $this->actingAs($user)->patch("/sites/{$site->id}", $settings)->assertSessionHas('status');
+        $this->assertSame('existing-token', $site->fresh()->repository_token);
+
+        $this->actingAs($user)->patch("/sites/{$site->id}", [...$settings, 'clear_repository_credentials' => true])->assertSessionHas('status');
+        $this->assertNull($site->fresh()->repository_token);
+        $this->assertNull($site->fresh()->repository_username);
     }
 
     public function test_repository_url_must_be_a_valid_git_or_https_reference(): void

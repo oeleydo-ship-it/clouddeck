@@ -47,7 +47,7 @@ class SslCertificate extends Model
         $domain = $this->site?->domain ?? '';
 
         return $this->isCustom()
-            ? "/etc/ssl/clouddeck/{$domain}/fullchain.pem"
+            ? "/etc/ssl/uplary/{$domain}/fullchain.pem"
             : "/etc/letsencrypt/live/{$domain}/fullchain.pem";
     }
 
@@ -59,7 +59,7 @@ class SslCertificate extends Model
         $domain = $this->site?->domain ?? '';
 
         return $this->isCustom()
-            ? "/etc/ssl/clouddeck/{$domain}/privkey.pem"
+            ? "/etc/ssl/uplary/{$domain}/privkey.pem"
             : "/etc/letsencrypt/live/{$domain}/privkey.pem";
     }
 }

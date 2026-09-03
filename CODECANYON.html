@@ -1,0 +1,145 @@
+<h2>Uplary — Self-Hosted Server Control Plane &amp; SaaS Hosting Panel</h2>
+
+<p><strong>Uplary</strong> is a complete Laravel-based platform for selling managed hosting or running your own DevOps control plane. Connect DigitalOcean or any Ubuntu VPS, auto-provision servers, and deploy <strong>Laravel</strong>, <strong>WordPress</strong>, and <strong>React (Vite SPA)</strong> applications — with Stripe billing, teams, monitoring, backups, and SSL built in.</p>
+
+<p>Think <em>Laravel Forge</em> or <em>Cloudways</em>, but <strong>you own the code</strong> and can white-label it for your agency or SaaS business.</p>
+
+<hr>
+
+<h3>Why Uplary?</h3>
+<ul>
+  <li><strong>Launch your hosting SaaS</strong> — subscription plans, Stripe Checkout, quotas, feature flags</li>
+  <li><strong>Three deployment platforms</strong> — Laravel zero-downtime Git deploy, WordPress, React/Vite SPA</li>
+  <li><strong>Full server lifecycle</strong> — provision, deploy, SSL, cron, queues, firewall, backups</li>
+  <li><strong>Modern React console</strong> — Inertia.js + React 19, live deployment logs, dark UI</li>
+  <li><strong>Web installer</strong> — no manual database seeding; create admin at <code>/install</code></li>
+  <li><strong>80+ automated tests</strong> — production-quality codebase</li>
+</ul>
+
+<hr>
+
+<h3>Server &amp; infrastructure</h3>
+<ul>
+  <li>DigitalOcean API provisioning (regions, sizes, droplets, snapshots, import)</li>
+  <li>Attach any Ubuntu VPS by IP (Contabo, Hetzner, Linode, Vultr, AWS, etc.)</li>
+  <li>Automated bootstrap: Nginx, PHP 8.2–8.5, MySQL, PostgreSQL, Redis, Supervisor, Node.js, Certbot</li>
+  <li>Managed server checkout (sell VPS sizes via Stripe — operator configurable)</li>
+  <li>SSH key generation and encrypted credential storage</li>
+  <li>phpMyAdmin install, PHP extension management, UFW firewall sync</li>
+</ul>
+
+<hr>
+
+<h3>Deployments</h3>
+<ul>
+  <li><strong>Laravel</strong> — Git clone, Composer/npm, migrations, atomic releases, 5-release rollback</li>
+  <li><strong>WordPress</strong> — wordpress.org install, wp-config generation, WP-CLI plugin/theme management</li>
+  <li><strong>React</strong> — <code>npm ci</code> + <code>npm run build</code>, Nginx SPA fallback</li>
+  <li>Git webhooks (GitHub, GitLab, Bitbucket) with signature validation</li>
+  <li>Encrypted environment editor, custom deploy scripts, live log streaming</li>
+  <li>Staging sites with promote-to-production</li>
+</ul>
+
+<hr>
+
+<h3>SSL, DNS &amp; domains</h3>
+<ul>
+  <li>Let's Encrypt issuance, renewal, forced HTTPS</li>
+  <li>Custom SSL upload (Cloudflare Origin certificates supported)</li>
+  <li>Cloudflare integration — zone sync, DNS record management</li>
+  <li>Auto SSL queue after successful deploy</li>
+</ul>
+
+<hr>
+
+<h3>Operations &amp; monitoring</h3>
+<ul>
+  <li>HMAC-signed metric agent (CPU, RAM, disk, load, services)</li>
+  <li>Alert rules, incidents, Slack/Discord/Telegram/email notifications</li>
+  <li>Auto-heal service restarts (optional)</li>
+  <li>Site uptime, DNS mismatch, and Laravel queue health probes</li>
+  <li>Remote Nginx/PHP config editor, file manager, audited terminal</li>
+  <li>Database import/export, scheduled backups, full site restore</li>
+</ul>
+
+<hr>
+
+<h3>SaaS &amp; billing</h3>
+<ul>
+  <li>Free / Pro / Business plans with configurable quotas</li>
+  <li>Stripe Checkout, Customer Portal, webhooks, invoices</li>
+  <li>Manual plan approval workflow</li>
+  <li>Feature flags with rollout % and per-user overrides</li>
+  <li>Teams with owner, operator, and viewer roles</li>
+  <li>Google OAuth Sign-In (optional)</li>
+  <li>TOTP two-factor authentication</li>
+</ul>
+
+<hr>
+
+<h3>Admin panel</h3>
+<ul>
+  <li>User management, suspension, impersonation (audited)</li>
+  <li>Plans, pricing, Stripe Price ID mapping</li>
+  <li>Branding (logo, favicon, platform name)</li>
+  <li>Mail, storage (S3), analytics, SEO, blog CMS</li>
+  <li>Platform services dashboard (Horizon, Reverb, Redis)</li>
+  <li>Audit log with encrypted sensitive fields</li>
+</ul>
+
+<hr>
+
+<h3>Tech stack</h3>
+<table>
+  <tr><td><strong>Backend</strong></td><td>Laravel 12, Sanctum, Horizon, Reverb</td></tr>
+  <tr><td><strong>Frontend</strong></td><td>Inertia.js 3, React 19, Tailwind CSS 4, Vite 6</td></tr>
+  <tr><td><strong>Database</strong></td><td>MySQL, PostgreSQL, or SQLite (dev)</td></tr>
+  <tr><td><strong>Queues</strong></td><td>Redis + Laravel Horizon (7 dedicated queues)</td></tr>
+  <tr><td><strong>API</strong></td><td>REST with Sanctum token scopes</td></tr>
+</table>
+
+<hr>
+
+<h3>Requirements</h3>
+<ul>
+  <li>PHP 8.2+ with standard Laravel extensions</li>
+  <li>Composer 2, Node.js 20+</li>
+  <li>MySQL 8 / PostgreSQL 14+ (SQLite for development only)</li>
+  <li>Redis (production queues)</li>
+  <li>Linux server for Horizon (<code>pcntl</code> / <code>posix</code>)</li>
+  <li>OpenSSH client on control plane for remote server management</li>
+</ul>
+
+<hr>
+
+<h3>What's included</h3>
+<ul>
+  <li>Full PHP + React source code</li>
+  <li>36 remote provisioning/deploy shell scripts</li>
+  <li>Web installer (<code>/install</code>)</li>
+  <li>INSTALLATION.md — production Nginx, Supervisor, Horizon, Reverb setup</li>
+  <li>FEATURES.md — complete feature reference</li>
+  <li>32+ Markdown operator guides (also rendered in-app at <code>/docs</code>)</li>
+  <li>PHPUnit test suite (704 tests)</li>
+  <li>Release zip build script (<code>scripts/build-release.ps1</code> / <code>.sh</code>)</li>
+</ul>
+
+<hr>
+
+<h3>Installation (summary)</h3>
+<ol>
+  <li>Upload files; point web root to <code>public/</code></li>
+  <li><code>composer install --no-dev</code></li>
+  <li><code>cp .env.example .env && php artisan key:generate</code></li>
+  <li><code>php artisan migrate</code></li>
+  <li><code>npm ci && npm run build</code></li>
+  <li>Visit <code>/install</code> — create super-admin</li>
+  <li>Start Horizon + scheduler (see INSTALLATION.md)</li>
+</ol>
+
+<hr>
+
+<h3>Support</h3>
+<p>Installation support via the CodeCanyon comments tab. Include PHP version, Laravel log excerpt, and steps to reproduce. Custom development is not included in item support.</p>
+
+<p><em>Regular License: one live deployment. Extended License: multiple deployments / SaaS resale per Envato terms.</em></p>

@@ -56,7 +56,7 @@ final class SystemSettings
             return false;
         }
 
-        return $this->boolean('email_verification_required', config('clouddeck.email_verification_required', true));
+        return $this->boolean('email_verification_required', config('uplary.email_verification_required', true));
     }
 
     /**

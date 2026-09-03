@@ -42,7 +42,7 @@ class ServerBootstrapReadinessTest extends TestCase
     public function test_a_host_that_never_answers_fails_instead_of_bootstrapping(): void
     {
         // Zero timeout: one attempt, no waiting, so the failure path stays fast.
-        config(['clouddeck.ssh_ready_timeout' => 0]);
+        config(['uplary.ssh_ready_timeout' => 0]);
         Process::fake();
 
         // Port 1 on loopback: nothing listens there, and it refuses rather than hangs.
@@ -63,7 +63,7 @@ class ServerBootstrapReadinessTest extends TestCase
 
     public function test_the_wait_uses_the_port_the_server_is_reachable_on(): void
     {
-        config(['clouddeck.ssh_ready_timeout' => 0]);
+        config(['uplary.ssh_ready_timeout' => 0]);
         Process::fake();
         $server = $this->server('127.0.0.1', 2222);
 

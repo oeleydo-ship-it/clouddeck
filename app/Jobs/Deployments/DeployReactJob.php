@@ -51,6 +51,8 @@ class DeployReactJob implements ShouldQueue
         $result = $ssh->runScriptStreaming($deployment->site->server, resource_path('scripts/deploy-react.sh'), [
             'DOMAIN' => $deployment->site->domain,
             'REPOSITORY' => $deployment->site->repository_url,
+            'REPOSITORY_USERNAME' => $deployment->site->repository_username ?? '',
+            'REPOSITORY_TOKEN_BASE64' => base64_encode($deployment->site->repository_token ?? ''),
             'BRANCH' => $deployment->site->branch,
             'RELEASE' => $release,
             'ENVIRONMENT_BASE64' => base64_encode($environment),
@@ -70,11 +72,15 @@ class DeployReactJob implements ShouldQueue
         }
 
         $finished = now();
-        preg_match('/CLOUDDECK_COMMIT=([a-f0-9]{40})/', $result->output(), $commit);
-        preg_match('/CLOUDDECK_MESSAGE_BASE64=([^\s]+)/', $result->output(), $message);
+        preg_match('/(?:UPLARY|CLOUDDECK)_COMMIT=([a-f0-9]{40})/', $result->output(), $commit);
+        preg_match('/(?:UPLARY|CLOUDDECK)_MESSAGE_BASE64=([^\s]+)/', $result->output(), $message);
         $deployment->update(['status' => DeploymentStatus::Successful, 'finished_at' => $finished, 'duration_ms' => $started->diffInMilliseconds($finished), 'exit_code' => 0, 'progress' => 100, 'commit_hash' => $deployment->commit_hash ?: ($commit[1] ?? null), 'commit_message' => $deployment->commit_message ?: (isset($message[1]) ? base64_decode($message[1], true) : null)]);
         $deployment->site->update(['status' => 'active', 'last_deployed_at' => $finished]);
-        app(QueueSiteSslIssuance::class)->handle($deployment->site);
+        try {
+            app(QueueSiteSslIssuance::class)->handle($deployment->site);
+        } catch (Throwable $sslException) {
+            report($sslException);
+        }
         $this->log($deployment, 'Deployment completed successfully.');
         $this->broadcastQuietly(fn () => DeploymentFinished::dispatch($deployment->fresh(['site.user'])));
     }

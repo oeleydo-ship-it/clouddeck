@@ -110,5 +110,5 @@ sysctl --system >/dev/null 2>&1 || sysctl -p /etc/sysctl.d/99-uplary-harden.conf
 echo "==> Shared /tmp sticky bit"
 chmod 1777 /tmp /var/tmp 2>/dev/null || true
 
-echo "CLOUDDECK_HARDEN_OK=1"
+echo "uplary_HARDEN_OK=1"
 echo "Software hardening complete."

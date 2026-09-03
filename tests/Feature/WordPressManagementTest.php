@@ -110,7 +110,7 @@ class WordPressManagementTest extends TestCase
 
     public function test_the_backup_job_records_the_size_it_reports(): void
     {
-        Process::fake(['*' => Process::result(output: "CLOUDDECK_BACKUP_BYTES=5242880\nBackup complete\n", exitCode: 0)]);
+        Process::fake(['*' => Process::result(output: "UPLARY_BACKUP_BYTES=5242880\nBackup complete\n", exitCode: 0)]);
         [$user, $site] = $this->installedSite();
         $backup = $site->backups()->create(['user_id' => $user->id, 'label' => '20260802-120000', 'status' => 'pending']);
 
@@ -323,7 +323,7 @@ class WordPressManagementTest extends TestCase
             // Rewriting the whole block would discard the lines Certbot adds for TLS, and a
             // block that no longer validates must be put back rather than left serving.
             $this->assertStringContainsString('nginx -t', $script, $name);
-            $this->assertStringContainsString('.clouddeck-bak', $script, $name);
+            $this->assertStringContainsString('.uplary-bak', $script, $name);
             $this->assertGreaterThan(
                 strpos($script, 'Switching the current release atomically'),
                 strrpos($script, 'ensure_document_root'),

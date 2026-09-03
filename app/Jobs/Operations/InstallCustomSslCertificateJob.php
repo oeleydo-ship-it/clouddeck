@@ -59,7 +59,10 @@ class InstallCustomSslCertificateJob implements ShouldQueue
                 $certificate->site->server,
                 'openssl x509 -in '.escapeshellarg($certificate->remoteCertificatePath()).' -noout -enddate'
             );
-            $expires = Carbon::parse(trim(str_replace('notAfter=', '', $remote)));
+            if (preg_match('/notAfter=(.+)/', $remote, $remoteMatches) !== 1) {
+                throw new RuntimeException('Unable to read custom certificate expiry from the server.');
+            }
+            $expires = Carbon::parse(trim($remoteMatches[1]));
         }
         if (! $expires) {
             throw new RuntimeException('Unable to read custom certificate expiry from the server.');

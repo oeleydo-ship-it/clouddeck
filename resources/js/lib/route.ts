@@ -29,8 +29,14 @@ export function route(name: string, params?: unknown, absolute = false): string 
         'notification-channels.store': '/notification-channels',
         'notifications.read-all': '/notifications/read-all',
         'billing.index': '/billing',
+        'servers.custom': '/servers/custom',
+        'servers.custom.store': '/servers/custom',
+        'servers.reconnect': id ? `/servers/${id}/reconnect` : '/',
         dashboard: '/dashboard',
         'site-logs.store': id ? `/sites/${id}/logs` : '/',
+        'ssl.store': id ? `/sites/${id}/ssl` : '/',
+        'ssl.custom': id ? `/sites/${id}/ssl/custom` : '/',
+        'ssl.destroy': id ? `/sites/${id}/ssl` : '/',
     };
 
     return known[name] || '/';

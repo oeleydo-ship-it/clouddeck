@@ -399,6 +399,9 @@ function StagingForm({ site, meta }: any) {
 function DeployForm({ site, meta }: any) {
     const form = useForm({
         repository_url: site.repository_url || '',
+        repository_username: site.repository_username || 'x-access-token',
+        repository_token: '',
+        clear_repository_credentials: false,
         branch: site.branch || 'main',
         php_version: site.php_version || '',
         auto_deploy: Boolean(site.auto_deploy),
@@ -409,6 +412,9 @@ function DeployForm({ site, meta }: any) {
         <form onSubmit={(e) => { e.preventDefault(); form.patch(route('sites.update', site.id)); }} className="panel">
             <div className="grid gap-5 sm:grid-cols-2">
                 <label className="text-sm heading sm:col-span-2">Repository URL<input className="field font-mono text-xs" name="repository_url" value={form.data.repository_url} onChange={(e) => form.setData('repository_url', e.target.value)} /><span className="mt-1 block text-xs muted">GitHub, GitLab, or Bitbucket — HTTPS or SSH.</span></label>
+                <label className="text-sm heading">Git username<input className="field" name="repository_username" value={form.data.repository_username} onChange={(e) => form.setData('repository_username', e.target.value)} autoComplete="username" /><span className="mt-1 block text-xs muted">For GitHub tokens, use <code>x-access-token</code>.</span></label>
+                <label className="text-sm heading">Repository access token<input className="field" type="password" name="repository_token" value={form.data.repository_token} onChange={(e) => form.setData('repository_token', e.target.value)} autoComplete="new-password" placeholder={meta.repository_credentials_configured ? 'Stored — enter a new token to replace it' : 'Required for private HTTPS repositories'} /><span className="mt-1 block text-xs muted">Encrypted at rest and omitted from deployment logs.</span></label>
+                {meta.repository_credentials_configured && <label className="flex gap-2 text-sm heading sm:col-span-2"><input type="checkbox" name="clear_repository_credentials" checked={form.data.clear_repository_credentials} onChange={(e) => form.setData('clear_repository_credentials', e.target.checked)} />Remove stored repository credentials</label>}
                 <label className="text-sm heading">Branch<input className="field" name="branch" value={form.data.branch} onChange={(e) => form.setData('branch', e.target.value)} /></label>
                 {meta.uses_php && <label className="text-sm heading">PHP version<select className="field" name="php_version" value={form.data.php_version} onChange={(e) => form.setData('php_version', e.target.value)}>{meta.php_versions.map((v: string) => <option key={v}>{v}</option>)}</select></label>}
                 <label className="flex gap-2 text-sm heading"><input type="checkbox" name="auto_deploy" checked={form.data.auto_deploy} onChange={(e) => form.setData('auto_deploy', e.target.checked)} />Automatic deployments</label>
@@ -433,16 +439,43 @@ function LetsEncryptForm({ site, cert, isCustomSsl, sslBusy }: any) {
 
 function CustomSslForm({ site, cert, sslBusy }: any) {
     const form = useForm({ fullchain: null as File | null, private_key: null as File | null, fullchain_pem: '', private_key_pem: '', force_https: cert?.force_https ?? true, _tab: 'ssl' });
+    const fullchainError = form.errors.fullchain || form.errors.fullchain_pem;
+    const privateKeyError = form.errors.private_key || form.errors.private_key_pem;
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const useFiles = Boolean(form.data.fullchain || form.data.private_key);
+        form.post(route('ssl.custom', site.id), useFiles ? { forceFormData: true } : {});
+    };
+
     return (
-        <form onSubmit={(e) => { e.preventDefault(); form.post(route('ssl.custom', site.id), { forceFormData: true }); }} className="mt-5 space-y-4">
+        <form onSubmit={submit} className="mt-5 space-y-4">
+            <p className="text-xs muted">
+                Using Cloudflare? Create an <strong>Origin Certificate</strong> under SSL/TLS → Origin Server, then paste the certificate into <strong>Fullchain</strong> and the private key into <strong>Private key</strong>. Set Cloudflare SSL mode to <strong>Full (strict)</strong>.
+            </p>
             <div className="grid gap-4 sm:grid-cols-2">
-                <label className="text-sm heading">Fullchain PEM (file)<input className="field mt-1" type="file" name="fullchain" onChange={(e) => form.setData('fullchain', e.target.files?.[0] || null)} /></label>
-                <label className="text-sm heading">Private key PEM (file)<input className="field mt-1" type="file" name="private_key" onChange={(e) => form.setData('private_key', e.target.files?.[0] || null)} /></label>
+                <label className="text-sm heading">
+                    Fullchain PEM (file)
+                    <input className="field mt-1" type="file" name="fullchain" accept=".pem,.crt,.txt" onChange={(e) => form.setData('fullchain', e.target.files?.[0] || null)} />
+                    {fullchainError && <p className="mt-1 text-xs text-rose-600">{fullchainError}</p>}
+                </label>
+                <label className="text-sm heading">
+                    Private key PEM (file)
+                    <input className="field mt-1" type="file" name="private_key" accept=".pem,.key,.txt" onChange={(e) => form.setData('private_key', e.target.files?.[0] || null)} />
+                    {privateKeyError && <p className="mt-1 text-xs text-rose-600">{privateKeyError}</p>}
+                </label>
             </div>
             <details className="well !p-3"><summary className="cursor-pointer text-sm font-medium heading">Or paste PEM text</summary>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                    <label className="text-sm heading">Fullchain<textarea className="field mt-1 min-h-36 font-mono text-xs" name="fullchain_pem" value={form.data.fullchain_pem} onChange={(e) => form.setData('fullchain_pem', e.target.value)} /></label>
-                    <label className="text-sm heading">Private key<textarea className="field mt-1 min-h-36 font-mono text-xs" name="private_key_pem" value={form.data.private_key_pem} onChange={(e) => form.setData('private_key_pem', e.target.value)} /></label>
+                    <label className="text-sm heading">
+                        Fullchain
+                        <textarea className="field mt-1 min-h-36 font-mono text-xs" name="fullchain_pem" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----" value={form.data.fullchain_pem} onChange={(e) => form.setData('fullchain_pem', e.target.value)} />
+                        {fullchainError && <p className="mt-1 text-xs text-rose-600">{fullchainError}</p>}
+                    </label>
+                    <label className="text-sm heading">
+                        Private key
+                        <textarea className="field mt-1 min-h-36 font-mono text-xs" name="private_key_pem" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----" value={form.data.private_key_pem} onChange={(e) => form.setData('private_key_pem', e.target.value)} />
+                        {privateKeyError && <p className="mt-1 text-xs text-rose-600">{privateKeyError}</p>}
+                    </label>
                 </div>
             </details>
             <div className="flex flex-wrap items-center gap-4">

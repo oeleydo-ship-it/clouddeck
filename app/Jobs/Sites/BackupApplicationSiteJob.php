@@ -43,7 +43,7 @@ class BackupApplicationSiteJob implements ShouldQueue
             'DB_NAME' => $database?->name ?: '',
         ], 3600);
 
-        if (! preg_match('/CLOUDDECK_ARCHIVE_PATH=(\S+)/', $output, $pathMatch)) {
+        if (! preg_match('/(?:UPLARY|CLOUDDECK)_ARCHIVE_PATH=(\S+)/', $output, $pathMatch)) {
             throw new RuntimeException('Backup script did not report an archive path.');
         }
         $remotePath = $pathMatch[1];

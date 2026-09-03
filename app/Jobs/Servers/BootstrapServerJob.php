@@ -27,8 +27,8 @@ class BootstrapServerJob implements ShouldQueue
         $this->awaitSsh($server);
         $this->progress($server, 40, 'Bootstrapping Ubuntu', ServerStatus::Provisioning);
         $ssh->runScript($server, resource_path('scripts/bootstrap-ubuntu.sh'), [
-            'PHP_VERSION' => config('clouddeck.default_php_version'),
-            'PHP_VERSIONS' => implode(' ', config('clouddeck.php_versions')),
+            'PHP_VERSION' => config('uplary.default_php_version'),
+            'PHP_VERSIONS' => implode(' ', config('uplary.php_versions')),
         ]);
         $this->progress($server, 90, 'Verifying services');
     }
@@ -46,7 +46,7 @@ class BootstrapServerJob implements ShouldQueue
     private function awaitSsh(Server $server): void
     {
         $port = $server->ssh_port ?: 22;
-        $timeout = max(0, (int) config('clouddeck.ssh_ready_timeout', 180));
+        $timeout = max(0, (int) config('uplary.ssh_ready_timeout', 180));
         $deadline = now()->addSeconds($timeout);
         $error = 'no route to the host';
 

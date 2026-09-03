@@ -15,7 +15,7 @@ class CloudAccountController extends Controller
 {
     public function index(Request $request)
     {
-        $providers = config('clouddeck.providers');
+        $providers = config('uplary.providers');
 
         return Inertia::render('CloudAccounts/Index', [
             'title' => 'Cloud providers',
@@ -38,12 +38,12 @@ class CloudAccountController extends Controller
 
     public function store(Request $request, CloudProviderManager $providers): RedirectResponse
     {
-        $providerKeys = array_keys(config('clouddeck.providers'));
+        $providerKeys = array_keys(config('uplary.providers'));
         $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'provider' => ['required', Rule::in($providerKeys)],
         ]);
-        $drivesApi = (bool) config('clouddeck.providers.'.$request->input('provider').'.api');
+        $drivesApi = (bool) config('uplary.providers.'.$request->input('provider').'.api');
 
         // Each provider is asked only for what it actually needs. Uplary drives some
         // through an API, where a token can be proved here and then used to create and

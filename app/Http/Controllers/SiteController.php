@@ -62,8 +62,8 @@ class SiteController extends Controller
         return Inertia::render('Sites/Create', [
             'title' => 'Create a site',
             'servers' => $request->user()->accessibleServers()->where('status', ServerStatus::Ready)->get(['id', 'name', 'public_ip']),
-            'phpVersions' => config('clouddeck.php_versions'),
-            'defaultPhpVersion' => config('clouddeck.default_php_version'),
+            'phpVersions' => config('uplary.php_versions'),
+            'defaultPhpVersion' => config('uplary.default_php_version'),
         ]);
     }
 
@@ -156,12 +156,13 @@ class SiteController extends Controller
                 'is_laravel' => $site->isLaravel(),
                 'uses_php' => $site->usesPhp(),
                 'platform_label' => $site->platformLabel(),
+                'repository_credentials_configured' => filled($site->repository_token),
                 'is_staging' => $site->isStaging(),
                 'is_production' => $site->isProduction(),
                 'wordpress_installed' => $wordpressInstalled,
                 'has_database' => $hasDatabase,
                 'secure' => $site->sslCertificates->contains(fn ($certificate) => $certificate->status === 'active'),
-                'php_versions' => config('clouddeck.php_versions'),
+                'php_versions' => config('uplary.php_versions'),
                 'scheduler_command' => 'cd /var/www/'.$site->domain.'/current && php artisan schedule:run',
                 'webhook_url' => route('webhooks.site', $site),
                 'visit_url' => ($site->sslCertificates->contains(fn ($certificate) => $certificate->status === 'active') ? 'https://' : 'http://').$site->domain,
@@ -313,15 +314,27 @@ class SiteController extends Controller
     {
         $this->authorize('update', $site);
         $data = $request->validate([
-            'repository_url' => ['required', 'string', 'max:2048', new GitRepositoryUrl],
-            'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
-            'php_version' => [$site->usesPhp() ? 'required' : 'nullable', Rule::in(config('clouddeck.php_versions'))],
+                'repository_url' => ['required', 'string', 'max:2048', new GitRepositoryUrl],
+                'repository_username' => ['nullable', 'string', 'max:255', 'regex:/^[^\r\n]+$/'],
+                'repository_token' => ['nullable', 'string', 'max:2048', 'regex:/^[^\r\n]+$/'],
+                'clear_repository_credentials' => ['sometimes', 'boolean'],
+                'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
+            'php_version' => [$site->usesPhp() ? 'required' : 'nullable', Rule::in(config('uplary.php_versions'))],
             'deployment_script' => ['nullable', 'string', 'max:30000'],
             'auto_deploy' => ['sometimes', 'boolean'],
             'zero_downtime' => ['sometimes', 'boolean'],
         ]);
         if (! $site->usesPhp()) {
             unset($data['php_version']);
+        }
+        unset($data['clear_repository_credentials']);
+        if ($request->boolean('clear_repository_credentials')) {
+            $data['repository_username'] = null;
+            $data['repository_token'] = null;
+        } elseif (! filled($data['repository_token'] ?? null)) {
+            // Password-style inputs intentionally render empty. Leaving it empty preserves
+            // the encrypted token already stored for the site.
+            unset($data['repository_token']);
         }
         $site->update([...$data, 'auto_deploy' => $request->boolean('auto_deploy'), 'zero_downtime' => $request->boolean('zero_downtime')]);
 

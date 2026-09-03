@@ -12,13 +12,13 @@ TRIES={{TRIES}}
 TIMEOUT={{TIMEOUT}}
 MEMORY={{MEMORY}}
 PORT={{PORT}}
-# Canonical Supervisor program name matches production workers (clouddeck-{id}).
+# Canonical Supervisor program name matches production workers (uplary-{id}).
 # Legacy Uplary-{id} programs are stopped/removed on sync so status and deploy stay aligned.
-PROGRAM="clouddeck-${ID}"
+PROGRAM="uplary-${ID}"
 LEGACY_PROGRAM="Uplary-${ID}"
 FILE="/etc/supervisor/conf.d/${PROGRAM}.conf"
 LEGACY_FILE="/etc/supervisor/conf.d/${LEGACY_PROGRAM}.conf"
-PROXY="/etc/nginx/clouddeck/${DOMAIN}-reverb.conf"
+PROXY="/etc/nginx/uplary/${DOMAIN}-reverb.conf"
 VHOST="/etc/nginx/sites-available/${DOMAIN}"
 
 # Reverb is proxied by Nginx on the site's own domain, so the WebSocket shares the site's
@@ -36,16 +36,16 @@ reload_nginx() {
 
 link_proxy_include() {
     [ -f "${VHOST}" ] || return 0
-    grep -q "clouddeck/${DOMAIN}-reverb.conf" "${VHOST}" && return 0
-    cp -a "${VHOST}" "${VHOST}.clouddeck-bak"
+    grep -q "uplary/${DOMAIN}-reverb.conf" "${VHOST}" && return 0
+    cp -a "${VHOST}" "${VHOST}.uplary-bak"
     # Ahead of the first "location /" so the WebSocket routes win over the PHP handler.
-    if ! sed -i "0,/^[[:space:]]*location \/ /s||    include /etc/nginx/clouddeck/${DOMAIN}-reverb.conf*;\n&|" "${VHOST}"; then
-        cp -a "${VHOST}.clouddeck-bak" "${VHOST}"
+    if ! sed -i "0,/^[[:space:]]*location \/ /s||    include /etc/nginx/uplary/${DOMAIN}-reverb.conf*;\n&|" "${VHOST}"; then
+        cp -a "${VHOST}.uplary-bak" "${VHOST}"
         return 1
     fi
-    if ! grep -q "clouddeck/${DOMAIN}-reverb.conf" "${VHOST}"; then
+    if ! grep -q "uplary/${DOMAIN}-reverb.conf" "${VHOST}"; then
         echo "Could not find a location block in ${VHOST} to attach the Reverb proxy to" >&2
-        cp -a "${VHOST}.clouddeck-bak" "${VHOST}"
+        cp -a "${VHOST}.uplary-bak" "${VHOST}"
         return 1
     fi
 }
@@ -59,7 +59,7 @@ if [ "${ENABLED}" = "yes" ]; then
         reverb)
             ARGS="reverb:start --host=127.0.0.1 --port=${PORT}"
             NUMPROCS=1
-            mkdir -p /etc/nginx/clouddeck
+            mkdir -p /etc/nginx/uplary
 cat > "${PROXY}" <<PROXYCONF
 location ~ ^/(app|apps)(/|\$) {
     proxy_pass http://127.0.0.1:${PORT};
@@ -77,7 +77,7 @@ PROXYCONF
             link_proxy_include
             reload_nginx
             # The port is reachable only over the proxy now; drop any rule an older
-            # CloudDeck release opened for it.
+            # uplary release opened for it.
             ufw delete allow "${PORT}/tcp" || true
             ;;
         *)
@@ -102,7 +102,7 @@ killasgroup=true
 user=www-data
 numprocs=${NUMPROCS}
 redirect_stderr=true
-stdout_logfile=/var/log/clouddeck-worker-${ID}.log
+stdout_logfile=/var/log/uplary-worker-${ID}.log
 stopwaitsecs=$((TIMEOUT + 30))
 CONF
 else

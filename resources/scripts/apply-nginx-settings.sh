@@ -13,11 +13,11 @@ SSL_CERTIFICATE_KEY={{SSL_CERTIFICATE_KEY}}
 DOCUMENT_ROOT={{DOCUMENT_ROOT}}
 ROOT="/var/www/${DOMAIN}"
 TARGET="/etc/nginx/sites-available/${DOMAIN}"
-BACKUP="/etc/clouddeck/backups/nginx/${DOMAIN}-$(date +%s)"
-TEMP=$(mktemp /etc/nginx/sites-available/.clouddeck-XXXXXX)
+BACKUP="/etc/uplary/backups/nginx/${DOMAIN}-$(date +%s)"
+TEMP=$(mktemp /etc/nginx/sites-available/.uplary-XXXXXX)
 mkdir -p "$(dirname "$BACKUP")"
 if [ "${PLATFORM}" != "react" ]; then
-    [[ -S "/run/php/clouddeck-${DOMAIN}.sock" ]] || { echo 'Apply PHP pool settings before Nginx settings' >&2; exit 1; }
+    [[ -S "/run/php/uplary-${DOMAIN}.sock" ]] || { echo 'Apply PHP pool settings before Nginx settings' >&2; exit 1; }
 fi
 SERVER_NAMES="$DOMAIN"
 [[ "$INCLUDE_WWW" == "1" ]] && SERVER_NAMES="$DOMAIN www.$DOMAIN"
@@ -93,10 +93,10 @@ server {
 ${FRAME_OPTIONS_HEADER}
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    include /etc/nginx/clouddeck/${DOMAIN}-reverb.conf*;
+    include /etc/nginx/uplary/${DOMAIN}-reverb.conf*;
     location / { try_files \$uri \$uri/ /index.php?\$query_string; }
     location ~ \.php\$ {
-        fastcgi_pass unix:/run/php/clouddeck-${DOMAIN}.sock;
+        fastcgi_pass unix:/run/php/uplary-${DOMAIN}.sock;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;

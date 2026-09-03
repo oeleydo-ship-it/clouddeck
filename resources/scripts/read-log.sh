@@ -13,7 +13,7 @@ case "${SOURCE}" in
     nginx-access) CANDIDATES=("/var/log/nginx/${DOMAIN}.access.log" "/var/log/nginx/access.log") ;;
     php)        CANDIDATES=("/var/log/php${PHP_VERSION}-fpm.log" "/var/log/php-fpm.log") ;;
     supervisor) CANDIDATES=("/var/log/supervisor/supervisord.log") ;;
-    reverb)     CANDIDATES=(/var/log/clouddeck-worker-*.log) ;;
+    reverb)     CANDIDATES=(/var/log/uplary-worker-*.log) ;;
     redis)      CANDIDATES=("/var/log/redis/redis-server.log" "/var/log/redis/redis.log") ;;
     *)
         echo "Unsupported log source: ${SOURCE}" >&2
@@ -32,10 +32,10 @@ done
 if [ -z "${FOUND}" ]; then
     # Not an error worth failing the read over: a site that has never written a Laravel log,
     # or a server with no Reverb worker, simply has nothing here yet.
-    echo "CLOUDDECK_LOG_PATH=none"
+    echo "uplary_LOG_PATH=none"
     echo "No ${SOURCE} log exists on this server yet. Looked for: ${CANDIDATES[*]}"
     exit 0
 fi
 
-echo "CLOUDDECK_LOG_PATH=${FOUND}"
+echo "uplary_LOG_PATH=${FOUND}"
 tail -n "${LINES}" "${FOUND}"

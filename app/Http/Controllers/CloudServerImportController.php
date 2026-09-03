@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Servers\ReconnectServer;
 use App\Cloud\CloudProviderManager;
 use App\Enums\ServerStatus;
 use App\Jobs\Servers\BootstrapServerJob;
@@ -35,6 +36,12 @@ final class CloudServerImportController extends Controller
         }
 
         $imported = $cloudAccount->servers()->whereNotNull('provider_id')->get()->keyBy('provider_id');
+        $removed = Server::onlyTrashed()
+            ->where('user_id', $request->user()->id)
+            ->where('cloud_account_id', $cloudAccount->id)
+            ->whereNotNull('provider_id')
+            ->get()
+            ->keyBy('provider_id');
 
         return Inertia::render('CloudAccounts/Servers', [
             'title' => 'Import servers',
@@ -42,11 +49,12 @@ final class CloudServerImportController extends Controller
             'account' => $cloudAccount,
             'droplets' => $droplets,
             'imported' => $imported,
+            'removed' => $removed,
             'keys' => $request->user()->sshKeys()->whereNotNull('private_key')->latest()->get(),
         ]);
     }
 
-    public function store(Request $request, CloudAccount $cloudAccount, CloudProviderManager $providers, QuotaManager $quotas, AuditLogger $audit): RedirectResponse
+    public function store(Request $request, CloudAccount $cloudAccount, CloudProviderManager $providers, QuotaManager $quotas, AuditLogger $audit, ReconnectServer $reconnect): RedirectResponse
     {
         $this->authorizeAccount($request, $cloudAccount);
         $data = $request->validate([
@@ -56,7 +64,6 @@ final class CloudServerImportController extends Controller
         if ($cloudAccount->servers()->where('provider_id', $data['provider_id'])->exists()) {
             return back()->withErrors(['provider_id' => 'This Droplet is already connected to Uplary.']);
         }
-        $quotas->assertCanCreate($request->user(), 'servers');
 
         try {
             $droplet = $providers->for($cloudAccount)->server($data['provider_id']);
@@ -74,6 +81,32 @@ final class CloudServerImportController extends Controller
         if (! preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $hostname)) {
             $hostname = 'droplet-'.$data['provider_id'];
         }
+
+        $removed = Server::onlyTrashed()
+            ->where('user_id', $request->user()->id)
+            ->where('cloud_account_id', $cloudAccount->id)
+            ->where('provider_id', $data['provider_id'])
+            ->first();
+
+        if ($removed) {
+            $server = DB::transaction(function () use ($reconnect, $removed, $data, $droplet, $publicIp, $hostname): Server {
+                return $reconnect->execute($removed, [
+                    'ssh_key_id' => $data['ssh_key_id'],
+                    'name' => (string) $droplet['name'],
+                    'hostname' => $hostname,
+                    'region' => (string) data_get($droplet, 'region.slug', $removed->region),
+                    'size' => (string) ($droplet['size_slug'] ?? data_get($droplet, 'size.slug', $removed->size)),
+                    'image' => (string) (data_get($droplet, 'image.slug') ?: data_get($droplet, 'image.id', $removed->image)),
+                    'public_ip' => $publicIp,
+                    'metadata' => $removed->metadataWithProvider([...$droplet, 'reconnected_at' => now()->toIso8601String()]),
+                ]);
+            });
+            $audit->record($request, 'server.reconnected', $server, [], ['provider_id' => $server->provider_id, 'cloud_account_id' => $cloudAccount->id]);
+
+            return redirect()->route('servers.manage', $server)->with('status', 'Droplet reconnected. Uplary is verifying SSH and restoring management.');
+        }
+
+        $quotas->assertCanCreate($request->user(), 'servers');
 
         $teamId = $request->user()->currentTeam?->memberships()->where('user_id', $request->user()->id)->whereNotNull('accepted_at')->exists()
             ? $request->user()->current_team_id

@@ -8,7 +8,7 @@ ROOT="/var/www/${DOMAIN}"
 DOC_ABS="${ROOT}/${DOCUMENT_ROOT}"
 PLACEHOLDER="${ROOT}/shared/placeholder"
 NGINX_SITE="/etc/nginx/sites-available/${DOMAIN}"
-BACKUP="/etc/clouddeck/backups/nginx/${DOMAIN}-remove-ssl-$(date +%s)"
+BACKUP="/etc/uplary/backups/nginx/${DOMAIN}-remove-ssl-$(date +%s)"
 
 mkdir -p "$(dirname "${BACKUP}")" "${ROOT}/shared/acme"
 if [ -f "${NGINX_SITE}" ]; then
@@ -17,7 +17,7 @@ fi
 
 # Drop Let's Encrypt and any uploaded custom PEMs for this hostname.
 certbot delete --cert-name "${DOMAIN}" --non-interactive 2>/dev/null || true
-rm -rf "/etc/ssl/clouddeck/${DOMAIN}"
+rm -rf "/etc/ssl/uplary/${DOMAIN}"
 
 if [ -L "${ROOT}/current" ] && [ -d "${DOC_ABS}" ]; then
   NGINX_ROOT="${DOC_ABS}"
@@ -76,12 +76,12 @@ server {
         default_type text/plain;
     }
 
-    include /etc/nginx/clouddeck/${DOMAIN}-reverb.conf*;
+    include /etc/nginx/uplary/${DOMAIN}-reverb.conf*;
     location / { try_files \$uri \$uri/ /index.php?\$query_string; }
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt { access_log off; log_not_found off; }
     location ~ \.php\$ {
-        fastcgi_pass unix:/run/php/clouddeck-${DOMAIN}.sock;
+        fastcgi_pass unix:/run/php/uplary-${DOMAIN}.sock;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;

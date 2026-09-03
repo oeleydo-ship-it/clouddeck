@@ -59,11 +59,11 @@ if [ "${PLATFORM}" != "react" ]; then
     exit 1
   fi
 
-  cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/clouddeck-${DOMAIN}.conf" <<POOL
-[clouddeck-${DOMAIN}]
+  cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/uplary-${DOMAIN}.conf" <<POOL
+[uplary-${DOMAIN}]
 user = www-data
 group = www-data
-listen = /run/php/clouddeck-${DOMAIN}.sock
+listen = /run/php/uplary-${DOMAIN}.sock
 listen.owner = www-data
 listen.group = www-data
 pm = dynamic
@@ -126,12 +126,12 @@ server {
         default_type text/plain;
     }
 
-    include /etc/nginx/clouddeck/${DOMAIN}-reverb.conf*;
+    include /etc/nginx/uplary/${DOMAIN}-reverb.conf*;
     location / { try_files \$uri \$uri/ /index.php?\$query_string; }
     location = /favicon.ico { access_log off; log_not_found off; }
     location = /robots.txt { access_log off; log_not_found off; }
     location ~ \.php\$ {
-        fastcgi_pass unix:/run/php/clouddeck-${DOMAIN}.sock;
+        fastcgi_pass unix:/run/php/uplary-${DOMAIN}.sock;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;
@@ -180,7 +180,7 @@ ensure_https_listener() {
     return
   fi
 
-  CERT_DIR="/etc/ssl/clouddeck/${DOMAIN}"
+  CERT_DIR="/etc/ssl/uplary/${DOMAIN}"
   mkdir -p "${CERT_DIR}"
   if [ ! -f "${CERT_DIR}/fullchain.pem" ]; then
     openssl req -x509 -nodes -days 90 -newkey rsa:2048 \

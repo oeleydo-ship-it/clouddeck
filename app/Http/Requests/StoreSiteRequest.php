@@ -23,7 +23,7 @@ class StoreSiteRequest extends FormRequest
     {
         $this->merge([
             'platform' => $this->input('platform', 'laravel'),
-            'php_version' => $this->input('php_version') ?: config('clouddeck.default_php_version'),
+            'php_version' => $this->input('php_version') ?: config('uplary.default_php_version'),
         ]);
     }
 
@@ -39,11 +39,13 @@ class StoreSiteRequest extends FormRequest
                 'regex:/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/',
                 Rule::unique('sites', 'domain')->where(fn ($query) => $query->where('server_id', $this->input('server_id'))->whereNull('deleted_at')),
             ],
-            'php_version' => ['required', Rule::in(config('clouddeck.php_versions'))],
+            'php_version' => ['required', Rule::in(config('uplary.php_versions'))],
             'platform' => ['required', Rule::in(['laravel', 'wordpress', 'react'])],
             // WordPress is downloaded from wordpress.org rather than cloned, so a repository
             // is required for Laravel and React and meaningless for WordPress.
             'repository_url' => ['required_if:platform,laravel,react', 'nullable', 'string', 'max:2048', new GitRepositoryUrl],
+            'repository_username' => ['nullable', 'string', 'max:255', 'regex:/^[^\r\n]+$/'],
+            'repository_token' => ['nullable', 'string', 'max:2048', 'regex:/^[^\r\n]+$/'],
             'branch' => ['required_if:platform,laravel,react', 'nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
             'auto_deploy' => ['sometimes', 'boolean'],
             'zero_downtime' => ['sometimes', 'boolean'],

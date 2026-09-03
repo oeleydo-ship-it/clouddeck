@@ -23,7 +23,7 @@ sudo -u www-data /usr/local/bin/wp --path="${ROOT}/current" --no-color db export
 tar czf "${ARCHIVE}/wp-content.tar.gz" -C "${SHARED}" wp-content
 gzip -f "${ARCHIVE}/database.sql"
 
-echo "CLOUDDECK_BACKUP_BYTES=$(du -sb "${ARCHIVE}" | cut -f1)"
+echo "uplary_BACKUP_BYTES=$(du -sb "${ARCHIVE}" | cut -f1)"
 
 # Keeping every backup would fill the disk and take the site down with it.
 cd "${BACKUPS}"

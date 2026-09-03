@@ -12,7 +12,7 @@ import { enumValue } from '../../lib/ui';
 const tabs = { monitoring: 'Monitoring', databases: 'Databases', backups: 'Backups', cron: 'Cron', workers: 'Workers', services: 'Services' };
 const phpExtensions = ['intl', 'gd', 'soap', 'xsl', 'ldap', 'imap', 'sqlite3', 'gmp', 'imagick', 'bz2', 'dba'];
 
-export default function Manage({ server, backupDiskOptions, phpMyAdminPort, transferTeams, cronPresets, notificationLinks, copyIpLabel, operations, backupCopy = {} }: any) {
+export default function Manage({ server, backupDiskOptions, phpMyAdminPort, reverbPort, transferTeams, cronPresets, notificationLinks, copyIpLabel, operations, backupCopy = {} }: any) {
     const { branding, flash, features } = usePage<PageProps>().props;
     const tabState = Tabs({ tabs, initial: 'monitoring' });
     const status = enumValue(server.status);
@@ -269,7 +269,7 @@ export default function Manage({ server, backupDiskOptions, phpMyAdminPort, tran
                                         {worker.runtime_status && <p className="mt-1 text-xs">Supervisor: {worker.runtime_status}</p>}
                                     </div>
                                 ))}
-                                <WorkerForm site={site} />
+                                <WorkerForm site={site} reverbPort={reverbPort} />
                             </section>
                         ))}
                         {(server.sites || []).length === 0 && <p className="muted">Add a site before configuring workers.</p>}
@@ -464,8 +464,8 @@ function CronForm({ server, presets }: { server: any; presets: Array<{ label: st
     );
 }
 
-function WorkerForm({ site }: any) {
-    const form = useForm({ name: 'horizon', type: 'horizon', processes: 1, queue: 'default', connection: 'redis', port: 8080, tries: 3, timeout: 90, memory: 256, _tab: 'workers' });
+function WorkerForm({ site, reverbPort }: any) {
+    const form = useForm({ name: 'horizon', type: 'horizon', processes: 1, queue: 'default', connection: 'redis', port: reverbPort || 8080, tries: 3, timeout: 90, memory: 256, _tab: 'workers' });
     return (
         <form onSubmit={(e) => { e.preventDefault(); router.post(route('workers.store', site.id), form.data); }} className="mt-4 grid gap-2">
             <input className="field" placeholder="Name" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} />
@@ -476,7 +476,7 @@ function WorkerForm({ site }: any) {
                     <input className="field" type="number" min={1} max={20} value={form.data.processes} onChange={(e) => form.setData('processes', Number(e.target.value))} />
                 </>
             )}
-            {form.data.type === 'reverb' && <input className="field" type="number" min={1024} max={65535} value={form.data.port} onChange={(e) => form.setData('port', Number(e.target.value))} />}
+            {form.data.type === 'reverb' && <label className="text-xs muted">Listening port<input className="field" type="number" min={1024} max={65535} value={form.data.port} onChange={(e) => form.setData('port', Number(e.target.value))} /><span className="mt-1 block">The next free port on this server is selected automatically.</span></label>}
             <button className="button-secondary text-xs">Add worker</button>
         </form>
     );

@@ -45,7 +45,7 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
             $candidates = [
                 storage_path('app/uplary-horizon-admins.txt'),
                 storage_path('app/Uplary-horizon-admins.txt'),
-                storage_path('app/clouddeck-horizon-admins.txt'),
+                storage_path('app/uplary-horizon-admins.txt'),
             ];
 
             $file = null;
@@ -75,8 +75,8 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
 }
 PHP
     touch storage/app/uplary-horizon-admins.txt
-    touch storage/app/clouddeck-horizon-admins.txt 2>/dev/null || true
-    chown www-data:www-data storage/app/uplary-horizon-admins.txt storage/app/clouddeck-horizon-admins.txt 2>/dev/null || true
+    touch storage/app/uplary-horizon-admins.txt 2>/dev/null || true
+    chown www-data:www-data storage/app/uplary-horizon-admins.txt storage/app/uplary-horizon-admins.txt 2>/dev/null || true
 fi
 
 # A newly required package can register routes, config, or service providers that a stale cache

@@ -8,15 +8,15 @@ POST_MAX_MB={{POST_MAX_MB}}
 MAX_EXECUTION_TIME={{MAX_EXECUTION_TIME}}
 MAX_CHILDREN={{MAX_CHILDREN}}
 DISPLAY_ERRORS={{DISPLAY_ERRORS}}
-TARGET="/etc/php/${PHP_VERSION}/fpm/pool.d/clouddeck-${DOMAIN}.conf"
-BACKUP="/etc/clouddeck/backups/php/clouddeck-${DOMAIN}-$(date +%s).conf"
+TARGET="/etc/php/${PHP_VERSION}/fpm/pool.d/uplary-${DOMAIN}.conf"
+BACKUP="/etc/uplary/backups/php/uplary-${DOMAIN}-$(date +%s).conf"
 TEMP=$(mktemp)
 mkdir -p "$(dirname "$BACKUP")"
 cat > "$TEMP" <<POOL
-[clouddeck-${DOMAIN}]
+[uplary-${DOMAIN}]
 user = www-data
 group = www-data
-listen = /run/php/clouddeck-${DOMAIN}.sock
+listen = /run/php/uplary-${DOMAIN}.sock
 listen.owner = www-data
 listen.group = www-data
 pm = dynamic

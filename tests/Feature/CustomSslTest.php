@@ -69,6 +69,14 @@ class CustomSslTest extends TestCase
         Queue::assertPushed(InstallCustomSslCertificateJob::class);
     }
 
+    public function test_custom_ssl_install_script_avoids_openssl_pkey_modulus(): void
+    {
+        $script = file_get_contents(resource_path('scripts/install-custom-ssl.sh'));
+
+        $this->assertStringNotContainsString('pkey -noout -modulus', $script);
+        $this->assertStringContainsString('-pubout', $script);
+    }
+
     public function test_invalid_custom_pem_is_rejected(): void
     {
         Queue::fake();
@@ -177,8 +185,8 @@ class CustomSslTest extends TestCase
             'status' => 'pending',
         ]);
 
-        $this->assertSame('/etc/ssl/clouddeck/app.example.com/fullchain.pem', $custom->remoteCertificatePath());
-        $this->assertSame('/etc/ssl/clouddeck/app.example.com/privkey.pem', $custom->remotePrivateKeyPath());
+        $this->assertSame('/etc/ssl/uplary/app.example.com/fullchain.pem', $custom->remoteCertificatePath());
+        $this->assertSame('/etc/ssl/uplary/app.example.com/privkey.pem', $custom->remotePrivateKeyPath());
         $this->assertSame('/etc/letsencrypt/live/app.example.com/fullchain.pem', $le->remoteCertificatePath());
     }
 

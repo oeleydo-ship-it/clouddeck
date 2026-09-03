@@ -146,7 +146,7 @@ class WordPressSiteTest extends TestCase
         // https before a certificate exists leaves the browser waiting on a port nothing
         // serves, and http after one arrives drops every visitor back out of TLS.
         $this->assertStringNotContainsString("'https://blog.example.com'", $config);
-        $this->assertStringContainsString('$clouddeck_scheme', $config);
+        $this->assertStringContainsString('$uplary_scheme', $config);
         // The host itself stays fixed so a forged Host header cannot redirect visitors.
         $this->assertStringContainsString("'://' . 'blog.example.com'", $config);
         $this->assertStringNotContainsString('HTTP_HOST', $config);

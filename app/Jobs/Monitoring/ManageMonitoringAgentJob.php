@@ -26,11 +26,11 @@ class ManageMonitoringAgentJob implements ShouldQueue
         $operation->update(['status' => 'running', 'started_at' => now()]);
 
         if ($operation->type === 'monitoring:remove') {
-            $output = $ssh->run($operation->server, 'rm -f /etc/cron.d/clouddeck-monitor /etc/clouddeck-monitor.conf /usr/local/bin/clouddeck-monitor');
+            $output = $ssh->run($operation->server, 'rm -f /etc/cron.d/uplary-monitor /etc/uplary-monitor.conf /usr/local/bin/uplary-monitor /etc/cron.d/clouddeck-monitor /etc/clouddeck-monitor.conf /usr/local/bin/clouddeck-monitor');
         } else {
             $server = $operation->server;
             $output = $ssh->runScript($server, resource_path('scripts/install-monitoring-agent.sh'), [
-                'AGENT_BASE64' => base64_encode((string) file_get_contents(resource_path('scripts/clouddeck-monitor.sh'))),
+                'AGENT_BASE64' => base64_encode((string) file_get_contents(resource_path('scripts/uplary-monitor.sh'))),
                 'APP_URL' => rtrim(config('app.url'), '/'),
                 'SERVER_ID' => $server->id,
                 'SECRET' => $server->monitoring_secret,

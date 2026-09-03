@@ -78,8 +78,8 @@ class PhpVersionSupportTest extends TestCase
         $this->assertStringContainsString('php${ver}-gd', $script);
         $this->assertStringContainsString('update-alternatives --set php', $script);
 
-        $this->assertSame(['8.5', '8.4', '8.3', '8.2'], config('clouddeck.php_versions'));
-        $this->assertSame('8.5', config('clouddeck.default_php_version'));
+        $this->assertSame(['8.5', '8.4', '8.3', '8.2'], config('uplary.php_versions'));
+        $this->assertSame('8.5', config('uplary.default_php_version'));
     }
 
     public function test_provisioning_jobs_pass_default_php_8_5_and_all_managed_versions(): void
@@ -88,8 +88,8 @@ class PhpVersionSupportTest extends TestCase
         $connect = file_get_contents((new \ReflectionClass(ConnectCustomServerJob::class))->getFileName());
 
         foreach ([$bootstrap, $connect] as $source) {
-            $this->assertStringContainsString("config('clouddeck.default_php_version')", $source);
-            $this->assertStringContainsString("config('clouddeck.php_versions')", $source);
+            $this->assertStringContainsString("config('uplary.default_php_version')", $source);
+            $this->assertStringContainsString("config('uplary.php_versions')", $source);
             $this->assertStringNotContainsString("'PHP_VERSION' => '8.4'", $source);
         }
     }

@@ -44,8 +44,8 @@ class ConnectCustomServerJob implements ShouldQueue
         $this->progress($server, 25, 'Connected to Ubuntu '.explode(':', $release)[1]);
 
         $ssh->runScript($server, resource_path('scripts/bootstrap-ubuntu.sh'), [
-            'PHP_VERSION' => config('clouddeck.default_php_version'),
-            'PHP_VERSIONS' => implode(' ', config('clouddeck.php_versions')),
+            'PHP_VERSION' => config('uplary.default_php_version'),
+            'PHP_VERSIONS' => implode(' ', config('uplary.php_versions')),
         ]);
         $this->progress($server, 90, 'Verifying services');
 

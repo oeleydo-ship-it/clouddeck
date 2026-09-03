@@ -520,7 +520,7 @@ class ManagedServersTest extends TestCase
         $sitePayload = fn (string $serverId, string $domain) => [
             'server_id' => $serverId,
             'domain' => $domain,
-            'php_version' => config('clouddeck.php_versions')[0] ?? '8.3',
+            'php_version' => config('uplary.php_versions')[0] ?? '8.3',
             'platform' => 'laravel',
             'repository_url' => 'https://github.com/acme/app.git',
             'branch' => 'main',

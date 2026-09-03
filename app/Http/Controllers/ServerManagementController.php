@@ -45,6 +45,10 @@ class ServerManagementController extends Controller
             'managedHref' => route('servers.managed'),
             'empty' => $servers->total() === 0 ? 'No servers yet' : null,
             'servers' => $servers,
+            'removedServers' => $request->user()->servers()
+                ->onlyTrashed()
+                ->orderByDesc('deleted_at')
+                ->get(['id', 'name', 'hostname', 'public_ip', 'provider_id', 'provisioned_at', 'deleted_at', 'provisioning_source']),
             'summary' => [
                 'total' => $servers->total(),
                 'uptime' => $monitored->isEmpty() ? null : round($reachable / $monitored->count() * 100, 2),
@@ -105,6 +109,7 @@ class ServerManagementController extends Controller
             ],
             'backupDiskOptions' => $ready ? app(\App\Services\BackupStorage::class)->privateDiskOptions() : [],
             'phpMyAdminPort' => $ready ? app(\App\Services\ServerPortRegistry::class)->allocate($server, \App\Services\ServerPortRegistry::PHPMYADMIN_DEFAULT) : null,
+            'reverbPort' => $ready ? app(\App\Services\ServerPortRegistry::class)->allocate($server, \App\Services\ServerPortRegistry::REVERB_DEFAULT) : null,
             'transferTeams' => $ready
                 ? $request->user()->teamMemberships()->with('team')->whereNotNull('accepted_at')->get()->filter(fn ($membership) => $teams->canManage($request->user(), $membership->team))->pluck('team')
                 : [],

@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use RuntimeException;
 use Throwable;
 
 class InstallSslCertificateJob implements ShouldQueue
@@ -37,8 +38,10 @@ class InstallSslCertificateJob implements ShouldQueue
         ]);
         $ssh->runScript($site->server, resource_path('scripts/install-ssl.sh'), ['DOMAIN' => $site->domain, 'EMAIL' => $certificate->user->email, 'REDIRECT' => $certificate->force_https ? 'redirect' : 'no-redirect']);
         $output = $ssh->run($site->server, "openssl x509 -in /etc/letsencrypt/live/{$site->domain}/cert.pem -noout -enddate");
-        $expires = trim(str_replace('notAfter=', '', $output));
-        $certificate->update(['status' => 'active', 'issued_at' => now(), 'expires_at' => Carbon::parse($expires), 'failure_reason' => null]);
+        if (! preg_match('/notAfter=(.+)/', $output, $matches)) {
+            throw new RuntimeException('Unable to read certificate expiry from openssl output.');
+        }
+        $certificate->update(['status' => 'active', 'issued_at' => now(), 'expires_at' => Carbon::parse(trim($matches[1])), 'failure_reason' => null]);
 
         $site->user?->notify(new OperationalEventNotification(
             event: 'ssl_installed',

@@ -86,7 +86,7 @@ class DeployWordPressJob implements ShouldQueue
         }
 
         $finished = now();
-        preg_match('/CLOUDDECK_WP_VERSION=([0-9.]+)/', $result->output(), $version);
+        preg_match('/(?:UPLARY|CLOUDDECK)_WP_VERSION=([0-9.]+)/', $result->output(), $version);
         $deployment->update([
             'status' => DeploymentStatus::Successful,
             'finished_at' => $finished,
@@ -96,7 +96,11 @@ class DeployWordPressJob implements ShouldQueue
             'commit_message' => isset($version[1]) ? 'WordPress '.$version[1] : null,
         ]);
         $site->update(['status' => 'active', 'last_deployed_at' => $finished]);
-        app(QueueSiteSslIssuance::class)->handle($site);
+        try {
+            app(QueueSiteSslIssuance::class)->handle($site);
+        } catch (Throwable $sslException) {
+            report($sslException);
+        }
         $this->log($deployment, 'Deployment completed successfully.');
         // The files are in place; whether the install has been completed is a separate
         // question, and only the database can answer it.

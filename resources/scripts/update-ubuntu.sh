@@ -39,5 +39,5 @@ apt_get -y upgrade
 echo "==> apt-get autoremove -y"
 apt_get -y autoremove
 
-echo "CLOUDDECK_UPDATE_OK=1"
+echo "uplary_UPDATE_OK=1"
 echo "Package updates complete. Reboot separately if a kernel update requires it."

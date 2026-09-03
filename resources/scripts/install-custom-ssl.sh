@@ -4,11 +4,11 @@ DOMAIN={{DOMAIN}}
 REDIRECT={{REDIRECT}}
 FULLCHAIN_BASE64={{FULLCHAIN_BASE64}}
 PRIVKEY_BASE64={{PRIVKEY_BASE64}}
-CERT_DIR="/etc/ssl/clouddeck/${DOMAIN}"
+CERT_DIR="/etc/ssl/uplary/${DOMAIN}"
 FULLCHAIN="${CERT_DIR}/fullchain.pem"
 PRIVKEY="${CERT_DIR}/privkey.pem"
 TARGET="/etc/nginx/sites-available/${DOMAIN}"
-BACKUP="/etc/clouddeck/backups/nginx/${DOMAIN}-custom-ssl-$(date +%s)"
+BACKUP="/etc/uplary/backups/nginx/${DOMAIN}-custom-ssl-$(date +%s)"
 
 mkdir -p "${CERT_DIR}" "$(dirname "$BACKUP")"
 printf '%s' "${FULLCHAIN_BASE64}" | base64 -d > "${FULLCHAIN}"
@@ -18,14 +18,13 @@ chmod 600 "${PRIVKEY}"
 
 openssl x509 -in "${FULLCHAIN}" -noout -subject >/dev/null
 openssl pkey -in "${PRIVKEY}" -check -noout >/dev/null
-openssl x509 -noout -modulus -in "${FULLCHAIN}" | openssl md5 >/tmp/clouddeck-ssl-cert.mod
-openssl pkey -noout -modulus -in "${PRIVKEY}" | openssl md5 >/tmp/clouddeck-ssl-key.mod
-cmp -s /tmp/clouddeck-ssl-cert.mod /tmp/clouddeck-ssl-key.mod || {
-    rm -f /tmp/clouddeck-ssl-cert.mod /tmp/clouddeck-ssl-key.mod
+# openssl pkey has no -modulus on OpenSSL 3.x (Ubuntu 24.04); compare public keys instead.
+cert_pubkey_hash="$(openssl x509 -in "${FULLCHAIN}" -noout -pubkey | openssl md5 | awk '{print $NF}')"
+key_pubkey_hash="$(openssl pkey -in "${PRIVKEY}" -pubout | openssl md5 | awk '{print $NF}')"
+if [[ "${cert_pubkey_hash}" != "${key_pubkey_hash}" ]]; then
     echo 'Certificate and private key do not match' >&2
     exit 1
-}
-rm -f /tmp/clouddeck-ssl-cert.mod /tmp/clouddeck-ssl-key.mod
+fi
 
 [[ -f "$TARGET" ]] || { echo "Nginx site config missing for ${DOMAIN}" >&2; exit 1; }
 cp -a "$TARGET" "$BACKUP"

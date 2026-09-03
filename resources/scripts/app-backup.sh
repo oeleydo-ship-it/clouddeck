@@ -68,6 +68,6 @@ tar -C "${STAGING}" -czf "${ARCHIVE}" .
 BYTES="$(wc -c < "${ARCHIVE}" | tr -d ' ')"
 rm -rf "${STAGING}"
 
-echo "CLOUDDECK_ARCHIVE_PATH=${ARCHIVE}"
-echo "CLOUDDECK_BACKUP_BYTES=${BYTES}"
+echo "uplary_ARCHIVE_PATH=${ARCHIVE}"
+echo "uplary_BACKUP_BYTES=${BYTES}"
 echo "Full application backup ${BACKUP_ID} ready"

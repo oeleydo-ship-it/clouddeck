@@ -15,6 +15,8 @@ class Site extends Model
 
     protected $guarded = [];
 
+    protected $hidden = ['repository_token'];
+
     /**
      * Announced from the model rather than from the jobs that move a site between
      * configuring, active, and failed, so every writer is covered — including any added
@@ -42,6 +44,7 @@ class Site extends Model
             'auto_deploy' => 'boolean',
             'zero_downtime' => 'boolean',
             'webhook_secret' => 'encrypted',
+            'repository_token' => 'encrypted',
             'last_deployed_at' => 'datetime',
             'queue_checked_at' => 'datetime',
             'wordpress_installed_at' => 'datetime',

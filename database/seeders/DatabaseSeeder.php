@@ -37,9 +37,9 @@ class DatabaseSeeder extends Seeder
             );
 
             SystemSetting::updateOrCreate(['key' => 'email_verification_required'], ['value' => '0', 'type' => 'boolean', 'is_public' => true]);
-            $admin = User::updateOrCreate(['email' => config('clouddeck.development_admin.email')], [
-                'name' => 'CloudDeck Administrator',
-                'password' => Hash::make(config('clouddeck.development_admin.password')),
+            $admin = User::updateOrCreate(['email' => config('uplary.development_admin.email')], [
+                'name' => 'Uplary Administrator',
+                'password' => Hash::make(config('uplary.development_admin.password')),
                 'email_verified_at' => now(),
             ]);
             $admin->forceFill(['role' => 'super_admin'])->save();
