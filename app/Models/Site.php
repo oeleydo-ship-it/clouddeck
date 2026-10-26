@@ -43,6 +43,7 @@ class Site extends Model
         return [
             'auto_deploy' => 'boolean',
             'zero_downtime' => 'boolean',
+            'multisite_origin' => 'boolean',
             'webhook_secret' => 'encrypted',
             'repository_token' => 'encrypted',
             'last_deployed_at' => 'datetime',

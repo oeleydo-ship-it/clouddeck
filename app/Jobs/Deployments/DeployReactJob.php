@@ -8,6 +8,7 @@ use App\Events\DeploymentFinished;
 use App\Events\DeploymentLogAppended;
 use App\Jobs\Concerns\BroadcastsQuietly;
 use App\Models\Deployment;
+use App\Ssh\SshClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,7 +27,7 @@ class DeployReactJob implements ShouldQueue
 
     public function __construct(public readonly string $deploymentId) {}
 
-    public function handle(\App\Ssh\SshClient $ssh): void
+    public function handle(SshClient $ssh): void
     {
         $deployment = Deployment::with(['site.server.sshKey', 'site.environmentVariables'])->findOrFail($this->deploymentId);
 
@@ -46,6 +47,7 @@ class DeployReactJob implements ShouldQueue
             'PHP_VERSION' => $deployment->site->php_version,
             'DOCUMENT_ROOT' => $deployment->site->documentRoot(),
             'PLATFORM' => 'react',
+            'MULTISITE_ORIGIN' => $deployment->site->multisite_origin ? '1' : '0',
         ]);
 
         $result = $ssh->runScriptStreaming($deployment->site->server, resource_path('scripts/deploy-react.sh'), [

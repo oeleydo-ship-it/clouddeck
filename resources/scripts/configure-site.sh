@@ -4,6 +4,7 @@ DOMAIN={{DOMAIN}}
 PHP_VERSION={{PHP_VERSION}}
 DOCUMENT_ROOT={{DOCUMENT_ROOT}}
 PLATFORM={{PLATFORM}}
+MULTISITE_ORIGIN={{MULTISITE_ORIGIN}}
 ROOT="/var/www/${DOMAIN}"
 # Never mkdir under current/: that path must stay free for a release symlink.
 # A real current/ directory makes `mv -T current.next current` fail with
@@ -59,7 +60,24 @@ if [ "${PLATFORM}" != "react" ]; then
     exit 1
   fi
 
-  cat > "/etc/php/${PHP_VERSION}/fpm/pool.d/uplary-${DOMAIN}.conf" <<POOL
+  TARGET_POOL="/etc/php/${PHP_VERSION}/fpm/pool.d/uplary-${DOMAIN}.conf"
+
+  # A PHP-version change used to leave the site's old pool behind. Both FPM masters
+  # would then claim the same per-site socket and the newly selected version could not
+  # start. Remove the stale pool and reload its owner before creating the new one.
+  for pool in /etc/php/*/fpm/pool.d/uplary-"${DOMAIN}".conf; do
+    if [ ! -e "${pool}" ] || [ "${pool}" = "${TARGET_POOL}" ]; then
+      continue
+    fi
+    old_version="${pool#/etc/php/}"
+    old_version="${old_version%%/*}"
+    rm -f "${pool}"
+    if systemctl is-active --quiet "php${old_version}-fpm"; then
+      systemctl reload "php${old_version}-fpm"
+    fi
+  done
+
+  cat > "${TARGET_POOL}" <<POOL
 [uplary-${DOMAIN}]
 user = www-data
 group = www-data
@@ -73,7 +91,10 @@ pm.min_spare_servers = 1
 pm.max_spare_servers = 3
 POOL
   "php-fpm${PHP_VERSION}" -t
-  systemctl reload "php${PHP_VERSION}-fpm"
+  # The package can remain installed while the service is stopped after a reboot or
+  # manual operation. reload refuses to start an inactive unit and blocks every retry.
+  systemctl enable "php${PHP_VERSION}-fpm"
+  systemctl reload-or-restart "php${PHP_VERSION}-fpm"
 fi
 
 write_http_vhost() {
@@ -219,6 +240,94 @@ ensure_https_listener() {
 }
 
 ensure_https_listener
+
+# A multisite application resolves tenants from the incoming Host header. Its fallback
+# vhost therefore catches only hostnames without an explicit Nginx server_name; normal
+# Uplary sites on the same server always keep priority. The marker prevents disabling a
+# different site's catch-all when an older job is retried.
+configure_multisite_origin() {
+  MULTISITE_SITE="/etc/nginx/sites-available/uplary-multisite-origin"
+  MULTISITE_LINK="/etc/nginx/sites-enabled/00-uplary-multisite-origin"
+  MARKER="# UPLARY_MULTISITE_ORIGIN=${DOMAIN}"
+
+  if [ "${MULTISITE_ORIGIN}" != "1" ]; then
+    if [ -f "${MULTISITE_SITE}" ] && grep -Fqx "${MARKER}" "${MULTISITE_SITE}"; then
+      rm -f "${MULTISITE_LINK}" "${MULTISITE_SITE}"
+      echo "Removed the multisite origin for ${DOMAIN}"
+    fi
+    return
+  fi
+
+  if [ "${PLATFORM}" != "laravel" ]; then
+    echo "A multisite origin must be a Laravel site." >&2
+    exit 1
+  fi
+
+  CERT_DIR="/etc/ssl/uplary/${DOMAIN}"
+  mkdir -p "${CERT_DIR}"
+  if [ ! -f "${CERT_DIR}/fullchain.pem" ] || [ ! -f "${CERT_DIR}/privkey.pem" ]; then
+    openssl req -x509 -nodes -days 90 -newkey rsa:2048 \
+      -keyout "${CERT_DIR}/privkey.pem" \
+      -out "${CERT_DIR}/fullchain.pem" \
+      -subj "/CN=${DOMAIN}" >/dev/null 2>&1
+    chmod 644 "${CERT_DIR}/fullchain.pem"
+    chmod 600 "${CERT_DIR}/privkey.pem"
+  fi
+
+  MULTISITE_ROOT="/var/www/${DOMAIN}/${DOCUMENT_ROOT}"
+  TMP="${MULTISITE_SITE}.tmp"
+  cat > "${TMP}" <<NGINX
+${MARKER}
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+    root ${MULTISITE_ROOT};
+    index index.php index.html;
+    charset utf-8;
+    client_max_body_size 100M;
+
+    location / { try_files \$uri \$uri/ /index.php?\$query_string; }
+    location ~ \.php\$ {
+        fastcgi_pass unix:/run/php/uplary-${DOMAIN}.sock;
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+    location ~ /\.(?!well-known).* { deny all; }
+    access_log /var/log/nginx/${DOMAIN}.multisite.access.log;
+    error_log /var/log/nginx/${DOMAIN}.multisite.error.log;
+}
+
+server {
+    listen 443 ssl default_server;
+    listen [::]:443 ssl default_server;
+    server_name _;
+    root ${MULTISITE_ROOT};
+    index index.php index.html;
+    charset utf-8;
+    client_max_body_size 100M;
+    ssl_certificate ${CERT_DIR}/fullchain.pem;
+    ssl_certificate_key ${CERT_DIR}/privkey.pem;
+
+    location / { try_files \$uri \$uri/ /index.php?\$query_string; }
+    location ~ \.php\$ {
+        fastcgi_pass unix:/run/php/uplary-${DOMAIN}.sock;
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+    location ~ /\.(?!well-known).* { deny all; }
+    access_log /var/log/nginx/${DOMAIN}.multisite.access.log;
+    error_log /var/log/nginx/${DOMAIN}.multisite.error.log;
+}
+NGINX
+  mv "${TMP}" "${MULTISITE_SITE}"
+  ln -sfn "${MULTISITE_SITE}" "${MULTISITE_LINK}"
+  echo "Configured ${DOMAIN} as the multisite origin"
+}
+
+configure_multisite_origin
 
 nginx -t
 systemctl reload nginx

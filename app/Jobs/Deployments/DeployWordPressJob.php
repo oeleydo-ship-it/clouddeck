@@ -64,6 +64,7 @@ class DeployWordPressJob implements ShouldQueue
             'PHP_VERSION' => $site->php_version,
             'DOCUMENT_ROOT' => $site->documentRoot(),
             'PLATFORM' => $site->platform ?: 'wordpress',
+            'MULTISITE_ORIGIN' => $site->multisite_origin ? '1' : '0',
         ]);
 
         $result = $ssh->runScriptStreaming($site->server, resource_path('scripts/deploy-wordpress.sh'), [

@@ -26,7 +26,7 @@ function ServerRowMenu({ serverId, open, onToggle, onClose }: { serverId: string
     );
 }
 
-export default function Index({ servers, summary, empty, provisionLabel, managedLabel, managedHref, removedServers = [] }: { servers: any; summary: { total: number; uptime: number | null; cpu: number | null; alerts: number }; empty?: string | null; provisionLabel?: string; managedLabel?: string; managedHref?: string; removedServers?: Array<{ id: string; name: string; public_ip: string; hostname: string; provisioned_at?: string | null }> }) {
+export default function Index({ servers, summary, empty, provisionLabel, managedLabel, managedHref }: { servers: any; summary: { total: number; uptime: number | null; cpu: number | null; alerts: number }; empty?: string | null; provisionLabel?: string; managedLabel?: string; managedHref?: string }) {
     const { managedServersReady, features } = usePage<PageProps>().props;
     const rows = items<any>(servers);
     const active = rows.some((server) => ! ['ready', 'failed', 'active'].includes(enumValue(server.status)));
@@ -64,20 +64,6 @@ export default function Index({ servers, summary, empty, provisionLabel, managed
                     </div>
                 </header>
                 <Flash />
-                {removedServers.length > 0 && (
-                    <div className="flash-warning mt-6">
-                        <p className="font-medium">Removed servers still running?</p>
-                        <p className="mt-1 text-sm">These hosts were removed from Uplary but can be reconnected if the machine is still up.</p>
-                        <div className="mt-4 space-y-2">
-                            {removedServers.map((server) => (
-                                <div key={server.id} className="flex flex-wrap items-center justify-between gap-3">
-                                    <span className="text-sm"><strong>{server.name}</strong> · {server.public_ip}</span>
-                                    <Link href={route('servers.custom')} className="button-secondary !min-h-8 !px-3 !py-1.5 text-xs">Reconnect</Link>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
                 <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
                     {[['Total', summary.total], ['Uptime', summary.uptime == null ? '—' : `${summary.uptime}%`], ['CPU', summary.cpu == null ? '—' : `${summary.cpu}%`], ['Alerts', summary.alerts]].map(([label, value]) => (
                         <div key={String(label)} className="stat-card h-full"><p className="stat-label">{label}</p><p className="stat-value mt-2">{value}</p></div>

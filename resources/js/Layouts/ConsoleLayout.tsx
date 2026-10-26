@@ -239,21 +239,17 @@ export default function ConsoleLayout({ children, crumb }: PropsWithChildren<{ c
                         <button type="button" onClick={() => setNav(true)} className="icon-button lg:hidden" aria-label="Open navigation">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-5"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
                         </button>
-                        <nav className="hidden min-w-0 items-center sm:flex" aria-label="Breadcrumb">
-                            <Link href={route('dashboard')} className="breadcrumb hover:text-slate-700 dark:hover:text-zinc-200">Home</Link>
-                            <span className="breadcrumb-sep mx-2 text-xs">/</span>
-                            <span className="breadcrumb breadcrumb-current truncate">{displayCrumb}</span>
-                        </nav>
-                    </div>
-                    <div className="flex items-center gap-1.5 sm:gap-2">
                         <div ref={searchWrapRef} className="relative hidden md:block">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-slate-400 dark:text-zinc-500"><circle cx="11" cy="11" r="7" /><path d="m20 20-3-3" /></svg>
-                            <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} className="search-input w-52 lg:w-64" placeholder="Search sites, servers…" onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) window.location.href = results[0].href; }} />
+                            <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} className="search-input w-64 lg:w-72" placeholder="Search anything..." onKeyDown={(e) => { if (e.key === 'Enter' && results[0]) window.location.href = results[0].href; }} />
                             <kbd className="search-kbd">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
                             <MenuPopover open={results.length > 0} anchor={searchWrapRef} onClose={() => setQ('')} matchWidth>
                                 {results.map((item) => <Link key={item.href} href={item.href} className="menu-item" onClick={() => setQ('')}>{item.label}</Link>)}
                             </MenuPopover>
                         </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                        {! inAdmin && <Link href={route('sites.create')} className="button-primary hidden sm:inline-flex"><span className="text-base leading-none">+</span> New deploy</Link>}
                         <div className="relative">
                             <button ref={alertsBtnRef} type="button" onClick={() => { setAlertsOpen(! alertsOpen); setMenu(false); }} className="icon-button relative" aria-label="Notifications" aria-expanded={alertsOpen}>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4.5"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /></svg>

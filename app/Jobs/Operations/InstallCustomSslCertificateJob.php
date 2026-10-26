@@ -41,6 +41,7 @@ class InstallCustomSslCertificateJob implements ShouldQueue
             'PHP_VERSION' => $site->php_version,
             'DOCUMENT_ROOT' => $site->documentRoot(),
             'PLATFORM' => $site->platform ?: 'laravel',
+            'MULTISITE_ORIGIN' => $site->multisite_origin ? '1' : '0',
         ]);
 
         $output = $ssh->runScript($certificate->site->server, resource_path('scripts/install-custom-ssl.sh'), [

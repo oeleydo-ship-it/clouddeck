@@ -260,6 +260,32 @@ class ActiveTabPersistenceTest extends TestCase
             ->assertSessionHas('status');
     }
 
+    public function test_only_one_multisite_origin_can_be_enabled_per_server(): void
+    {
+        [$user, $server, $site] = $this->infrastructure();
+        $existing = Site::create([
+            'user_id' => $user->id,
+            'server_id' => $server->id,
+            'domain' => 'old-origin.example.com',
+            'platform' => 'laravel',
+            'php_version' => '8.4',
+            'repository_url' => 'https://github.com/acme/old.git',
+            'branch' => 'main',
+            'status' => 'active',
+            'multisite_origin' => true,
+        ]);
+
+        $this->actingAs($user)->patch(route('sites.update', $site), [
+            'repository_url' => $site->repository_url,
+            'branch' => $site->branch,
+            'php_version' => $site->php_version,
+            'multisite_origin' => true,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertTrue($site->fresh()->multisite_origin);
+        $this->assertFalse($existing->fresh()->multisite_origin);
+    }
+
     private function infrastructure(): array
     {
         $user = User::factory()->create(['email_verified_at' => now()]);

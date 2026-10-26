@@ -14,20 +14,19 @@
 /* Uplary / Clouddeck tokens. Console follows a 2026 hosting-PaaS density
    (Linear / Vercel / Railway); marketing keeps more display hierarchy. */
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif, 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-    --font-display: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-sans: 'Cascadia Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', ui-monospace, monospace;
+    --font-display: 'Cascadia Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', ui-monospace, monospace;
 
-    --color-surface: #f6f5f2;
-    --color-surface-container: #eceae4;
-    --color-primary: #0058bc;
-    --color-primary-container: #0070eb;
-    --color-secondary-container: #00d2fd;
-    --color-outline-variant: #d4d0c8;
+    --color-surface: #f4f8f6;
+    --color-surface-container: #eaf1ee;
+    --color-primary: #008b52;
+    --color-primary-container: #009e5c;
+    --color-secondary-container: #dff5e9;
+    --color-outline-variant: #d3ded9;
     --color-inverse-surface: #18181b;
 
-    --radius-card: 1rem;
-    --radius-control: 0.625rem;
+    --radius-card: 0.75rem;
+    --radius-control: 0.5rem;
 
     --spacing-gutter: 24px;
     --spacing-margin-x: 40px;
@@ -61,7 +60,7 @@
 
 @layer base {
     body {
-        @apply bg-[#f6f5f2] font-sans text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
+        @apply bg-[#f4f8f6] font-sans text-slate-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
         font-size: var(--text-body);
         line-height: 1.5;
     }
@@ -667,6 +666,286 @@
 }
 @media (max-width: 1023px) {
     .app-sidebar { width: 240px; }
+}
+
+/* ---- Signal-inspired console skin ------------------------------------- */
+.console-body {
+    background: #f4f8f6;
+    color: #101814;
+    font-family: var(--font-sans);
+    letter-spacing: -0.025em;
+}
+.console-body .app-sidebar {
+    width: 252px;
+    background: #00100a;
+    border-right-color: #10251b;
+    padding: 16px 10px 12px;
+}
+.console-body .app-content { margin-left: 252px; }
+.console-body .sidebar-brand { gap: 11px; }
+.console-body .sidebar-brand-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #00a866 !important;
+}
+.console-body .sidebar-brand-name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+}
+.console-body .sidebar-brand-subtitle {
+    color: #587065;
+    font-size: 9px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+}
+.console-body .sidebar-section-label {
+    color: #486057;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .11em;
+    padding: 13px 10px 5px;
+}
+.console-body .side-link,
+.console-body .side-mini-link {
+    min-height: 35px;
+    border-radius: 7px;
+    color: #8da097;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 10px;
+}
+.console-body .side-link:hover,
+.console-body .side-mini-link:hover { background: #071d13; color: #d7e2dc; }
+.console-body .side-link-active {
+    background: #082218;
+    color: #00cf7b;
+    box-shadow: none;
+}
+.console-body .side-link-active::before { display: none; }
+.console-body .side-link-active svg { color: #00cf7b; }
+.console-body .app-topbar {
+    height: 62px;
+    padding: 0 24px;
+    border-bottom: 1px solid #dbe4e0;
+    background: rgba(244, 248, 246, .92);
+    backdrop-filter: blur(16px);
+}
+.console-body .app-main {
+    max-width: none;
+    padding: 25px 24px 42px;
+}
+.console-body .search-input {
+    height: 36px;
+    border-color: #d8e2de;
+    background: #f7faf8;
+    color: #1b2a23;
+    box-shadow: 0 1px 2px rgb(0 28 16 / .02);
+}
+.console-body .search-input:focus {
+    border-color: #00a866;
+    box-shadow: 0 0 0 2px rgb(0 168 102 / .11);
+}
+.console-body .button-primary {
+    min-height: 33px;
+    border-radius: 6px;
+    background: #009e5c;
+    color: white;
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 700;
+}
+.console-body .button-primary:hover { background: #007f4a; box-shadow: none; }
+.console-body .button-secondary {
+    min-height: 33px;
+    border-radius: 6px;
+    border-color: #d5dfdb;
+    background: #f9fbfa;
+    color: #304039;
+    font-size: 12px;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgb(0 28 16 / .03);
+}
+.console-body .icon-button { border-radius: 6px; }
+.console-body .page-title {
+    color: #07130d;
+    font-size: 23px;
+    font-weight: 700;
+    letter-spacing: -0.045em;
+}
+.console-body .page-subtitle {
+    color: #63756c;
+    font-size: 12px;
+    letter-spacing: -.01em;
+}
+.console-body .section-title {
+    color: #0a1710;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -.035em;
+}
+.console-body .panel,
+.console-body .panel-flush,
+.console-body .stat-card {
+    border: 1px solid #d6e0dc;
+    border-radius: 11px;
+    background: #fbfdfc;
+    box-shadow: 0 1px 2px rgb(0 25 14 / .06), 0 5px 14px rgb(0 25 14 / .025);
+}
+.console-body .stat-card { padding: 16px 17px; }
+.console-body .stat-card:hover {
+    border-color: #9bcdb5;
+    box-shadow: 0 3px 12px rgb(0 83 47 / .08);
+}
+.console-body .stat-label {
+    color: #64776e;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .055em;
+}
+.console-body .stat-value {
+    color: #08150f;
+    font-size: 26px;
+    font-weight: 700;
+}
+.console-body .badge {
+    border-radius: 5px;
+    padding: 3px 7px;
+    font-size: 10px;
+    font-weight: 700;
+}
+.console-body .badge-success { background: #00a83f; color: white; }
+.console-body .badge-warning { background: #f2a000; color: #261800; }
+.console-body .badge-danger { background: #ed142e; color: white; }
+.console-body .badge-info { background: #dff5e9; color: #007443; }
+.console-body .badge-neutral { background: #eaf0ed; color: #56685f; }
+.console-body .link-action,
+.console-body a.text-sky-600 { color: #008b52 !important; }
+.console-body .tab-item-active { border-color: #00a866; color: #07130d; }
+.console-body .meter-fill { background: #00a866; }
+
+.dashboard-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+}
+.dashboard-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 23px;
+}
+.dashboard-stat-icon,
+.server-glyph {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    border-radius: 7px;
+    background: #e1f5ea;
+    color: #00965a;
+}
+.dashboard-stat-icon svg,
+.server-glyph svg { width: 17px; height: 17px; }
+.dashboard-stat-icon-danger { background: #fee8eb; color: #d91831; }
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.45fr) minmax(290px, .72fr);
+    gap: 14px;
+    margin-top: 14px;
+    align-items: start;
+}
+.dashboard-fleet,
+.dashboard-deployments { padding: 0 !important; overflow: hidden; }
+.dashboard-health,
+.dashboard-plan { padding: 0 !important; }
+.dashboard-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 66px;
+    gap: 16px;
+    padding: 14px 17px;
+    border-bottom: 1px solid #e2e9e6;
+}
+.server-fleet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+}
+.server-fleet-card {
+    display: block;
+    min-width: 0;
+    border: 1px solid #dce5e1;
+    border-radius: 9px;
+    background: #fff;
+    padding: 13px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.server-fleet-card:hover { border-color: #91c9ad; box-shadow: 0 3px 10px rgb(0 80 44 / .07); }
+.metric-row { padding: 13px 17px 0; color: #1a2b22; font-size: 12px; }
+.metric-row:last-child { padding-bottom: 17px; }
+.metric-track { height: 6px; margin-top: 8px; overflow: hidden; border-radius: 99px; background: #e3ece8; }
+.metric-track span { display: block; height: 100%; border-radius: inherit; background: #00a84f; }
+.deployment-list { padding: 0 13px 12px; }
+.deployment-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 59px;
+    border-bottom: 1px solid #e6ece9;
+    padding: 10px 4px;
+    font-size: 12px;
+}
+.deployment-row:last-child { border-bottom: 0; }
+.deployment-dot { width: 8px; height: 8px; flex: 0 0 auto; border-radius: 50%; background: #8da098; }
+.deployment-dot-successful,
+.deployment-dot-running { background: #00a84f; }
+.deployment-dot-failed { background: #ed142e; }
+.deployment-dot-pending { background: #f2a000; }
+.dashboard-plan > :not(.dashboard-panel-head) { margin-left: 17px; margin-right: 17px; }
+.dashboard-plan { padding-bottom: 17px !important; }
+
+.dark .console-body { background: #07100c; color: #e6eee9; }
+.dark .console-body .app-topbar { background: rgba(7, 16, 12, .92); border-color: #1d3027; }
+.dark .console-body .panel,
+.dark .console-body .panel-flush,
+.dark .console-body .stat-card,
+.dark .console-body .server-fleet-card { background: #0d1913; border-color: #26382f; }
+.dark .console-body .page-title,
+.dark .console-body .section-title,
+.dark .console-body .stat-value { color: #f1f7f3; }
+.dark .console-body .tab-item-active {
+    border-color: #00cf7b;
+    color: #f3fff8;
+}
+.dark .console-body .tab-item-idle {
+    color: #9aafa4;
+}
+.dark .console-body .tab-item-idle:hover {
+    color: #e8f3ed;
+}
+.dark .console-body .dashboard-panel-head,
+.dark .console-body .deployment-row { border-color: #22342b; }
+
+@media (max-width: 1100px) {
+    .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dashboard-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 1023px) {
+    .console-body .app-content { margin-left: 0; }
+}
+@media (max-width: 700px) {
+    .dashboard-heading { align-items: flex-start; flex-direction: column; }
+    .dashboard-actions { justify-content: flex-start; }
+    .dashboard-stats,
+    .server-fleet-grid { grid-template-columns: 1fr; }
+    .console-body .app-main { padding: 20px 14px 34px; }
 }
 
 /* ---- Documentation (markdown) ----------------------------------------- */

@@ -33,6 +33,36 @@ class SiteVhostSslTest extends TestCase
         $this->assertStringContainsString('/etc/ssl/uplary/${DOMAIN}', $script);
     }
 
+    public function test_configure_site_starts_php_fpm_when_the_installed_service_is_inactive(): void
+    {
+        $script = file_get_contents(resource_path('scripts/configure-site.sh'));
+
+        $this->assertStringContainsString('systemctl enable "php${PHP_VERSION}-fpm"', $script);
+        $this->assertStringContainsString('systemctl reload-or-restart "php${PHP_VERSION}-fpm"', $script);
+        $this->assertStringNotContainsString('systemctl reload "php${PHP_VERSION}-fpm"', $script);
+    }
+
+    public function test_configure_site_removes_a_stale_pool_after_changing_php_versions(): void
+    {
+        $script = file_get_contents(resource_path('scripts/configure-site.sh'));
+
+        $this->assertStringContainsString('for pool in /etc/php/*/fpm/pool.d/uplary-"${DOMAIN}".conf', $script);
+        $this->assertStringContainsString('rm -f "${pool}"', $script);
+        $this->assertStringContainsString('systemctl reload "php${old_version}-fpm"', $script);
+    }
+
+    public function test_configure_site_can_install_a_host_preserving_multisite_fallback(): void
+    {
+        $script = file_get_contents(resource_path('scripts/configure-site.sh'));
+
+        $this->assertStringContainsString('# UPLARY_MULTISITE_ORIGIN=${DOMAIN}', $script);
+        $this->assertStringContainsString('listen 80 default_server', $script);
+        $this->assertStringContainsString('listen 443 ssl default_server', $script);
+        $this->assertStringContainsString('root ${MULTISITE_ROOT}', $script);
+        $this->assertStringContainsString('fastcgi_pass unix:/run/php/uplary-${DOMAIN}.sock', $script);
+        $this->assertStringContainsString('grep -Fqx "${MARKER}"', $script);
+    }
+
     public function test_configure_site_job_queues_lets_encrypt_issuance(): void
     {
         Queue::fake();

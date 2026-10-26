@@ -110,6 +110,13 @@ final class SshClient
 
     private function script(string $path, array $env): string
     {
+        // Keep configure-site compatible with workers that were started before the
+        // multisite option existed. A normal site is never a catch-all unless its caller
+        // explicitly opts in with 1.
+        if (basename($path) === 'configure-site.sh') {
+            $env += ['MULTISITE_ORIGIN' => '0'];
+        }
+
         $script = file_get_contents($path);
         foreach ($env as $key => $value) {
             $script = str_replace("{{{$key}}}", escapeshellarg((string) $value), $script);
@@ -162,16 +169,43 @@ final class SshClient
             return;
         }
 
-        $identity = trim(Process::run(['whoami'])->output());
+        $identity = $this->windowsIdentity();
         if ($identity === '') {
             throw new RuntimeException('Unable to determine the Windows account used by the SSH worker.');
         }
 
         // Modify, not read-only: OpenSSH only requires that no other account has access, and a
         // read-only grant leaves the key file undeletable, stranding private keys on disk.
-        $acl = Process::run(['icacls', $path, '/inheritance:r', '/grant:r', "{$identity}:(M)"]);
+        $acl = Process::run([$this->windowsSystemExecutable('icacls.exe'), $path, '/inheritance:r', '/grant:r', "{$identity}:(M)"]);
         if ($acl->failed()) {
             throw new RuntimeException('Unable to secure the temporary SSH private key: '.$acl->errorOutput());
         }
+    }
+
+    private function windowsIdentity(): string
+    {
+        // Queue workers started by service managers can inherit a minimal PATH. Try the
+        // ordinary command first for compatibility, then its absolute Windows location.
+        foreach ([['whoami'], [$this->windowsSystemExecutable('whoami.exe')]] as $command) {
+            $result = Process::run($command);
+            $identity = trim($result->output());
+            if ($result->successful() && $identity !== '') {
+                return $identity;
+            }
+        }
+
+        // USERDOMAIN and USERNAME are populated for normal interactive and service
+        // accounts even when a process cannot resolve or execute whoami.exe.
+        $username = trim((string) getenv('USERNAME'));
+        $domain = trim((string) getenv('USERDOMAIN'));
+
+        return $username === '' ? '' : ($domain === '' ? $username : "{$domain}\\{$username}");
+    }
+
+    private function windowsSystemExecutable(string $name): string
+    {
+        $windows = rtrim((string) (getenv('SystemRoot') ?: getenv('WINDIR') ?: 'C:\\Windows'), '\\/');
+
+        return $windows.'\\System32\\'.$name;
     }
 }

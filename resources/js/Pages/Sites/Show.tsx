@@ -13,6 +13,7 @@ import { enumValue, items } from '../../lib/ui';
 type Meta = {
     is_react: boolean; is_wordpress: boolean; is_laravel: boolean; uses_php: boolean; platform_label: string;
     is_staging: boolean; is_production: boolean; wordpress_installed: boolean; has_database: boolean; secure: boolean;
+    deployment_in_progress: boolean;
     php_versions: string[]; scheduler_command: string; webhook_url: string; visit_url: string;
     deploy_action: string; database_notice: string | null; visit_label: string;
 };
@@ -89,7 +90,7 @@ export default function Show({ site, meta, tabs, logSources, stagingSitesEnabled
                                 <button className="button-secondary !text-amber-700" disabled={site.status !== 'active'}>Promote to production</button>
                             </form>
                         )}
-                        <form onSubmit={deployNow}><button className="button-primary" disabled={site.status !== 'active' || needsDatabase}>{action}</button></form>
+                        <form onSubmit={deployNow}><button className="button-primary" disabled={! ['configuring', 'active', 'failed'].includes(site.status) || meta.deployment_in_progress || needsDatabase}>{site.status === 'configuring' ? `Configure & ${action.toLowerCase()}` : action}</button></form>
                     </div>
                 </div>
                 <Flash />
@@ -406,6 +407,7 @@ function DeployForm({ site, meta }: any) {
         php_version: site.php_version || '',
         auto_deploy: Boolean(site.auto_deploy),
         zero_downtime: Boolean(site.zero_downtime),
+        multisite_origin: Boolean(site.multisite_origin),
         deployment_script: site.deployment_script || '',
     });
     return (
@@ -419,6 +421,8 @@ function DeployForm({ site, meta }: any) {
                 {meta.uses_php && <label className="text-sm heading">PHP version<select className="field" name="php_version" value={form.data.php_version} onChange={(e) => form.setData('php_version', e.target.value)}>{meta.php_versions.map((v: string) => <option key={v}>{v}</option>)}</select></label>}
                 <label className="flex gap-2 text-sm heading"><input type="checkbox" name="auto_deploy" checked={form.data.auto_deploy} onChange={(e) => form.setData('auto_deploy', e.target.checked)} />Automatic deployments</label>
                 <label className="flex gap-2 text-sm heading"><input type="checkbox" name="zero_downtime" checked={form.data.zero_downtime} onChange={(e) => form.setData('zero_downtime', e.target.checked)} />Zero-downtime releases</label>
+                <label className="flex gap-2 text-sm heading"><input type="checkbox" name="multisite_origin" checked={form.data.multisite_origin} onChange={(e) => form.setData('multisite_origin', e.target.checked)} />Multisite origin for connected domains</label>
+                <p className="text-xs muted">Routes unmatched domain names on this server to this application while preserving the visitor's Host header. Enable this for only one trusted multisite application per server.</p>
                 <label className="text-sm heading sm:col-span-2">Custom post-build script<textarea className="field min-h-44 font-mono text-xs" name="deployment_script" value={form.data.deployment_script} onChange={(e) => form.setData('deployment_script', e.target.value)} /></label>
             </div>
             <button className="button-primary mt-5">Save settings</button>

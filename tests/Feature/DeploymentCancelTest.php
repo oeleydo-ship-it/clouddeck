@@ -89,6 +89,48 @@ class DeploymentCancelTest extends TestCase
         Queue::assertPushedOn('deployments', DeployWordPressJob::class);
     }
 
+    public function test_a_failed_site_can_be_deployed_again_from_the_site_page(): void
+    {
+        Queue::fake();
+        [$user, $site] = $this->site();
+        $site->update(['status' => 'failed']);
+        $site->deployments()->create([
+            'user_id' => $user->id,
+            'status' => DeploymentStatus::Failed,
+            'trigger' => 'manual',
+            'finished_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('sites.show', $site))
+            ->assertInertia(fn ($page) => $page
+                ->where('site.status', 'failed')
+                ->where('meta.deployment_in_progress', false));
+
+        $this->actingAs($user)
+            ->post(route('sites.deploy', $site))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $site->deployments()->where('status', DeploymentStatus::Pending)->count());
+        Queue::assertPushedOn('deployments', DeployWordPressJob::class);
+    }
+
+    public function test_a_new_site_can_deploy_while_its_separate_configuration_job_is_delayed(): void
+    {
+        Queue::fake();
+        [$user, $site] = $this->site();
+        $site->update(['status' => 'configuring']);
+
+        $this->actingAs($user)
+            ->post(route('sites.deploy', $site))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $site->deployments()->where('status', DeploymentStatus::Pending)->count());
+        Queue::assertPushedOn('deployments', DeployWordPressJob::class);
+    }
+
     public function test_a_finished_deployment_cannot_be_cancelled(): void
     {
         [$user, $site] = $this->site();

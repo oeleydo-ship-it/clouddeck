@@ -9,13 +9,13 @@ use App\Actions\Sites\PromoteStagingSite;
 use App\Enums\DeploymentStatus;
 use App\Enums\ServerStatus;
 use App\Http\Requests\StoreSiteRequest;
+use App\Jobs\Monitoring\CheckSiteDnsJob;
+use App\Jobs\Monitoring\CheckSiteUptimeJob;
 use App\Jobs\Sites\CheckSiteQueueHealthJob;
 use App\Jobs\Sites\CheckWordPressInstallJob;
 use App\Jobs\Sites\ConfigureSiteJob;
 use App\Jobs\Sites\DeleteSiteJob;
 use App\Jobs\Sites\RefreshWordPressInventoryJob;
-use App\Jobs\Monitoring\CheckSiteDnsJob;
-use App\Jobs\Monitoring\CheckSiteUptimeJob;
 use App\Models\Deployment;
 use App\Models\ManagedDatabase;
 use App\Models\Site;
@@ -130,6 +130,7 @@ class SiteController extends Controller
         $databaseKey = $site->isWordPress() ? 'DB_DATABASE' : 'DB_CONNECTION';
         $hasDatabase = $site->environmentVariables->contains(fn ($variable) => $variable->key === $databaseKey);
         $wordpressInstalled = $site->wordpressIsInstalled();
+        $deploymentInProgress = $site->isDeploying();
         $tabs = $site->isWordPress()
             ? ['overview' => 'Overview', 'themes' => 'Themes', 'plugins' => 'Plugins', 'backups' => 'Backups', 'environment' => 'Environment', 'ssl' => 'SSL', 'cron' => 'Cron', 'logs' => 'Logs', 'monitoring' => 'Monitoring']
             : ($site->isReact()
@@ -161,6 +162,7 @@ class SiteController extends Controller
                 'is_production' => $site->isProduction(),
                 'wordpress_installed' => $wordpressInstalled,
                 'has_database' => $hasDatabase,
+                'deployment_in_progress' => $deploymentInProgress,
                 'secure' => $site->sslCertificates->contains(fn ($certificate) => $certificate->status === 'active'),
                 'php_versions' => config('uplary.php_versions'),
                 'scheduler_command' => 'cd /var/www/'.$site->domain.'/current && php artisan schedule:run',
@@ -205,10 +207,10 @@ class SiteController extends Controller
             ],
             'tabs' => $tabs,
             'logSources' => $site->isReact()
-                ? array_intersect_key(\App\Http\Controllers\LogController::SOURCES, array_flip(['nginx', 'nginx-access']))
+                ? array_intersect_key(LogController::SOURCES, array_flip(['nginx', 'nginx-access']))
                 : ($site->isWordPress()
-                    ? array_intersect_key(\App\Http\Controllers\LogController::SOURCES, array_flip(['nginx', 'nginx-access', 'php']))
-                    : \App\Http\Controllers\LogController::SOURCES),
+                    ? array_intersect_key(LogController::SOURCES, array_flip(['nginx', 'nginx-access', 'php']))
+                    : LogController::SOURCES),
             'stagingSitesEnabled' => app(SystemSettings::class)->stagingSitesEnabled(),
             // Only fetched for the platform that can use it, and cached, so the directory
             // being slow or down never holds up a Laravel site's page.
@@ -314,15 +316,24 @@ class SiteController extends Controller
     {
         $this->authorize('update', $site);
         $data = $request->validate([
-                'repository_url' => ['required', 'string', 'max:2048', new GitRepositoryUrl],
-                'repository_username' => ['nullable', 'string', 'max:255', 'regex:/^[^\r\n]+$/'],
-                'repository_token' => ['nullable', 'string', 'max:2048', 'regex:/^[^\r\n]+$/'],
-                'clear_repository_credentials' => ['sometimes', 'boolean'],
-                'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
+            'repository_url' => ['required', 'string', 'max:2048', new GitRepositoryUrl],
+            'repository_username' => ['nullable', 'string', 'max:255', 'regex:/^[^\r\n]+$/'],
+            'repository_token' => ['nullable', 'string', 'max:2048', 'regex:/^[^\r\n]+$/'],
+            'clear_repository_credentials' => ['sometimes', 'boolean'],
+            'branch' => ['required', 'string', 'max:255', 'regex:/^[A-Za-z0-9._\/-]+$/'],
             'php_version' => [$site->usesPhp() ? 'required' : 'nullable', Rule::in(config('uplary.php_versions'))],
             'deployment_script' => ['nullable', 'string', 'max:30000'],
             'auto_deploy' => ['sometimes', 'boolean'],
             'zero_downtime' => ['sometimes', 'boolean'],
+            'multisite_origin' => [
+                'sometimes',
+                'boolean',
+                function (string $attribute, mixed $value, \Closure $fail) use ($site): void {
+                    if (filter_var($value, FILTER_VALIDATE_BOOLEAN) && ! $site->isLaravel()) {
+                        $fail('Only a Laravel site can be used as a multisite origin.');
+                    }
+                },
+            ],
         ]);
         if (! $site->usesPhp()) {
             unset($data['php_version']);
@@ -336,7 +347,21 @@ class SiteController extends Controller
             // the encrypted token already stored for the site.
             unset($data['repository_token']);
         }
-        $site->update([...$data, 'auto_deploy' => $request->boolean('auto_deploy'), 'zero_downtime' => $request->boolean('zero_downtime')]);
+        DB::transaction(function () use ($data, $request, $site): void {
+            if ($request->boolean('multisite_origin')) {
+                Site::query()
+                    ->where('server_id', $site->server_id)
+                    ->where($site->getKeyName(), '!=', $site->getKey())
+                    ->update(['multisite_origin' => false]);
+            }
+
+            $site->update([
+                ...$data,
+                'auto_deploy' => $request->boolean('auto_deploy'),
+                'zero_downtime' => $request->boolean('zero_downtime'),
+                'multisite_origin' => $request->boolean('multisite_origin'),
+            ]);
+        });
 
         return back()->with('status', 'Deployment settings updated.');
     }
@@ -366,8 +391,11 @@ class SiteController extends Controller
     public function deploy(Request $request, Site $site, StartDeployment $start): RedirectResponse
     {
         $this->authorize('deploy', $site);
-        if ($site->status !== 'active' || $site->server->status !== ServerStatus::Ready) {
-            return back()->withErrors(['deployment' => 'The site and server must be active before deployment.']);
+        // Deploy jobs begin by running configure-site.sh themselves. Allowing a new site
+        // to deploy while its separate provisioning job is delayed makes that operation
+        // the recovery path instead of leaving the button permanently disabled.
+        if (! in_array($site->status, ['configuring', 'active', 'failed'], true) || $site->server->status !== ServerStatus::Ready) {
+            return back()->withErrors(['deployment' => 'The site must be ready to deploy and the server must be active.']);
         }
         if ($site->deployments()->whereIn('status', [DeploymentStatus::Pending, DeploymentStatus::Running])->exists()) {
             return back()->withErrors(['deployment' => 'A deployment is already in progress.']);
