@@ -82,6 +82,20 @@ mkdir -p "${SHARED}"
 printf '%s' "${ENVIRONMENT_BASE64}" | base64 -d > "${SHARED}/.env"
 ln -sfn "${SHARED}/.env" .env
 
+# Laravel names its session cookie after APP_NAME, which defaults to the site's domain here.
+# PHP renames incoming cookies whose names contain dots ("a.b_session" arrives as
+# "a_b_session"), so the session is lost on every request: forms fail CSRF ("Page Expired")
+# and nobody can stay signed in. Pin a cookie name PHP keeps, unless the site chose one.
+ensure_session_cookie_name() {
+    local env_file="${SHARED}/.env" app_name
+    grep -qE '^SESSION_COOKIE=' "${env_file}" && return 0
+    app_name="$(grep -E '^APP_NAME=' "${env_file}" | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '\r')"
+    case "${app_name:-laravel}" in
+        *.*) printf '\nSESSION_COOKIE=%s_session\n' "$(printf '%s' "${DOMAIN}" | tr -c 'A-Za-z0-9_-' '_')" >> "${env_file}" ;;
+    esac
+}
+ensure_session_cookie_name
+
 # Laravel defaults to SQLite when DB_CONNECTION is missing. Provisioned PHP only ships
 # mysql and pgsql drivers, so a silent fallback fails during package:discover with no
 # useful error. Fail here with the exact gap instead.
