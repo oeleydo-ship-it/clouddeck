@@ -113,7 +113,44 @@ validate_database_env() {
 }
 validate_database_env
 
-composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+# Composer downloads package zips from api.github.com. That API times out (HTTP 504) or
+# throttles anonymous servers far more often than git clones do, and recent Composer no
+# longer falls back to cloning when a zip fails, so one bad minute fails the deploy.
+# Retry with fewer parallel downloads, authenticate to GitHub when the site has a GitHub
+# token, and as a last resort install from source (git clones from github.com).
+install_composer_dependencies() {
+    local attempt status=1 token=""
+    export COMPOSER_MAX_PARALLEL_HTTP="${COMPOSER_MAX_PARALLEL_HTTP:-4}"
+    export COMPOSER_PROCESS_TIMEOUT="${COMPOSER_PROCESS_TIMEOUT:-900}"
+
+    if [ -z "${COMPOSER_AUTH:-}" ] && [ -n "${REPOSITORY_TOKEN_BASE64}" ]; then
+        case "${REPOSITORY}" in
+            https://github.com/*) token="$(printf '%s' "${REPOSITORY_TOKEN_BASE64}" | base64 -d)" ;;
+        esac
+    fi
+    if [ -n "${token}" ]; then
+        export COMPOSER_AUTH="{\"github-oauth\":{\"github.com\":\"${token}\"}}"
+    fi
+
+    for attempt in 1 2 3; do
+        if composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader; then
+            status=0
+            break
+        fi
+        echo "Composer could not download every package (attempt ${attempt} of 3); retrying in $((attempt * 15))s" >&2
+        sleep $((attempt * 15))
+    done
+
+    if [ "${status}" -ne 0 ]; then
+        echo "Package downloads keep failing; installing from source (git) instead" >&2
+        rm -rf vendor
+        composer install --no-dev --no-interaction --prefer-source --optimize-autoloader && status=0
+    fi
+
+    [ -z "${token}" ] || unset COMPOSER_AUTH
+    return "${status}"
+}
+install_composer_dependencies
 
 if [ -n "${MANAGED_PACKAGES}" ]; then
     echo "Installing uplary-managed packages:${MANAGED_PACKAGES}"
